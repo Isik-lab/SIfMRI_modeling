@@ -4,7 +4,6 @@ import argparse
 from glob import glob
 import os
 from pathlib import Path
-from tqdm import tqdm
 
 import pandas as pd
 import numpy as np
@@ -17,13 +16,13 @@ from sentence_transformers import SentenceTransformer
 
 def download_data(local, remote, sub_dir):
     import dropbox, getpass
+    from tqdm import tqdm
     personal_access_token = getpass.getpass('Enter your Personal Access Token: ')
     dbx = dropbox.Dropbox(personal_access_token)
 
     list_folder_result = dbx.files_list_folder(path=f'{remote}/{sub_dir}')
     for entry in tqdm(list_folder_result.entries, total=len(list_folder_result.entries)):
         file = entry.path_lower.split('/')[-1]
-
         Path(f'{local}/videos/').mkdir(exist_ok=True, parents=True)
         dbx.files_download_to_file(f'{local}/{sub_dir}/{file}', entry.path_lower)
 
@@ -43,6 +42,8 @@ class CaptionData:
         self.raw_dir = f'{self.local_path}/data/raw'
         self.out_path = f'{self.interim_dir}/CaptionData'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
+
+        # Set environment variables
         self.catch_trials = ['flickr-0-5-7-5-4-0-7-0-2605754070_54.mp4', 'yt-dfOVWymr76U_103.mp4']
 
     def load_all_data(self):
