@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --acount=lisik3
+#SBATCH --account=lisik3
 #SBATCH --job-name=CaptionData
 #SBATCH --time=10:00
 #SBATCH --partition=defq
