@@ -14,17 +14,17 @@ import seaborn as sns
 from sentence_transformers import SentenceTransformer
 
 
-def download_data(local, remote, sub_dir):
-    import dropbox, getpass
-    from tqdm import tqdm
-    personal_access_token = getpass.getpass('Enter your Personal Access Token: ')
-    dbx = dropbox.Dropbox(personal_access_token)
+# def download_data(local, remote, sub_dir):
+#     import dropbox, getpass
+#     from tqdm import tqdm
+#     personal_access_token = getpass.getpass('Enter your Personal Access Token: ')
+#     dbx = dropbox.Dropbox(personal_access_token)
 
-    list_folder_result = dbx.files_list_folder(path=f'{remote}/{sub_dir}')
-    for entry in tqdm(list_folder_result.entries, total=len(list_folder_result.entries)):
-        file = entry.path_lower.split('/')[-1]
-        Path(f'{local}/videos/').mkdir(exist_ok=True, parents=True)
-        dbx.files_download_to_file(f'{local}/{sub_dir}/{file}', entry.path_lower)
+#     list_folder_result = dbx.files_list_folder(path=f'{remote}/{sub_dir}')
+#     for entry in tqdm(list_folder_result.entries, total=len(list_folder_result.entries)):
+#         file = entry.path_lower.split('/')[-1]
+#         Path(f'{local}/videos/').mkdir(exist_ok=True, parents=True)
+#         dbx.files_download_to_file(f'{local}/{sub_dir}/{file}', entry.path_lower)
 
 
 class CaptionData:
@@ -32,9 +32,9 @@ class CaptionData:
         # save arg inputs into self
         self.local_path = args.local_path
         self.remote_path = args.remote_path
-        self.download_videos = args.download_videos
-        self.download_captions = args.download_captions
-        self.download_annotations = args.download_annotations
+        # self.download_videos = args.download_videos
+        # self.download_captions = args.download_captions
+        # self.download_annotations = args.download_annotations
 
         # Set up the directories
         self.figures_dir = f'{self.local_path}/reports/figures'
@@ -118,12 +118,12 @@ class CaptionData:
         cap_annot.to_csv(f'{self.out_path}/captions_and_annotations.csv', index=False)
 
     def run(self):
-        if ~os.path.exists(f'{self.raw_dir}/annotations') or self.download_annotations:
-            download_data(self.raw_dir, self.remote_path, 'annotations')
-        if ~os.path.exists(f'{self.raw_dir}/captions') or self.download_captions:
-            download_data(self.raw_dir, self.remote_path, 'captions')
-        if ~os.path.exists(f'{self.raw_dir}/videos') or self.download_videos:
-            download_data(self.raw_dir, self.remote_path, 'videos')
+        # if ~os.path.exists(f'{self.raw_dir}/annotations') or self.download_annotations:
+        #     download_data(self.raw_dir, self.remote_path, 'annotations')
+        # if ~os.path.exists(f'{self.raw_dir}/captions') or self.download_captions:
+        #     download_data(self.raw_dir, self.remote_path, 'captions')
+        # if ~os.path.exists(f'{self.raw_dir}/videos') or self.download_videos:
+        #     download_data(self.raw_dir, self.remote_path, 'videos')
 
         all_data = self.load_all_data()
         data = self.get_complete_data(all_data)
@@ -133,9 +133,9 @@ class CaptionData:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--download_annotations', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--download_videos', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--download_captions', action=argparse.BooleanOptionalAction, default=False)
+    # parser.add_argument('--download_annotations', action=argparse.BooleanOptionalAction, default=False)
+    # parser.add_argument('--download_videos', action=argparse.BooleanOptionalAction, default=False)
+    # parser.add_argument('--download_captions', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--local_path', '-local', type=str,
                         default='/scratch4/lisik3/emcmaho7/SIfMRI_modeling')
     parser.add_argument('--remote_path', '-remote', type=str,
