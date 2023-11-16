@@ -62,7 +62,7 @@ def main():
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
-                         default='/Users/emcmaho7/Dropbox/projects/SI_EEG/SIEEG_analysis/data')
+                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
     args = parser.parse_args()
     fMRIDecoding(args).run()
 
