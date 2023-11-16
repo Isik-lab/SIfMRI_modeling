@@ -4,8 +4,8 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-import torch
 from deepjuice.structural import flatten_nested_list # utility for list flattening
+from deepjuice.systemops.sysreport import count_cuda_devices
 from src import encoding
 
 
@@ -27,12 +27,6 @@ class fMRIDecoding:
 
         self.streams = ['EVC']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
-        
-        print(f'cuda is available {torch.cuda.is_available()}')
-        if torch.cuda.is_available():
-            self.device = 'cuda'
-        else:
-            self.device = 'cpu'
     
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
@@ -55,7 +49,7 @@ class fMRIDecoding:
             benchmark = self.load_fmri()
             captions = self.get_captions(benchmark)
             feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
-            results = encoding.get_benchmarking_results(benchmark, feature_extractor, self.device)
+            results = encoding.get_benchmarking_results(benchmark, feature_extractor)
             results.to_csv(self.out_file, index=False)
 
 

@@ -41,8 +41,9 @@ def memory_saving_extraction(model_uid, captions):
     return feature_extractor
 
 
-def get_benchmarking_results(benchmark, feature_extractor, device,
+def get_benchmarking_results(benchmark, feature_extractor,
                              layer_index_offset=0,
+                             device='auto',
                              verbose=True, n_splits=4):
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=0)
