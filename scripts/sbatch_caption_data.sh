@@ -12,6 +12,6 @@
 #SBATCH --mail-user=emcmaho7@jh.edu
 
 ml anaconda
-conda activate nibabel
+conda activate fmri_modeling
 
 python caption_data.py
