@@ -122,6 +122,7 @@ class CaptionData:
         caption_columns = [col for col in cap_annot.columns if col.startswith('caption')]
         cap_annot['captions'] = cap_annot[caption_columns].apply(lambda row: row.dropna().tolist(), axis=1)
         cap_annot = cap_annot.drop(columns=caption_columns)
+        cap_annot.sort_values(by='video_name', inplace=True)
         cap_annot.to_csv(f'{self.out_path}/stimulus_data.csv', index=False)
         
     def load_video_info(self):
