@@ -113,7 +113,7 @@ class CaptionData:
         caption_df['n_caption'] = caption_df.groupby('video_name').cumcount() + 1
         caption_df['n_caption'] = 'caption' + caption_df['n_caption'].astype('str').str.zfill(2)
         captions = caption_df.pivot(columns='n_caption', index='video_name', values='caption')
-        captions.to_csv(f'{self.out_path}/captions.csv')
+        captions.to_csv(f'{self.out_path}/captions.csv', index=False)
 
         missing_captions = captions.loc[np.invert(captions.isna().to_numpy()).sum(axis=1) < 5].reset_index().video_name.to_list()
         print(f'missing captions: {missing_captions}')
