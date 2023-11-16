@@ -140,8 +140,12 @@ class CaptionData:
         individ_rating = pd.read_csv(f'{self.raw_dir}/annotations/individual_subject_ratings.csv')
         individ_rating = individ_rating[~individ_rating['question_name'].isin(['dominance', 'cooperation', 'relation'])]
         individ_rating.replace(self.rename_map, inplace=True)
+        individ_rating['rating_num'] = individ_rating.groupby(['question_name', 'video_name']).cumcount()
+        individ_rating['even'] = False
+        individ_rating.loc[(individ_rating.rating_num % 2) == 0, 'even'] = True
+        
         print('noise ceiling df')
-        print(individ_rating.head())
+        print(individ_rating.question_name.unique())
         for stimulus_set, stim_df in annotations.groupby('stimulus_set'):
             cur_df = individ_rating[individ_rating.video_name.isin(stim_df.video_name.to_list())]
             cur_df = cur_df.groupby('question_name').apply(noise_ceiling).reset_index()
