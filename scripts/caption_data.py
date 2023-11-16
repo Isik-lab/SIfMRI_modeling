@@ -9,38 +9,21 @@ import pandas as pd
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sentence_transformers import SentenceTransformer
-
-
-# def download_data(local, remote, sub_dir):
-#     import dropbox, getpass
-#     from tqdm import tqdm
-#     personal_access_token = getpass.getpass('Enter your Personal Access Token: ')
-#     dbx = dropbox.Dropbox(personal_access_token)
-
-#     list_folder_result = dbx.files_list_folder(path=f'{remote}/{sub_dir}')
-#     for entry in tqdm(list_folder_result.entries, total=len(list_folder_result.entries)):
-#         file = entry.path_lower.split('/')[-1]
-#         Path(f'{local}/videos/').mkdir(exist_ok=True, parents=True)
-#         dbx.files_download_to_file(f'{local}/{sub_dir}/{file}', entry.path_lower)
 
 
 class CaptionData:
     def __init__(self, args):
         # save arg inputs into self
-        self.local_path = args.local_path
-        self.remote_path = args.remote_path
-        # self.download_videos = args.download_videos
-        # self.download_captions = args.download_captions
-        # self.download_annotations = args.download_annotations
+        self.top_path = args.top_path
 
         # Set up the directories
-        self.figures_dir = f'{self.local_path}/reports/figures'
-        self.interim_dir = f'{self.local_path}/data/interim'
-        self.raw_dir = f'{self.local_path}/data/raw'
-        self.out_path = f'{self.interim_dir}/CaptionData'
+        self.process = 'CaptionData'
+        self.figures_dir = f'{self.top_path}/reports/figures'
+        self.interim_dir = f'{self.top_path}/data/interim'
+        self.raw_dir = f'{self.top_path}/data/raw'
+        self.out_path = f'{self.interim_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
 
         # Set environment variables
@@ -68,7 +51,6 @@ class CaptionData:
         return pd.concat(all_data)
     
     def get_complete_data(self, all_data):
-        incomplete_data = all_data.groupby('sub_id').filter(lambda x: len(x) < 12)
         data = all_data.groupby('sub_id').filter(lambda x: len(x) == 12)
         extra_data = all_data.groupby('sub_id').filter(lambda x: len(x) > 12)
         print(extra_data.drop_duplicates(subset=['sub_id']).groupby(['condition']).count())
@@ -118,13 +100,6 @@ class CaptionData:
         cap_annot.to_csv(f'{self.out_path}/captions_and_annotations.csv', index=False)
 
     def run(self):
-        # if ~os.path.exists(f'{self.raw_dir}/annotations') or self.download_annotations:
-        #     download_data(self.raw_dir, self.remote_path, 'annotations')
-        # if ~os.path.exists(f'{self.raw_dir}/captions') or self.download_captions:
-        #     download_data(self.raw_dir, self.remote_path, 'captions')
-        # if ~os.path.exists(f'{self.raw_dir}/videos') or self.download_videos:
-        #     download_data(self.raw_dir, self.remote_path, 'videos')
-
         all_data = self.load_all_data()
         data = self.get_complete_data(all_data)
         filtered_data = self.id_good_participants(data)
@@ -133,9 +108,6 @@ class CaptionData:
 
 def main():
     parser = argparse.ArgumentParser()
-    # parser.add_argument('--download_annotations', action=argparse.BooleanOptionalAction, default=False)
-    # parser.add_argument('--download_videos', action=argparse.BooleanOptionalAction, default=False)
-    # parser.add_argument('--download_captions', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--local_path', '-local', type=str,
                         default='/scratch4/lisik3/emcmaho7/SIfMRI_modeling')
     parser.add_argument('--remote_path', '-remote', type=str,
