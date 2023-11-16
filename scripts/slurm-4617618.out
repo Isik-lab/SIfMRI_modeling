@@ -1,0 +1,48 @@
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 1: setenv: command not found
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 2: setenv: command not found
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 3: setenv: command not found
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 4: setenv: command not found
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 34: syntax error near unexpected token `"${1}"'
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 34: `    switch ( "${1}" )'
+Loading all deepjuice modules...
+{'process': 'LLMEncoding', 'overwrite': False, 'model_uid': 'sentence-transformers/all-MiniLM-L6-v2', 'data_dir': '/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data'}
+loading data...
+Extraction Error Report
+  Embedding-2-3
+   --add_features: No dimension equal to input_size.
+FeatureExtractor Handle for BertModel
+  119 feature maps (+48 duplicates); 200 inputs
+  Currently keeping 14 / 119 total feature maps
+  Memory required for full extraction: 1.905 GB
+  Memory usage limiting device set to: cpu
+  Memory usage limit currently set to: 114.073 GB
+  1 batch(es) required for current memory limit 
+   Batch-001: 14 feature maps; 1.905 GB
+device: cuda:0
+Feature Extraction (Extractor):   0%|          | 0/1 [00:00<?, ?it/s]
+Brain Mapping (Layer):   0%|          | 0/14 [00:00<?, ?it/s][A
+                                                             [ATraceback (most recent call last):
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/scripts/llm_encoding.py", line 60, in <module>
+    main()
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/scripts/llm_encoding.py", line 56, in main
+    LLMEncoding(args).run()
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/scripts/llm_encoding.py", line 45, in run
+    results = encoding.get_benchmarking_results(benchmark, feature_extractor)
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/src/encoding.py", line 68, in get_benchmarking_results
+    feature_map = get_feature_map_srps(feature_map, device=device)
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/reduction.py", line 450, in get_feature_map_srps
+    feature_map_srps = sparse_random_projection(feature_maps, **srp_kwargs)
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/reduction.py", line 391, in sparse_random_projection
+    srp_matrix = make_srp_matrix_torch(n_components, n_features, seed, **srp_matrix_kwargs,
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/reduction.py", line 201, in make_srp_matrix_torch
+    dtypes = get_backend_dtypes(precision)['torch']
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/tensorfy.py", line 347, in get_backend_dtypes
+    backend_dtypes = {backend: {numtype: _get_dtype(backend, numtype)
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/tensorfy.py", line 347, in <dictcomp>
+    backend_dtypes = {backend: {numtype: _get_dtype(backend, numtype)
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/tensorfy.py", line 347, in <dictcomp>
+    backend_dtypes = {backend: {numtype: _get_dtype(backend, numtype)
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/tensorfy.py", line 345, in _get_dtype
+    return getattr(eval(backend), dtypes[numtype][precision])
+AttributeError: 'NoneType' object has no attribute 'int32'
+Feature Extraction (Extractor):   0%|          | 0/1 [00:05<?, ?it/s]
