@@ -126,7 +126,7 @@ class CaptionData:
         
     def load_video_info(self):
         annotations = pd.read_csv(f'{self.raw_dir}/annotations/annotations.csv').drop(columns=['cooperation', 'dominance', 'intimacy'])
-        test_videos = pd.read_csv(f'{self.raw_dir}/raw/annotations/test.csv')['video_name'].to_list()
+        test_videos = pd.read_csv(f'{self.raw_dir}/annotations/test.csv')['video_name'].to_list()
 
         self.rename_map = {col: 'rating-' + col.replace(' ', '_')  for col in annotations.columns if 'video_name' not in col}
         self.rename_map['transitivity'] = 'rating-object'
