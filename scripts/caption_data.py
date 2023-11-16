@@ -13,6 +13,23 @@ import matplotlib.pyplot as plt
 from sentence_transformers import SentenceTransformer
 
 
+def corr(x, y):
+    x_m = x - np.nanmean(x)
+    y_m = y - np.nanmean(y)
+    numer = np.nansum(x_m * y_m)
+    denom = np.sqrt(np.nansum(x_m * x_m) * np.nansum(y_m * y_m))
+    if denom != 0:
+        return numer / denom
+    else:
+        return np.nan
+
+
+def noise_ceiling(rows):
+    even = rows[rows.even].groupby('video_name').mean(numeric_only=True).reset_index().sort_values(by='video_name').likert_response.to_numpy()
+    odd = rows[~rows.even].groupby('video_name').mean(numeric_only=True).reset_index().sort_values(by='video_name').likert_response.to_numpy()
+    return corr(even, odd)
+
+
 class CaptionData:
     def __init__(self, args):
         # save arg inputs into self
@@ -25,6 +42,7 @@ class CaptionData:
         self.raw_dir = f'{self.top_dir}/data/raw'
         self.out_path = f'{self.interim_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
+        self.rename_map = None
 
         # Set environment variables
         self.catch_trials = ['flickr-0-5-7-5-4-0-7-0-2605754070_54.mp4', 'yt-dfOVWymr76U_103.mp4']
@@ -37,11 +55,8 @@ class CaptionData:
                 sub_id = match.group(1)
                 condition = match.group(2)
                 date = match.group(3)
-                print(f"sub_id: {sub_id}, condition: {condition}, date: {date}")
 
-            if os.path.getsize(path) == 0:
-                print('oops that file is empty. moving on...')
-            else:
+            if os.path.getsize(path) != 0:
                 df = pd.read_csv(path, header=None)
                 df.columns = ['url', 'caption']
                 df['url'] = df['url'].str.extract("(https://[^']+)")
@@ -50,11 +65,18 @@ class CaptionData:
                 all_data.append(df)
         return pd.concat(all_data)
     
-    def get_complete_data(self, all_data):
-        data = all_data.groupby('sub_id').filter(lambda x: len(x) == 12)
-        extra_data = all_data.groupby('sub_id').filter(lambda x: len(x) > 12)
-        print(extra_data.drop_duplicates(subset=['sub_id']).groupby(['condition']).count())
-        print(data.drop_duplicates(subset=['sub_id']).groupby(['condition']).count())
+    def get_complete_data(self, all_sub_data):
+        incomplete_data = all_sub_data.groupby('sub_id').filter(lambda x: len(np.unique(x.video_name)) < 12)
+        data = all_sub_data.groupby('sub_id').filter(lambda x: len(np.unique(x.video_name)) == 12)
+        extra_data = all_sub_data.groupby('sub_id').filter(lambda x: len(np.unique(x.video_name)) > 12)
+        extra_data = extra_data.drop_duplicates(subset=['sub_id', 'video_name'], keep='last')
+        data = pd.concat([data, extra_data]).reset_index()
+
+        returned_subs = list(incomplete_data.sub_id.unique())
+        print(f'Number of incomplete subjects {len(returned_subs)}')
+
+        all_sub_ids = list(data.sub_id.unique())
+        print(f'Number of total complete subjects {len(all_sub_ids)}')
         return data
 
     def id_good_participants(self, data):
@@ -80,30 +102,59 @@ class CaptionData:
             ax[1].set_title(catch_trial)
 
             bad_subs = bad_subs + catch_data.loc[distance > dist_threshold, 'sub_id'].to_list()
-        print(bad_subs)
         filtered_data = data[(~data['sub_id'].isin(bad_subs)) & (~data['video_name'].isin(self.catch_trials))].reset_index(drop=True)
-        print(filtered_data.drop_duplicates(subset=['sub_id']).groupby(['condition']).count())
         plt.savefig(f'{self.figures_dir}/data_quality_viz.pdf')
-        filtered_data.to_csv(f'{self.out_path}/filtered_data.csv', index=False)
+
+        print(f'Number of good participants {filtered_data.sub_id.nunique()}')
         return filtered_data
 
-    def reorg_captions(self, filtered_data):
+    def reorg_captions(self, filtered_data, annotations):
         caption_df = filtered_data[['video_name', 'caption']]
         caption_df['n_caption'] = caption_df.groupby('video_name').cumcount() + 1
         caption_df['n_caption'] = 'caption' + caption_df['n_caption'].astype('str').str.zfill(2)
         captions = caption_df.pivot(columns='n_caption', index='video_name', values='caption')
-        captions.to_csv(f'{self.out_path}/captions.csv', index=False)
+        captions.to_csv(f'{self.out_path}/captions.csv')
 
+        missing_captions = captions.loc[np.invert(captions.isna().to_numpy()).sum(axis=1) < 5].reset_index().video_name.to_list()
+        print(f'missing captions: {missing_captions}')
+
+        cap_annot = annotations.merge(captions.reset_index(), on='video_name')
+        caption_columns = [col for col in cap_annot.columns if col.startswith('caption')]
+        cap_annot['captions'] = cap_annot[caption_columns].apply(lambda row: row.dropna().tolist(), axis=1)
+        cap_annot = cap_annot.drop(columns=caption_columns)
+        cap_annot.to_csv(f'{self.out_path}/stimulus_data.csv', index=False)
+        
+    def load_video_info(self):
         annotations = pd.read_csv(f'{self.raw_dir}/annotations/annotations.csv').drop(columns=['cooperation', 'dominance', 'intimacy'])
-        annotations = annotations.merge(pd.read_csv(f'{self.raw_dir}/annotations/train.csv'), on='video_name').reset_index(drop=True)
-        cap_annot = annotations.merge(captions.reset_index()[['video_name', 'caption01']], on='video_name')
-        cap_annot.to_csv(f'{self.out_path}/captions_and_annotations.csv', index=False)
+        test_videos = pd.read_csv(f'{self.raw_dir}/raw/annotations/test.csv')['video_name'].to_list()
+
+        self.rename_map = {col: 'rating-' + col.replace(' ', '_')  for col in annotations.columns if 'video_name' not in col}
+        self.rename_map['transitivity'] = 'rating-object'
+        annotations.rename(columns=self.rename_map, inplace=True)
+        annotations['stimulus_set'] = 'train'
+        annotations.loc[annotations.video_name.isin(test_videos), 'stimulus_set'] = 'test'
+        return annotations
+
+    def load_ratings_nc(self, annotations):
+        # Load the ratings per subject
+        individ_rating = pd.read_csv(f'{self.raw_dir}/annotations/individual_subject_ratings.csv')
+        individ_rating = individ_rating[~individ_rating['question_name'].isin(['dominance', 'cooperation', 'relation'])]
+        individ_rating.replace(self.rename_map, inplace=True)
+        print('noise ceiling df')
+        print(individ_rating.head())
+        for stimulus_set, stim_df in annotations.groupby('stimulus_set'):
+            cur_df = individ_rating[individ_rating.video_name.isin(stim_df.video_name.to_list())]
+            cur_df = cur_df.groupby('question_name').apply(noise_ceiling).reset_index()
+            cur_df.rename(columns={0: 'nc'}, inplace=True)
+            cur_df.to_csv(f'{self.out_path}/{stimulus_set}_rating_noise_ceiling.csv', index=False)
 
     def run(self):
         all_data = self.load_all_data()
+        annotations = self.load_video_info()
         data = self.get_complete_data(all_data)
         filtered_data = self.id_good_participants(data)
-        self.reorg_captions(filtered_data)
+        self.reorg_captions(filtered_data, annotations)
+        self.load_ratings_nc(annotations)
 
 
 def main():
