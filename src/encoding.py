@@ -32,9 +32,9 @@ def memory_saving_extraction(model_uid, captions):
     tokenized_captions = tokenize_captions(tokenizer, captions)
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
-    dataloader = DataLoader(tensor_dataset, batch_size = 100)
+    dataloader = DataLoader(tensor_dataset, batch_size = 200)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        keep=['Attention','BertModel'],
+                                        # keep=['Attention','BertModel'],
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
                                         output_device='cpu', exclude_oversize=False)
@@ -48,6 +48,7 @@ def get_benchmarking_results(benchmark, feature_extractor,
                              verbose=True, n_splits=4):
     # use a CUDA-capable device, if available, else: CPU
     if device == 'auto': device = get_device_name(device)
+    print(f'device: {device}')
 
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=0)
