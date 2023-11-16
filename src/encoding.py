@@ -60,11 +60,7 @@ def get_benchmarking_results(benchmark, feature_extractor,
     layer_index = 0 # keeps track of depth
     results = []
     for feature_maps in feature_extractor:
-        if verbose:
-            feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)', leave=False)
-        else:
-            feature_map_iterator = feature_maps.items()
-
+        feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1 # one layer deeper in feature_maps
 
@@ -86,11 +82,7 @@ def get_benchmarking_results(benchmark, feature_extractor,
             y_pred = []
             y_true = []
 
-            if verbose:
-                cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
-            else:
-                cv_iterator = cv.split(X)
-
+            cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
             for train_index, test_index in cv_iterator:
                 pipe.fit(X[train_index], y[train_index])
                 y_pred.append(pipe.predict(X[test_index]))

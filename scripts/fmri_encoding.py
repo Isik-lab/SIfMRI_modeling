@@ -5,22 +5,17 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 from deepjuice.structural import flatten_nested_list # utility for list flattening
-from deepjuice.systemops.sysreport import count_cuda_devices
 from src import encoding
 
 
 class fMRIDecoding:
     def __init__(self, args):
         self.process = 'fMRIDecoding'
-        if 'u' not in args.sid:
-            self.sid = f'subj{str(int(args.sid)).zfill(3)}'
-        else:
-            self.sid = args.sid
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
+        self.data_dir = args.data_dir
         print(vars(self))
 
-        self.data_dir = args.data_dir
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
         model_name = self.model_uid.replace('/', '_')
         self.out_file = f'{self.data_dir}/interim/{self.process}/{model_name}.csv'
@@ -37,9 +32,7 @@ class fMRIDecoding:
     def get_captions(self, benchmark):
         all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
         # the listification and flattening of our 5 captions per image into one big list:
-        captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
-        assert(len(captions) == 200 * 5) # assertion to ensure each image has 5 captions
-        return captions
+        return flatten_nested_list([eval(captions)[:5] for captions in all_captions])
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
@@ -55,7 +48,6 @@ class fMRIDecoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--sid', type=str, default='1')
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
