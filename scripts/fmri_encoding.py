@@ -16,17 +16,14 @@ class fMRIDecoding:
             self.sid = f'subj{str(int(args.sid)).zfill(3)}'
         else:
             self.sid = args.sid
-        self.regress_gaze = args.regress_gaze
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
         print(vars(self))
 
         self.data_dir = args.data_dir
-        self.figure_dir = args.figure_dir
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
-        Path(f'{self.figure_dir}/{self.process}').mkdir(parents=True, exist_ok=True)
-        self.out_figure = f'{self.figure_dir}/{self.process}/{self.sid}_reg-gaze-{self.regress_gaze}_decoding.png'
-        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.sid}_reg-gaze-{self.regress_gaze}_decoding.csv'
+        model_name = self.model_uid.replace('/', '_')
+        self.out_file = f'{self.data_dir}/interim/{self.process}/{model_name}.csv'
 
         self.streams = ['EVC']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
@@ -66,8 +63,6 @@ def main():
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/Users/emcmaho7/Dropbox/projects/SI_EEG/SIEEG_analysis/data')
-    parser.add_argument('--figure_dir', '-figure', type=str,
-                        default='/Users/emcmaho7/Dropbox/projects/SI_EEG/SIEEG_analysis/reports/figures')
     args = parser.parse_args()
     fMRIDecoding(args).run()
 
