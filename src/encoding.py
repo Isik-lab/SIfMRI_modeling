@@ -25,6 +25,7 @@ def moving_grouped_average(outputs, input_dim=0, skip=5):
     return torch.stack([outputs[i*skip:i*skip+skip].mean(dim=input_dim) 
                         for i in range(outputs.size(0) // skip)])
 
+
 def memory_saving_extraction(model_uid, captions):
     model, tokenizer = load_model(model_uid)
     tokenized_captions = tokenize_captions(tokenizer, captions)
@@ -57,7 +58,7 @@ def get_benchmarking_results(benchmark, feature_extractor, device,
             feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)', leave=False)
         else:
             feature_map_iterator = feature_maps.items()
-            
+
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1 # one layer deeper in feature_maps
 
