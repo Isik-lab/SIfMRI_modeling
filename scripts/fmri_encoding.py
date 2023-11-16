@@ -5,6 +5,8 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 import torch
+from deepjuice.structural import flatten_nested_list # utility for list flattening
+from src import encoding
 
 
 class fMRIDecoding:
@@ -16,6 +18,7 @@ class fMRIDecoding:
             self.sid = args.sid
         self.regress_gaze = args.regress_gaze
         self.overwrite = args.overwrite
+        self.model_uid = args.model_uid
         print(vars(self))
 
         self.data_dir = args.data_dir
@@ -36,17 +39,30 @@ class fMRIDecoding:
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv.gz')
         return Benchmark(metadata_, stimulus_data_, response_data_)
+
+    def get_captions(self, benchmark):
+        all_captions = benchmark.stimulus_data.coco_captions.tolist() # list of strings
+        # the listification and flattening of our 5 captions per image into one big list:
+        captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
+        assert(len(captions) == 200 * 5) # assertion to ensure each image has 5 captions
+        return captions
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
             results = pd.read_csv(self.out_file)
         else:
             print('loading data...')
+            benchmark = self.load_fmri()
+            captions = self.get_captions(benchmark)
+            feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
+            results = encoding.get_benchmarking_results(benchmark, feature_extractor, self.device)
+            results.to_csv(self.out_file, index=False)
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--sid', type=str, default='1')
-    parser.add_argument('--regress_gaze', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/Users/emcmaho7/Dropbox/projects/SI_EEG/SIEEG_analysis/data')
