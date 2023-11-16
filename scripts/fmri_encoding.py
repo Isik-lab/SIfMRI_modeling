@@ -34,7 +34,7 @@ class fMRIDecoding:
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
-        stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv.gz')
+        stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def get_captions(self, benchmark):
