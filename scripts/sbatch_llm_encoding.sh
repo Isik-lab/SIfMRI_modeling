@@ -15,4 +15,4 @@
 ml anaconda
 conda activate fmri_modeling
 
-python fmri_encoding.py
+python llm_encoding.py

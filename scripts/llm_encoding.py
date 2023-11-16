@@ -8,9 +8,9 @@ from deepjuice.structural import flatten_nested_list # utility for list flatteni
 from src import encoding
 
 
-class fMRIDecoding:
+class LLMEncoding:
     def __init__(self, args):
-        self.process = 'fMRIDecoding'
+        self.process = 'LLMEncoding'
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
@@ -53,7 +53,7 @@ def main():
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
     args = parser.parse_args()
-    fMRIDecoding(args).run()
+    LLMEncoding(args).run()
 
 
 if __name__ == '__main__':

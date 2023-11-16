@@ -12,7 +12,7 @@ from deepjuice.reduction import get_feature_map_srps
 from deepjuice.tensorfy import get_device_name
 
 
-def load_model(model_uid):
+def load_llm(model_uid):
     model_ = AutoModel.from_pretrained(model_uid)
     tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
     return model_, tokenizer_
@@ -28,13 +28,13 @@ def moving_grouped_average(outputs, input_dim=0, skip=5):
 
 
 def memory_saving_extraction(model_uid, captions):
-    model, tokenizer = load_model(model_uid)
+    model, tokenizer = load_llm(model_uid)
     tokenized_captions = tokenize_captions(tokenizer, captions)
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 200)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        # keep=['Attention','BertModel'],
+                                        keep=['Attention','BertModel'],
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
                                         output_device='cpu', exclude_oversize=False)
