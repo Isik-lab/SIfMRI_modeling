@@ -16,13 +16,13 @@ from sentence_transformers import SentenceTransformer
 class CaptionData:
     def __init__(self, args):
         # save arg inputs into self
-        self.top_path = args.top_path
+        self.top_dir = args.top_dir
 
         # Set up the directories
         self.process = 'CaptionData'
-        self.figures_dir = f'{self.top_path}/reports/figures'
-        self.interim_dir = f'{self.top_path}/data/interim'
-        self.raw_dir = f'{self.top_path}/data/raw'
+        self.figures_dir = f'{self.top_dir}/reports/figures'
+        self.interim_dir = f'{self.top_dir}/data/interim'
+        self.raw_dir = f'{self.top_dir}/data/raw'
         self.out_path = f'{self.interim_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
 
@@ -108,10 +108,8 @@ class CaptionData:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--local_path', '-local', type=str,
+    parser.add_argument('--top_dir', '-top', type=str,
                         default='/scratch4/lisik3/emcmaho7/SIfMRI_modeling')
-    parser.add_argument('--remote_path', '-remote', type=str,
-                    default='/projects/SI_fmri/SIfMRI_modeling/data/raw')
     args = parser.parse_args()
     CaptionData(args).run()
 
