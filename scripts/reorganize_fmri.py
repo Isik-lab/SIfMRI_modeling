@@ -80,14 +80,15 @@ class ReorganziefMRI:
     def load_stimulus_data(self):
         stim_data = pd.read_csv(f'{self.data_dir}/interim/CaptionData/stimulus_data.csv')
         stim_data = stim_data.loc[stim_data['stimulus_set'] == 'train'].drop(columns='stimulus_set')
-        return stim_data.sort_values(by='video_name').reset_index()
+        stim_data = stim_data.sort_values(by='video_name').reset_index(drop=True)
+        return stim_data
 
     def run(self):
-        # metadata, response_data = self.generate_benchmark()
+        metadata, response_data = self.generate_benchmark()
         stimulus_data = self.load_stimulus_data()
         stimulus_data.to_csv(f'{self.data_dir}/interim/{self.process}/stimulus_data.csv', index=False)
-        # metadata.to_csv(f'{self.data_dir}/interim/{self.process}/metadata.csv', index=False)
-        # response_data.to_csv(f'{self.data_dir}/interim/{self.process}/response_data.csv.gz', index=False, compression='gzip')
+        metadata.to_csv(f'{self.data_dir}/interim/{self.process}/metadata.csv', index=False)
+        response_data.to_csv(f'{self.data_dir}/interim/{self.process}/response_data.csv.gz', index=False, compression='gzip')
 
 
 def main():
