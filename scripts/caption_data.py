@@ -37,13 +37,13 @@ class CaptionData:
 
         # Set up the directories
         self.process = 'CaptionData'
-        self.figures_dir = f'{self.top_dir}/reports/figures'
+        self.figures_dir = f'{self.top_dir}/reports/figures/{self.process}'
         self.interim_dir = f'{self.top_dir}/data/interim'
         self.raw_dir = f'{self.top_dir}/data/raw'
         self.out_path = f'{self.interim_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
-        self.rename_map = None
-
+        Path(self.figures_dir).mkdir(exist_ok=True, parents=True)
+        print(vars(self))
         # Set environment variables
         self.catch_trials = ['flickr-0-5-7-5-4-0-7-0-2605754070_54.mp4', 'yt-dfOVWymr76U_103.mp4']
 
@@ -152,8 +152,6 @@ class CaptionData:
         individ_rating['even'] = False
         individ_rating.loc[(individ_rating.rating_num % 2) == 0, 'even'] = True
 
-        print('noise ceiling df')
-        print(individ_rating.question_name.unique())
         for stimulus_set, stim_df in annotations.groupby('stimulus_set'):
             cur_df = individ_rating[individ_rating.video_name.isin(stim_df.video_name.to_list())]
             cur_df = cur_df.groupby('question_name').apply(noise_ceiling).reset_index()
