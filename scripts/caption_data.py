@@ -128,9 +128,9 @@ class CaptionData:
         annotations = pd.read_csv(f'{self.raw_dir}/annotations/annotations.csv').drop(columns=['cooperation', 'dominance', 'intimacy'])
         test_videos = pd.read_csv(f'{self.raw_dir}/annotations/test.csv')['video_name'].to_list()
 
-        self.rename_map = {col: 'rating-' + col.replace(' ', '_')  for col in annotations.columns if 'video_name' not in col}
-        self.rename_map['transitivity'] = 'rating-object'
-        annotations.rename(columns=self.rename_map, inplace=True)
+        rename_map = {col: 'rating-' + col.replace(' ', '_')  for col in annotations.columns if 'video_name' not in col}
+        rename_map['transitivity'] = 'rating-object'
+        annotations.rename(columns=rename_map, inplace=True)
         annotations['stimulus_set'] = 'train'
         annotations.loc[annotations.video_name.isin(test_videos), 'stimulus_set'] = 'test'
         return annotations
@@ -139,11 +139,19 @@ class CaptionData:
         # Load the ratings per subject
         individ_rating = pd.read_csv(f'{self.raw_dir}/annotations/individual_subject_ratings.csv')
         individ_rating = individ_rating[~individ_rating['question_name'].isin(['dominance', 'cooperation', 'relation'])]
-        individ_rating.replace(self.rename_map, inplace=True)
+        
+        # Rename the questions
+        # Manually edit some of the values so that it matches the convension in the annotations file
+        rename_map = {q: 'rating-' + q.replace(' ', '_')  for q in individ_rating.question_name.unique()}
+        rename_map['joint'] = 'rating-agent_distance'
+        rename_map['distance'] = 'rating-joint_action'
+        rename_map['communicating'] = 'rating-communication'
+
+        individ_rating.replace(rename_map, inplace=True)
         individ_rating['rating_num'] = individ_rating.groupby(['question_name', 'video_name']).cumcount()
         individ_rating['even'] = False
         individ_rating.loc[(individ_rating.rating_num % 2) == 0, 'even'] = True
-        
+
         print('noise ceiling df')
         print(individ_rating.question_name.unique())
         for stimulus_set, stim_df in annotations.groupby('stimulus_set'):
