@@ -6,7 +6,7 @@
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
-#SBATCH --mem=2.5G
+#SBATCH --mem=MaxMemPerNode
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
