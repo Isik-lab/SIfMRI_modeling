@@ -38,7 +38,7 @@ class fMRIDecoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def get_captions(self, benchmark):
-        all_captions = benchmark.stimulus_data.coco_captions.tolist() # list of strings
+        all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
         # the listification and flattening of our 5 captions per image into one big list:
         captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
         assert(len(captions) == 200 * 5) # assertion to ensure each image has 5 captions
