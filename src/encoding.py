@@ -9,6 +9,7 @@ from transformers import AutoTokenizer, AutoModel
 from torch.utils.data import DataLoader, TensorDataset
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
+from deepjuice.tensorfy import get_device_name
 
 
 def load_model(model_uid):
@@ -45,6 +46,9 @@ def get_benchmarking_results(benchmark, feature_extractor,
                              layer_index_offset=0,
                              device='auto',
                              verbose=True, n_splits=4):
+    # use a CUDA-capable device, if available, else: CPU
+    if device == 'auto': device = get_device_name(device)
+
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=0)
     alphas = [10.**power for power in np.arange(-5, 2)]
