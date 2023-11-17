@@ -73,7 +73,7 @@ def get_benchmarking_results(benchmark, feature_extractor,
                                 'model_layer_index': layer_index + layer_index_offset}
             
             X = feature_map.squeeze().to(torch.float32).to(device)
-            y = benchmark.response_data.to_numpy().T.to(torch.float32).to(device)
+            y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
 
             y_pred = []
             y_true = []
