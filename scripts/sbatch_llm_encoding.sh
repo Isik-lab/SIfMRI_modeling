@@ -10,9 +10,11 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=end
-#SBATCH --mail-user=emcmaho7@jh.edu
+#SBATCH --mail-user=emcmaho7@jh˝.edu
+
+model=$1
 
 ml anaconda
 conda activate fmri_modeling
 
-python llm_encoding.py
+python llm_encoding.py --model_uid $model
