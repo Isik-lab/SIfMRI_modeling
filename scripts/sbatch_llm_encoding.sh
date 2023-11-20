@@ -17,4 +17,4 @@ model=$1
 ml anaconda
 conda activate fmri_modeling
 
-python llm_encoding.py --model_uid $model
+python llm_encoding.py --model_uid $model --overwrite
