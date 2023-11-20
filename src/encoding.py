@@ -20,7 +20,7 @@ def load_llm(model_uid):
 
 
 def tokenize_captions(tokenizer_, captions_):
-    return tokenizer_(captions_, return_tensors='pt')#, padding='max_length')
+    return tokenizer_(captions_, return_tensors='pt', padding='max_length')
 
 
 def moving_grouped_average(outputs, input_dim=0, skip=5):
