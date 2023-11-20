@@ -43,9 +43,16 @@ class LLMEncoding:
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
             captions = self.get_captions(benchmark)
+
+            print('loading model...')
             feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
+
+            print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor)
+
+            print('saving results')
             results.to_csv(self.out_file, index=False)
+            print('Finished!')
 
 
 def main():
