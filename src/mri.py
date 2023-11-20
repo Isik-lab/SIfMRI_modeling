@@ -49,6 +49,7 @@ class Benchmark:
         self.response_data = self.response_data.iloc[voxel_id]
 
     def filter_stimulus(self, stimulus_set='train'):
-        stim_data = self.stimulus_data[self.stimulus_data['stimulus_set'] == stimulus_set]
-        stim_data.reset_index
+        self.stimulus_data = self.stimulus_data[self.stimulus_data['stimulus_set'] == stimulus_set].reset_index()
+        stim_idx = list(self.stimulus_data['index'].to_numpy().astype('str'))
+        self.response_data = self.response_data[stim_idx]
 

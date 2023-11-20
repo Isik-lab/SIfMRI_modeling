@@ -41,6 +41,7 @@ class LLMEncoding:
         else:
             print('loading data...')
             benchmark = self.load_fmri()
+            benchmark.filter_stimulus(stimulus_set='train')
             captions = self.get_captions(benchmark)
             feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
             results = encoding.get_benchmarking_results(benchmark, feature_extractor)
@@ -52,7 +53,9 @@ def main():
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
-                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
+                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
+                        # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
+
     args = parser.parse_args()
     LLMEncoding(args).run()
 
