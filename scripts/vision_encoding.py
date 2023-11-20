@@ -43,7 +43,7 @@ class VisionEncoding:
 
             print('loading model...')
             model, preprocess = get_deepjuice_model(self.model_uid)
-            dataloader = get_image_loader(self.stimulus_data['image_path'], preprocess)
+            dataloader = get_image_loader(benchmark.stimulus_data['image_path'], preprocess)
             feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
                                     flatten=True, progress=True)
             
