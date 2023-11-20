@@ -4,13 +4,15 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-from deepjuice.structural import flatten_nested_list # utility for list flattening
 from src import encoding
+from deepjuice.model_zoo.options import get_deepjuice_model
+from deepjuice.datasets import get_image_loader
+from deepjuice.extraction import FeatureExtractor
 
 
-class LLMEncoding:
+class VisionEncoding:
     def __init__(self, args):
-        self.process = 'LLMEncoding'
+        self.process = 'VisionEncoding'
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
@@ -28,11 +30,6 @@ class LLMEncoding:
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
-
-    def get_captions(self, benchmark):
-        all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
-        # the listification and flattening of our 5 captions per image into one big list:
-        return flatten_nested_list([eval(captions)[:5] for captions in all_captions])
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
@@ -41,23 +38,33 @@ class LLMEncoding:
         else:
             print('loading data...')
             benchmark = self.load_fmri()
+            benchmark.add_image_path(self.data_dir + 'raw/images')
             benchmark.filter_stimulus(stimulus_set='train')
-            captions = self.get_captions(benchmark)
-            feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
-            results = encoding.get_training_benchmarking_results(benchmark, feature_extractor)
+
+            print('loading model...')
+            model, preprocess = get_deepjuice_model(self.model_uid)
+            dataloader = get_image_loader(self.stimulus_data['image_path'], preprocess)
+            feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
+                                    flatten=True, progress=True)
+            
+            print('running regressions')
+            results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor)
+
+            print('saving results')
             results.to_csv(self.out_file, index=False)
+            print('Finished!')
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
+    parser.add_argument('--model_uid', type=str, default='slip_vit_s_yfcc15m')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
 
     args = parser.parse_args()
-    LLMEncoding(args).run()
+    VisionEncoding(args).run()
 
 
 if __name__ == '__main__':

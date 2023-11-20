@@ -1,5 +1,6 @@
 import nibabel as nib
 import numpy as np
+import pandas as pd
 
 
 def gen_mask(files, rel_mask=None):
@@ -19,9 +20,24 @@ def gen_mask(files, rel_mask=None):
 
 class Benchmark:
     def __init__(self, metadata, stimulus_data, response_data):
-        self.metadata = metadata
-        self.stimulus_data = stimulus_data
-        self.response_data = response_data
+        if type(metadata) is str:
+            self.metadata = pd.read_csv(metadata)
+        else:
+            self.metadata = metadata
+
+        if type(stimulus_data) is str:
+            self.stimulus_data = pd.read_csv(stimulus_data)
+        else:
+            self.stimulus_data = stimulus_data
+
+        if type(response_data) is str:
+            self.response_data = pd.read_csv(response_data)
+        else:
+            self.response_data = response_data
+
+    def add_image_path(self, data_dir):
+        self.stimulus_data['image_path'] = data_dir + self.stimulus_data.video_name.str.replace('mp4', 'png')
+        print(self.stimulus_data.head())
 
     def filter_rois(self, rois='none'):
         if rois != 'none':

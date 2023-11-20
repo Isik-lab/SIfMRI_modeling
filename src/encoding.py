@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.tensorfy import get_device_name
+from deepjuice.datasets import get_image_loader
 
 
 def load_llm(model_uid):
@@ -34,7 +35,7 @@ def memory_saving_extraction(model_uid, captions):
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 200)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        keep=['Attention','BertModel'],
+                                        # keep=['Attention','BertModel'],
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
                                         output_device='cpu', exclude_oversize=False)
@@ -42,10 +43,10 @@ def memory_saving_extraction(model_uid, captions):
     return feature_extractor
 
 
-def get_benchmarking_results(benchmark, feature_extractor,
-                             layer_index_offset=0,
-                             device='auto',
-                             verbose=True, n_splits=4):
+def get_training_benchmarking_results(benchmark, feature_extractor,
+                                      layer_index_offset=0,
+                                      device='auto',
+                                      n_splits=4):
     # use a CUDA-capable device, if available, else: CPU
     if device == 'auto': device = get_device_name(device)
     print(f'device: {device}')
