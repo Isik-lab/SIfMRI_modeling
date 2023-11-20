@@ -86,7 +86,6 @@ def get_benchmarking_results(benchmark, feature_extractor,
             
             scores = score_func(torch.cat(y_pred), torch.cat(y_true))
             scores = scores.cpu().detach().numpy() #send to CPU
-            print(f'scores shape {scores.shape}')
 
             for region in benchmark.metadata.stream_name.unique():
                 for subj_id in benchmark.metadata.subj_id.unique():
