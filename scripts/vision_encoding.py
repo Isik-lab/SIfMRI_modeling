@@ -38,7 +38,7 @@ class VisionEncoding:
         else:
             print('loading data...')
             benchmark = self.load_fmri()
-            benchmark.add_image_path(self.data_dir + '/raw/images')
+            benchmark.add_image_path(self.data_dir + '/raw/images/')
             benchmark.filter_stimulus(stimulus_set='train')
 
             print('loading model...')
