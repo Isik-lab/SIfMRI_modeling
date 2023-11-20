@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=end
-#SBATCH --mail-user=emcmaho7@jh˝.edu
+#SBATCH --mail-user=emcmaho7@jh.edu
 
 model=$1
 

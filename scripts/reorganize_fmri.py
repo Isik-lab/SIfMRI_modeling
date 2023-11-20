@@ -20,16 +20,20 @@ class ReorganziefMRI:
         self.streams = ['EVC']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
 
-    def generate_benchmark(self):
+    def generate_benchmark(self, sort_idx):
         all_rois = []
         all_betas = []
         for sub in tqdm(range(4)):
             sub = str(sub+1).zfill(2)
-            reliability_mask = np.load(f'{self.data_dir}/raw/reliability_mask/sub-{sub}_space-t1w_desc-test-fracridge_reliability-mask.npy').astype('bool')
+            reliability_mask = np.load(f'{self.data_dir}/raw/reliability_mask/sub-{sub}_space-T1w_desc-test-fracridge_reliability-mask.npy').astype('bool')
 
             # Beta files
-            betas_file = f'{self.data_dir}/raw/fmri_betas/sub-{sub}_space-t1w_desc-train-fracridge_data.nii.gz'
-            betas_arr = nib.load(betas_file).get_fdata()
+            betas_arr = []
+            for dataset in ['train', 'test']:
+                betas_file = f'{self.data_dir}/raw/fmri_betas/sub-{sub}_space-T1w_desc-{dataset}-fracridge_data.nii.gz'
+                betas_arr.append(nib.load(betas_file).get_fdata())
+            betas_arr = np.concatenate(betas_arr, axis=-1)
+            betas_arr = betas_arr[..., sort_idx] #resort by the stimulus_data frame
 
             # metadata
             beta_labels = betas_arr[:,:,:,0]
@@ -61,8 +65,8 @@ class ReorganziefMRI:
 
         # metadata
         metadata = pd.DataFrame(all_rois)
-        metadata.loc[metadata.stream_name == '1.0'] = 'none'
-        metadata.loc[metadata.roi_name == '1.0'] = 'none'
+        metadata.loc[metadata.stream_name == '1.0', 'stream_name'] = 'none'
+        metadata.loc[metadata.roi_name == '1.0', 'roi_name'] = 'none'
         # this makes a unique voxel_id for every voxel across all subjects
         metadata = metadata.reset_index().rename(columns={'index': 'voxel_id'})
         print(metadata.roi_name.unique())
@@ -79,13 +83,16 @@ class ReorganziefMRI:
     
     def load_stimulus_data(self):
         stim_data = pd.read_csv(f'{self.data_dir}/interim/CaptionData/stimulus_data.csv')
-        stim_data = stim_data.loc[stim_data['stimulus_set'] == 'train'].drop(columns='stimulus_set')
-        stim_data = stim_data.sort_values(by='video_name').reset_index(drop=True)
-        return stim_data
+
+        # get the sorting indices to combine the train and test fMRI data
+        temp = stim_data[['video_name', 'stimulus_set']]
+        temp['sort_stimulus_set'] = temp['stimulus_set'] == 'test'
+        temp = temp.sort_values(by=['sort_stimulus_set', 'video_name']).reset_index(drop=True)
+        return stim_data, temp.sort_values(by='video_name').reset_index()['index'].to_numpy()
 
     def run(self):
-        metadata, response_data = self.generate_benchmark()
-        stimulus_data = self.load_stimulus_data()
+        stimulus_data, sort_idx = self.load_stimulus_data()
+        metadata, response_data = self.generate_benchmark(sort_idx)
         stimulus_data.to_csv(f'{self.data_dir}/interim/{self.process}/stimulus_data.csv', index=False)
         metadata.to_csv(f'{self.data_dir}/interim/{self.process}/metadata.csv', index=False)
         response_data.to_csv(f'{self.data_dir}/interim/{self.process}/response_data.csv.gz', index=False, compression='gzip')
