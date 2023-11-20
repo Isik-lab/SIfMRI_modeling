@@ -36,7 +36,8 @@ class LLMEncoding:
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
-            results = pd.read_csv(self.out_file)
+            # results = pd.read_csv(self.out_file)
+            print('Output file already exists. To run again pass --overwrite.')
         else:
             print('loading data...')
             benchmark = self.load_fmri()
