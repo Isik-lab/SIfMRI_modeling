@@ -53,18 +53,20 @@ def pos_extraction(sentences, model, pos_tags,
     return extracts
 
 def get_perturbation_data(perturb=None):
-    out_conditions = {'orig_shuffled': {'pos': ['PUNC'], 'shuffle': True, 'exclude': True, 'lemmatize': False},
-                      'orig_ordered': {'pos': ['PUNC'], 'shuffle': False, 'exclude': True, 'lemmatize': False},
-                      'lemmas_shuffled': {'pos': ['PUNC'], 'shuffle': True, 'exclude': True, 'lemmatize': True},
+    out_conditions = {'orig_ordered': {'pos': ['PUNC'], 'shuffle': False, 'exclude': True, 'lemmatize': False},
+                      'orig_shuffled': {'pos': ['PUNC'], 'shuffle': True, 'exclude': True, 'lemmatize': False},
+                      'excverb_shuffled': {'pos': ['VERB'], 'shuffle': True, 'exclude': True, 'lemmatize': False},
+                      'excnoun_shuffled': {'pos': ['NOUN'], 'shuffle': True, 'exclude': True, 'lemmatize': False},
                   'lemmas_ordered': {'pos': ['PUNC'], 'shuffle': False, 'exclude': True, 'lemmatize': True},
-                  'excnv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': True, 'lemmatize': True},
+                  'lemmas_shuffled': {'pos': ['PUNC'], 'shuffle': True, 'exclude': True, 'lemmatize': True},
                   'excnv_ordered': {'pos': ['NOUN', 'VERB'], 'shuffle': False, 'exclude': True, 'lemmatize': True},
-                  'nv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
+                  'excnv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': True, 'lemmatize': True},
                   'nv_ordered': {'pos': ['NOUN', 'VERB'], 'shuffle': False, 'exclude': False, 'lemmatize': True},
-                  'verb_shuffled': {'pos': ['VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
+                  'nv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
                   'verb_ordered': {'pos': ['VERB'], 'shuffle': False, 'exclude': False, 'lemmatize': True},
-                  'noun_shuffled': {'pos': ['NOUN'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
-                  'noun_ordered': {'pos': ['NOUN'], 'shuffle': False, 'exclude': False, 'lemmatize': True}
+                  'verb_shuffled': {'pos': ['VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
+                  'noun_ordered': {'pos': ['NOUN'], 'shuffle': False, 'exclude': False, 'lemmatize': True},
+                  'noun_shuffled': {'pos': ['NOUN'], 'shuffle': True, 'exclude': False, 'lemmatize': True}
                   }
     if perturb is not None:
         return out_conditions[perturb]
