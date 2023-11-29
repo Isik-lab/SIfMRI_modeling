@@ -12,7 +12,9 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
+perturbation=$1
+
 ml anaconda
 conda activate fmri_modeling
 
-python glove_encoding.py
+python glove_encoding.py --perturbation $perturbation

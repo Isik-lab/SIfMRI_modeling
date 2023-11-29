@@ -1,5 +1,5 @@
 import os, inflection, nltk
-from random import shuffle
+import random
 from tqdm.auto import tqdm
 
 ENV = os.environ # global constant
@@ -29,6 +29,28 @@ def get_spacy_model(model_name='auto'):
     print(f'spacy backend: {get_spacy_name(model)}')
             
     return model # specified spacy transformer
+
+def pos_extraction(sentences, model, pos_tags, 
+             lemmatize=False, shuffle=False,
+                   exclude=False):
+    
+    def shuffle_words(sentence, seed=0):
+        random.seed(seed) # set seed
+        words = sentence.split(' ')
+        random.shuffle(words)
+        return ' '.join(words)
+        
+    if not isinstance(sentences, list):
+        sentences = [sentences]
+    
+    extracts = batch_extract_pos(sentences, pos_tags, model,
+                                              lemmatize=lemmatize, exclude=exclude)
+    extracts = [' '.join(extract) for extract in extracts] 
+    
+    if shuffle:
+        return [shuffle_words(words) for words in extracts]
+    
+    return extracts
 
 def get_spacy_name(model):
     return model.meta['lang']+'_'+model.meta['name']
