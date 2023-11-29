@@ -38,9 +38,6 @@ class GLoVeEncoding:
         self.process = 'GLoVeEncoding'
         self.overwrite = args.overwrite
         self.perturbation = args.perturbation
-        # if self.perturbation is not None:
-        #     assert(self.perturbation in get_perturbation_data(),
-        #             f'passed perturbation is not in the available options: {get_perturbation_data()}')
         self.data_dir = args.data_dir
         self.spell_check = args.spell_check
         print(vars(self))
@@ -82,7 +79,7 @@ class GLoVeEncoding:
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
             captions, reshape_dim = self.get_captions(benchmark)
-            if self.perturbation is not None:
+            if self.perturbation is not None or self.perturbation != 'none':
                 captions = self.get_pos(captions)
             print(f'caption length: {len(captions)}')
 
