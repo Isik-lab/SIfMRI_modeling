@@ -63,7 +63,7 @@ class GLoVeEncoding:
         print(captions[:5])
         if self.spell_check:
             fix_spelling = lang_permute.load_spellcheck()
-            return [cap['generated_text'] for cap in fix_spelling(captions)]
+            return [cap['generated_text'] for cap in fix_spelling(captions)], (len(all_captions), 5)
         else:
             return captions, (len(all_captions), 5)
 
@@ -102,7 +102,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--perturbation', type=str, default=None)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--spell_check', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--spell_check', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
