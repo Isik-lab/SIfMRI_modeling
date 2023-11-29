@@ -8,9 +8,9 @@ from deepjuice.structural import flatten_nested_list # utility for list flatteni
 from src import encoding
 
 
-class LLMEncoding:
+class GLoVeEncoding:
     def __init__(self, args):
-        self.process = 'LLMEncoding'
+        self.process = 'GLoVeEncoding'
         self.overwrite = args.overwrite
         self.perturbation = args.perturbation
         self.data_dir = args.data_dir
@@ -32,8 +32,6 @@ class LLMEncoding:
         filename = f'{self.data_dir}/interim/CaptionData/{self.perturbation}.txt'
         with open(filename) as file:
            return [line.rstrip() for line in file]
-        
-
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
@@ -43,7 +41,7 @@ class LLMEncoding:
             print('loading data...')
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
-            captions = self.get_captions(benchmark)
+            captions = self.get_captions()
 
             print('loading model...')
             features = encoding.glove_feature_extraction(captions)
@@ -67,7 +65,7 @@ def main():
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
 
     args = parser.parse_args()
-    LLMEncoding(args).run()
+    GLoVeEncoding(args).run()
 
 
 if __name__ == '__main__':
