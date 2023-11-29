@@ -90,11 +90,11 @@ class GLoVeEncoding:
             features = get_features(captions, reshape_dim)
             print(features.shape)
 
-            # print('running regressions')
-            # results = encoding.get_training_benchmarking_results(benchmark, features)
+            print('running regressions')
+            results = encoding.get_glove_training_benchmarking_results(benchmark, features)
 
-            # print('saving results')
-            # results.to_csv(self.out_file, index=False)
+            print('saving results')
+            results.to_csv(self.out_file, index=False)
             print('Finished!')
 
 
