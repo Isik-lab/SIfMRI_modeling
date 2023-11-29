@@ -7,7 +7,6 @@ from src.mri import Benchmark
 from src import lang_permute
 from src import encoding
 from deepjuice.structural import flatten_nested_list # utility for list flattening
-import numpy as np
 
 
 def get_perturbation_data(perturb=None):
@@ -43,6 +42,7 @@ class GLoVeEncoding:
         #     assert(self.perturbation in get_perturbation_data(),
         #             f'passed perturbation is not in the available options: {get_perturbation_data()}')
         self.data_dir = args.data_dir
+        self.spell_check = args.spell_check
         print(vars(self))
 
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
@@ -57,11 +57,11 @@ class GLoVeEncoding:
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
-    def get_captions(self, benchmark, spell_check=False):
+    def get_captions(self, benchmark):
         all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
         captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
         print(captions[:5])
-        if spell_check:
+        if self.spell_check:
             fix_spelling = lang_permute.load_spellcheck()
             return [cap['generated_text'] for cap in fix_spelling(captions)]
         else:
@@ -102,6 +102,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--perturbation', type=str, default=None)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--spell_check', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')

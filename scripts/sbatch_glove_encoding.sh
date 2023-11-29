@@ -17,4 +17,4 @@ perturbation=$1
 ml anaconda
 conda activate fmri_modeling
 
-python glove_encoding.py --perturbation $perturbation
+python glove_encoding.py --perturbation $perturbation --overwrite
