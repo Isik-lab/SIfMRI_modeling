@@ -46,13 +46,13 @@ def memory_saving_extraction(model_uid, captions):
 def get_training_benchmarking_results(benchmark, feature_extractor,
                                       layer_index_offset=0,
                                       device='auto',
-                                      n_splits=4):
+                                      n_splits=4, random_seed=0):
     # use a CUDA-capable device, if available, else: CPU
     if device == 'auto': device = get_device_name(device)
     print(f'device: {device}')
 
     # initialize pipe and kfold splitter
-    cv = KFold(n_splits=n_splits, shuffle=True, random_state=0)
+    cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
     alphas = [10.**power for power in np.arange(-5, 2)]
     score_func = get_scorer('pearsonr')
     pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
