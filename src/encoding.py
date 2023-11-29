@@ -11,12 +11,29 @@ from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.tensorfy import get_device_name
 from deepjuice.datasets import get_image_loader
+from sentence_transformers import SentenceTransformer
 
 
 def load_llm(model_uid):
     model_ = AutoModel.from_pretrained(model_uid)
     tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
     return model_, tokenizer_
+
+
+def load_glove():
+    model = SentenceTransformer('sentence-transformers/average_word_embeddings_glove.6B.300d')
+    model = model.eval()
+    if torch.cuda.is_available():
+        model = model.cuda()
+    else:
+        print('torch error')
+    return model
+
+
+def glove_feature_extraction(captions):
+    model = load_glove()
+    text_features = model.encode(captions)
+    return np.stack(text_features, axis = 0).mean(axis = 0)
 
 
 def tokenize_captions(tokenizer_, captions_):
