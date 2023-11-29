@@ -4,7 +4,6 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-from deepjuice.structural import flatten_nested_list # utility for list flattening
 from src import encoding
 
 
@@ -35,7 +34,6 @@ class GLoVeEncoding:
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
-            # results = pd.read_csv(self.out_file)
             print('Output file already exists. To run again pass --overwrite.')
         else:
             print('loading data...')
@@ -47,7 +45,6 @@ class GLoVeEncoding:
             print('loading model...')
             features = encoding.glove_feature_extraction(captions)
             print(features.shape)
-            print(features[0].shape)
 
             # print('running regressions')
             # results = encoding.get_training_benchmarking_results(benchmark, features)

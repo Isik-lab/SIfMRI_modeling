@@ -32,9 +32,7 @@ def load_glove():
 
 def glove_feature_extraction(captions):
     model = load_glove()
-    text_features = model.encode(captions)
-    return np.stack(text_features, axis = 0).mean(axis = 0)
-
+    return model.encode(captions)
 
 def tokenize_captions(tokenizer_, captions_):
     return tokenizer_(captions_, return_tensors='pt', padding='max_length')
