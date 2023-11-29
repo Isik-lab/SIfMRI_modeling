@@ -26,6 +26,12 @@ def get_perturbation_data(perturb=None):
         return out_conditions[perturb]
     else:
         return list(out_conditions.keys())
+    
+
+def get_features(captions, reshape_dim):
+    features = encoding.glove_feature_extraction(captions)
+    features = features.reshape(reshape_dim + (-1,))
+    return features.mean(axis=1)
 
 
 class GLoVeEncoding:
@@ -55,12 +61,11 @@ class GLoVeEncoding:
         all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
         captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
         print(captions[:5])
-        print(np.array(captions).reshape((len(all_captions), 5))[0])
         if spell_check:
             fix_spelling = lang_permute.load_spellcheck()
             return [cap['generated_text'] for cap in fix_spelling(captions)]
         else:
-            return captions
+            return captions, (len(all_captions), 5)
 
     def get_pos(self, captions):
         syntax_model = lang_permute.get_spacy_model()
@@ -68,7 +73,7 @@ class GLoVeEncoding:
         return lang_permute.pos_extraction(captions, syntax_model,
                                            perturb['pos'], lemmatize=True,
                                            shuffle=perturb['shuffle'], exclude=perturb['exclude'])
-    
+
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
             print('Output file already exists. To run again pass --overwrite.')
@@ -76,13 +81,13 @@ class GLoVeEncoding:
             print('loading data...')
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
-            captions = self.get_captions(benchmark)
+            captions, reshape_dim = self.get_captions(benchmark)
             if self.perturbation is not None:
                 captions = self.get_pos(captions)
             print(f'caption length: {len(captions)}')
 
             print('loading model...')
-            features = encoding.glove_feature_extraction(captions)
+            features = get_features(captions, reshape_dim)
             print(features.shape)
 
             # print('running regressions')
