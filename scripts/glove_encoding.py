@@ -7,6 +7,7 @@ from src.mri import Benchmark
 from src import lang_permute
 from src import encoding
 from deepjuice.structural import flatten_nested_list # utility for list flattening
+import numpy as np
 
 
 def get_perturbation_data(perturb=None):
@@ -51,11 +52,12 @@ class GLoVeEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def get_captions(self, benchmark, spell_check=False):
-        fix_spelling = lang_permute.load_spellcheck()
         all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
         captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
         print(captions[:5])
+        print(np.array(captions).reshape((len(all_captions), 5))[0])
         if spell_check:
+            fix_spelling = lang_permute.load_spellcheck()
             return [cap['generated_text'] for cap in fix_spelling(captions)]
         else:
             return captions
