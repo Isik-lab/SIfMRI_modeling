@@ -32,9 +32,9 @@ class GLoVeEncoding:
         self.process = 'GLoVeEncoding'
         self.overwrite = args.overwrite
         self.perturbation = args.perturbation
-        if self.perturbation is not None:
-            assert(self.perturbation in get_perturbation_data(),
-                    f'passed perturbation is not in the available options: {get_perturbation_data()}')
+        # if self.perturbation is not None:
+        #     assert(self.perturbation in get_perturbation_data(),
+        #             f'passed perturbation is not in the available options: {get_perturbation_data()}')
         self.data_dir = args.data_dir
         print(vars(self))
 
@@ -50,12 +50,15 @@ class GLoVeEncoding:
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
-    def get_captions(self, benchmark):
+    def get_captions(self, benchmark, spell_check=False):
         fix_spelling = lang_permute.load_spellcheck()
         all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
         captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
         print(captions[:5])
-        return [cap['generated_text'] for cap in fix_spelling(captions)]
+        if spell_check:
+            return [cap['generated_text'] for cap in fix_spelling(captions)]
+        else:
+            return captions
 
     def get_pos(self, captions):
         syntax_model = lang_permute.get_spacy_model()
@@ -73,7 +76,7 @@ class GLoVeEncoding:
             benchmark.filter_stimulus(stimulus_set='train')
             captions = self.get_captions(benchmark)
             if self.perturbation is not None:
-                captions = self.get_pos()
+                captions = self.get_pos(captions)
             print(f'caption length: {len(captions)}')
 
             print('loading model...')
