@@ -52,6 +52,25 @@ def pos_extraction(sentences, model, pos_tags,
     
     return extracts
 
+def get_perturbation_data(perturb=None):
+    out_conditions = {'orig_shuffled': {'pos': ['PUNC'], 'shuffle': True, 'exclude': True, 'lemmatize': False},
+                      'orig_ordered': {'pos': ['PUNC'], 'shuffle': False, 'exclude': True, 'lemmatize': False},
+                      'lemmas_shuffled': {'pos': ['PUNC'], 'shuffle': True, 'exclude': True, 'lemmatize': True},
+                  'lemmas_ordered': {'pos': ['PUNC'], 'shuffle': False, 'exclude': True, 'lemmatize': True},
+                  'excnv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': True, 'lemmatize': True},
+                  'excnv_ordered': {'pos': ['NOUN', 'VERB'], 'shuffle': False, 'exclude': True, 'lemmatize': True},
+                  'nv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
+                  'nv_ordered': {'pos': ['NOUN', 'VERB'], 'shuffle': False, 'exclude': False, 'lemmatize': True},
+                  'verb_shuffled': {'pos': ['VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
+                  'verb_ordered': {'pos': ['VERB'], 'shuffle': False, 'exclude': False, 'lemmatize': True},
+                  'noun_shuffled': {'pos': ['NOUN'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
+                  'noun_ordered': {'pos': ['NOUN'], 'shuffle': False, 'exclude': False, 'lemmatize': True}
+                  }
+    if perturb is not None:
+        return out_conditions[perturb]
+    else:
+        return list(out_conditions.keys())
+
 def get_spacy_name(model):
     return model.meta['lang']+'_'+model.meta['name']
 

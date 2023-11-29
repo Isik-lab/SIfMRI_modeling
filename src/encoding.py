@@ -34,6 +34,7 @@ def glove_feature_extraction(captions):
     model = load_glove()
     return model.encode(captions)
 
+
 def tokenize_captions(tokenizer_, captions_):
     return tokenizer_(captions_, return_tensors='pt', padding='max_length')
 

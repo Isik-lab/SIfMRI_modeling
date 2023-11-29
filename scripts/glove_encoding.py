@@ -7,24 +7,6 @@ from src.mri import Benchmark
 from src import lang_permute
 from src import encoding
 from deepjuice.structural import flatten_nested_list # utility for list flattening
-
-
-def get_perturbation_data(perturb=None):
-    out_conditions = {'lemmas_shuffled': {'pos': ['PUNC'], 'shuffle': True, 'exclude': True},
-                  'lemmas_ordered': {'pos': ['PUNC'], 'shuffle': False, 'exclude': True},
-                  'excnv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': True},
-                  'excnv_ordered': {'pos': ['NOUN', 'VERB'], 'shuffle': False, 'exclude': True},
-                  'nv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': False},
-                  'nv_ordered': {'pos': ['NOUN', 'VERB'], 'shuffle': False, 'exclude': False},
-                  'verb_shuffled': {'pos': ['VERB'], 'shuffle': True, 'exclude': False},
-                  'verb_ordered': {'pos': ['VERB'], 'shuffle': False, 'exclude': False},
-                  'noun_shuffled': {'pos': ['NOUN'], 'shuffle': True, 'exclude': False},
-                  'noun_ordered': {'pos': ['NOUN'], 'shuffle': False, 'exclude': False}
-                  }
-    if perturb is not None:
-        return out_conditions[perturb]
-    else:
-        return list(out_conditions.keys())
     
 
 def get_features(captions, reshape_dim):
@@ -66,7 +48,7 @@ class GLoVeEncoding:
 
     def get_pos(self, captions):
         syntax_model = lang_permute.get_spacy_model()
-        perturb = get_perturbation_data(self.perturbation)
+        perturb = lang_permute.get_perturbation_data(self.perturbation)
         return lang_permute.pos_extraction(captions, syntax_model,
                                            perturb['pos'], lemmatize=True,
                                            shuffle=perturb['shuffle'], exclude=perturb['exclude'])

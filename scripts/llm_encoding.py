@@ -6,6 +6,7 @@ import os
 from src.mri import Benchmark
 from deepjuice.structural import flatten_nested_list # utility for list flattening
 from src import encoding
+from src import lang_permute
 
 
 class LLMEncoding:
@@ -13,12 +14,14 @@ class LLMEncoding:
         self.process = 'LLMEncoding'
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
+        self.perturbation = args.perturbation
+        self.spell_check = args.spell_check
         self.data_dir = args.data_dir
         print(vars(self))
 
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
         model_name = self.model_uid.replace('/', '_')
-        self.out_file = f'{self.data_dir}/interim/{self.process}/{model_name}.csv'
+        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_perturbation-{self.perturbation}.csv'
 
         self.streams = ['EVC']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
@@ -31,8 +34,20 @@ class LLMEncoding:
 
     def get_captions(self, benchmark):
         all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
-        # the listification and flattening of our 5 captions per image into one big list:
-        return flatten_nested_list([eval(captions)[:5] for captions in all_captions])
+        captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
+        print(captions[:5])
+        if self.spell_check:
+            fix_spelling = lang_permute.load_spellcheck()
+            return [cap['generated_text'] for cap in fix_spelling(captions)], (len(all_captions), 5)
+        else:
+            return captions, (len(all_captions), 5)
+
+    def get_pos(self, captions):
+        syntax_model = lang_permute.get_spacy_model()
+        perturb = lang_permute.get_perturbation_data(self.perturbation)
+        return lang_permute.pos_extraction(captions, syntax_model,
+                                           perturb['pos'], lemmatize=perturb['lemmatize'],
+                                           shuffle=perturb['shuffle'], exclude=perturb['exclude'])
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
@@ -42,8 +57,9 @@ class LLMEncoding:
             print('loading data...')
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
-            captions = self.get_captions(benchmark)
-
+            captions, _ = self.get_captions(benchmark)
+            if self.perturbation is not None and self.perturbation != 'none':
+                captions = self.get_pos(captions)
             print('loading model...')
             feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
 
@@ -58,6 +74,8 @@ class LLMEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
+    parser.add_argument('--perturbation', type=str, default=None)
+    parser.add_argument('--spell_check', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
