@@ -12,9 +12,9 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
-model=$1
+perturbation=$1
 
 ml anaconda
 conda activate fmri_modeling
 
-python llm_encoding.py --model_uid $model --overwrite
+python llm_encoding.py --perturbation $perturbation --overwrite
