@@ -42,11 +42,12 @@ class GLoVeEncoding:
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
             captions = self.get_captions()
+            print(f'caption length: {len(captions)}')
 
             print('loading model...')
             features = encoding.glove_feature_extraction(captions)
             print(features.shape)
-            print(features[:5, :5])
+            print(features[0].shape)
 
             # print('running regressions')
             # results = encoding.get_training_benchmarking_results(benchmark, features)
