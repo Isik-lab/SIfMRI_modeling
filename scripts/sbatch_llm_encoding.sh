@@ -13,7 +13,9 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
+model=$1
+
 ml anaconda
 conda activate fmri_modeling
 
-python llm_encoding.py --model_uid gpt2 --overwrite
+python llm_encoding.py --model_uid $model --overwrite
