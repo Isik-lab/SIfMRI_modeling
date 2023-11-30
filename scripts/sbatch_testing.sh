@@ -2,7 +2,7 @@
 
 #SBATCH
 #SBATCH --job-name=testing
-#SBATCH --time=15:00
+#SBATCH --time=1:00
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
