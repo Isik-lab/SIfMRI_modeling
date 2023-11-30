@@ -41,12 +41,10 @@ def moving_grouped_average(outputs, input_dim=0, skip=5):
 def tokenize_captions(model_uid, captions):
     if 'gpt' not in model_uid:
         tokenizer = AutoTokenizer.from_pretrained(model_uid)
-        return tokenizer(captions, return_tensors='pt',padding='max_length')
     else: 
         from transformers import GPT2Tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained(model_uid, return_tensors='pt')
-        return tokenizer(captions)
-
+        tokenizer = GPT2Tokenizer.from_pretrained(model_uid)
+    return tokenizer(captions, return_tensors='pt',padding='max_length')
 
 def memory_saving_extraction(model_uid, captions):
     model = load_llm(model_uid)
