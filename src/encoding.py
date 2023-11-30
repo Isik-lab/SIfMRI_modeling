@@ -51,6 +51,7 @@ def memory_saving_extraction(model_uid, captions):
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=True,
+                                         memory_limit='15 GB',
                                         # keep=['Attention','BertModel'],
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
