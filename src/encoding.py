@@ -36,6 +36,7 @@ def glove_feature_extraction(captions):
 
 
 def tokenize_captions(tokenizer_, captions_):
+    tokenizer_.pad_token = tokenizer_.eos_token
     return tokenizer_(captions_, return_tensors='pt', padding='max_length')
 
 
