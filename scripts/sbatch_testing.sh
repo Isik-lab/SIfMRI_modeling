@@ -7,9 +7,10 @@
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
 #SBATCH --mem-per-cpu=10G
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-gpu=10
+#SBATCH --gpus-per-node=2
+#SBATCH --gres=gpu:2
 #SBATCH --exclusive
-#SBATCH --gres=gpu:1
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
