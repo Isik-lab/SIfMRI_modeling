@@ -36,7 +36,7 @@ def glove_feature_extraction(captions):
 
 
 def tokenize_captions(tokenizer_, captions_):
-    return tokenizer_(captions_, return_tensors='pt', padding='max_length')
+    return tokenizer_(captions_, return_tensors='pt', padding=True, truncation=True)
 
 
 def moving_grouped_average(outputs, input_dim=0, skip=5):
