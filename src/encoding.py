@@ -45,7 +45,7 @@ def tokenize_captions(model_uid, captions):
     else: 
         from transformers import GPT2Tokenizer
         tokenizer = GPT2Tokenizer.from_pretrained(model_uid)
-        return tokenizer(captions, return_tensors='pt')
+        return tokenizer(captions, return_tensors='pt', padding=True, truncation=True)
 
 
 def memory_saving_extraction(model_uid, captions):
