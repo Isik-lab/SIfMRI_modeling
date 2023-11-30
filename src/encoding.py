@@ -37,7 +37,7 @@ def glove_feature_extraction(captions):
 
 def tokenize_captions(tokenizer_, captions_):
     tokenizer_.pad_token = tokenizer_.eos_token
-    return tokenizer_(captions_, return_tensors='pt', padding='max_length')
+    return 
 
 
 def moving_grouped_average(outputs, input_dim=0, skip=5):
@@ -47,7 +47,10 @@ def moving_grouped_average(outputs, input_dim=0, skip=5):
 
 def memory_saving_extraction(model_uid, captions):
     model, tokenizer = load_llm(model_uid)
-    tokenized_captions = tokenize_captions(tokenizer, captions)
+    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+    model.resize_token_embeddings(len(tokenizer))
+    
+    tokenized_captions = tokenizer(captions, return_tensors='pt', padding='max_length')
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
