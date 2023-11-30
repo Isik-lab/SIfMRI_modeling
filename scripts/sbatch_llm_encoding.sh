@@ -16,4 +16,4 @@
 ml anaconda
 conda activate fmri_modeling
 
-python llm_encoding.py --model_uid openai-gpt --overwrite
+python llm_encoding.py --model_uid gpt2 --overwrite
