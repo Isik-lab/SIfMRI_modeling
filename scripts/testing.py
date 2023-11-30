@@ -1,8 +1,10 @@
-from transformers import OpenAIGPTTokenizer, OpenAIGPTModel
+from transformers import AutoTokenizer, AutoModel
 import torch
 
-tokenizer = OpenAIGPTTokenizer.from_pretrained("openai-gpt")
-model = OpenAIGPTModel.from_pretrained("openai-gpt")
+model = AutoModel.from_pretrained('openai-gpt')
+tokenizer = AutoTokenizer.from_pretrained('openai-gpt')
+# tokenizer = OpenAIGPTTokenizer.from_pretrained("openai-gpt")
+# model = OpenAIGPTModel.from_pretrained("openai-gpt")
 
 inputs = tokenizer("Hello, my dog is cute", return_tensors="pt")
 outputs = model(**inputs)
