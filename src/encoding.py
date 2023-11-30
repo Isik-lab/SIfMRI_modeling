@@ -64,7 +64,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                                       device='auto',
                                       n_splits=4, random_seed=0):
     # use a CUDA-capable device, if available, else: CPU
-    if device == 'auto': device = get_device_name(device)
+    if device == 'auto': device = get_device_name(device, index=1)
     print(f'device: {device}')
 
     # initialize pipe and kfold splitter
