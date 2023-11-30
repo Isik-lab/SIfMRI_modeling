@@ -50,8 +50,8 @@ def memory_saving_extraction(model_uid, captions):
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
-    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        # keep=['Attention','BertModel'],
+    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=True,
+                                        keep=['Attention','BertModel'],
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
                                         output_device='cuda', exclude_oversize=False)
