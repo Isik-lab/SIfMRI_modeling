@@ -54,7 +54,7 @@ def memory_saving_extraction(model_uid, captions):
                                         # keep=['Attention','BertModel'],
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
-                                        output_device='gpu', exclude_oversize=False)
+                                        output_device='cuda', exclude_oversize=False)
     feature_extractor.modify_settings(flatten=True)
     return feature_extractor
 
