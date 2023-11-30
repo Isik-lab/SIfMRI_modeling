@@ -63,10 +63,10 @@ def get_perturbation_data(perturb=None):
                   'excnv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': True, 'lemmatize': True},
                   'nv_ordered': {'pos': ['NOUN', 'VERB'], 'shuffle': False, 'exclude': False, 'lemmatize': True},
                   'nv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
-                  'verb_ordered': {'pos': ['VERB'], 'shuffle': False, 'exclude': False, 'lemmatize': True},
-                  'verb_shuffled': {'pos': ['VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
-                  'noun_ordered': {'pos': ['NOUN'], 'shuffle': False, 'exclude': False, 'lemmatize': True},
-                  'noun_shuffled': {'pos': ['NOUN'], 'shuffle': True, 'exclude': False, 'lemmatize': True}
+                  'verb_ordered': {'pos': ['VERB'], 'shuffle': False, 'exclude': False, 'lemmatize': False},
+                  'verb_shuffled': {'pos': ['VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': False},
+                  'noun_ordered': {'pos': ['NOUN'], 'shuffle': False, 'exclude': False, 'lemmatize': False},
+                  'noun_shuffled': {'pos': ['NOUN'], 'shuffle': True, 'exclude': False, 'lemmatize': False}
                   }
     if perturb is not None:
         return out_conditions[perturb]
