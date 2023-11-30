@@ -16,8 +16,7 @@ from sentence_transformers import SentenceTransformer
 
 def load_llm(model_uid):
     model_ = AutoModel.from_pretrained(model_uid)
-    tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
-    return model_, tokenizer_
+    return model_
 
 
 def load_glove():
@@ -35,22 +34,24 @@ def glove_feature_extraction(captions):
     return model.encode(captions)
 
 
-def tokenize_captions(tokenizer_, captions_):
-    tokenizer_.pad_token = tokenizer_.eos_token
-    return 
-
-
 def moving_grouped_average(outputs, input_dim=0, skip=5):
     return torch.stack([outputs[i*skip:i*skip+skip].mean(dim=input_dim) 
                         for i in range(outputs.size(0) // skip)])
 
 
+def tokenize_captions(model_uid, captions):
+    if 'gpt' not in model_uid:
+        tokenizer = AutoTokenizer.from_pretrained(model_uid)
+        return tokenizer(captions, return_tensors='pt',padding='max_length')
+    else: 
+        from transformers import GPT2Tokenizer
+        tokenizer = GPT2Tokenizer.from_pretrained(model_uid)
+        return tokenizer(captions)
+
+
 def memory_saving_extraction(model_uid, captions):
-    model, tokenizer = load_llm(model_uid)
-    tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-    model.resize_token_embeddings(len(tokenizer))
-    
-    tokenized_captions = tokenizer(captions, return_tensors='pt', padding='max_length')
+    model = load_llm(model_uid)
+    tokenized_captions = tokenize_captions(model_uid, captions)
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
