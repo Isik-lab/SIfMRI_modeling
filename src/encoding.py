@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.tensorfy import get_device_name
-from deepjuice.datasets import get_image_loader
 from sentence_transformers import SentenceTransformer
 
 
@@ -52,6 +51,7 @@ def tokenize_captions(model_uid, captions):
 def memory_saving_extraction(model_uid, captions):
     model = load_llm(model_uid)
     tokenized_captions = tokenize_captions(model_uid, captions)
+    print(tokenized_captions)
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
