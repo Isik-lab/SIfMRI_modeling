@@ -44,7 +44,7 @@ def tokenize_captions(model_uid, captions):
         return tokenizer(captions, return_tensors='pt',padding='max_length')
     else: 
         from transformers import GPT2Tokenizer
-        tokenizer = GPT2Tokenizer.from_pretrained(model_uid)
+        tokenizer = GPT2Tokenizer.from_pretrained(model_uid, return_tensors='pt')
         return tokenizer(captions)
 
 
