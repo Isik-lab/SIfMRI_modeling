@@ -14,7 +14,7 @@
 #SBATCH --mail-user=emcmaho7@jh.edu
 
 perturbation=${1:-none}
-model=${1:-sentence-transformers/all-MiniLM-L6-v2}
+model=${2:-sentence-transformers/all-MiniLM-L6-v2}
 
 echo "perturbation: $perturbation"
 echo "model: $model"

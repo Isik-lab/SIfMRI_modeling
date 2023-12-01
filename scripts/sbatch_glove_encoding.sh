@@ -13,7 +13,6 @@
 #SBATCH --mail-user=emcmaho7@jh.edu
 
 perturbation=${1:-nv_shuffled}
-
 echo "perturbation: $perturbation"
 
 ml anaconda
