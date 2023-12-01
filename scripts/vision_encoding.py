@@ -50,8 +50,8 @@ class VisionEncoding:
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor)
 
-            print('saving results')
-            results.to_csv(self.out_file, index=False)
+            # print('saving results')
+            # results.to_csv(self.out_file, index=False)
             print('Finished!')
 
 

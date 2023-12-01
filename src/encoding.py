@@ -11,6 +11,7 @@ from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.tensorfy import get_device_name
 from sentence_transformers import SentenceTransformer
+from src import stats
 
 
 def load_llm(model_uid):
@@ -129,7 +130,6 @@ def get_glove_training_benchmarking_results(benchmark, feature_map,
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
     alphas = [10.**power for power in np.arange(-5, 2)]
-    score_func = get_scorer('pearsonr')
     pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
                             device=device, scale_X=True,)
 
@@ -145,10 +145,19 @@ def get_glove_training_benchmarking_results(benchmark, feature_map,
         y_pred.append(pipe.predict(X[test_index]))
         y_true.append(y[test_index])
     
-    y_pred, y_true = torch.cat(y_pred, dim=0), torch.cat(y_true, dim=0)
+    y_pred = torch.cat(y_pred, dim=0).cpu().detach().numpy()
+    y_true = torch.cat(y_true, dim=0).cpu().detach().numpy()
     print(f'y_pred shape: {y_pred.shape}')
-    scores = score_func(y_pred, y_true)
+    scores, _, null_scores = stats.perm(y_pred, y_true)
 
-    return {'scores': scores.cpu().detach().numpy(), #send to CPU
-            'y_pred': y_pred.cpu().detach().numpy(),
-            'y_true': y_true.cpu().detach().numpy()}
+    results = []
+    for region in benchmark.metadata.stream_name.unique():
+        for subj_id in benchmark.metadata.subj_id.unique():
+            voxel_id = benchmark.metadata.loc[(benchmark.metadata.subj_id == subj_id) &
+                                            (benchmark.metadata.stream_name == region), 'voxel_id'].to_numpy()
+            results.append({'stream_name': region,
+                            'subj_id': subj_id,
+                            'score': np.mean(scores[voxel_id]),
+                            'score_null': np.mean(null_scores[voxel_id], axis=0),
+                            'method': 'ridge'})
+    return pd.DataFrame(results)
