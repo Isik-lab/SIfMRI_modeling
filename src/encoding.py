@@ -158,6 +158,6 @@ def get_glove_training_benchmarking_results(benchmark, feature_map,
             results.append({'stream_name': region,
                             'subj_id': subj_id,
                             'score': torch.mean(scores[voxel_id]).cpu().detach().numpy(),
-                            'score_null': torch.mean(null_scores[voxel_id], dim=0).cpu().detach().numpy(),
+                            'score_null': torch.mean(null_scores[:, voxel_id], dim=1).cpu().detach().numpy(),
                             'method': 'ridge'})
     return pd.DataFrame(results)
