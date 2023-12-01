@@ -66,8 +66,8 @@ class LLMEncoding:
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor)
 
-            print('saving results')
-            results.to_pickle(self.out_file)
+            # print('saving results')
+            # results.to_pickle(self.out_file)
             print('Finished!')
 
 
