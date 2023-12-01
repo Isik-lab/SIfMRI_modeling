@@ -2,7 +2,7 @@
 
 #SBATCH
 #SBATCH --job-name=model_encoding
-#SBATCH --time=40:00
+#SBATCH --time=45:00
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
@@ -14,7 +14,9 @@
 
 perturbation=${1:-nv_shuffled}
 
+echo "perturbation: $perturbation"
+
 ml anaconda
 conda activate fmri_modeling
 
-python glove_encoding.py --perturbation $perturbation --overwrite --spell_check
+python glove_encoding.py --perturbation $perturbation --overwrite
