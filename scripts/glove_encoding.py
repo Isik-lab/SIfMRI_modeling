@@ -73,7 +73,7 @@ class GLoVeEncoding:
             results = encoding.get_glove_training_benchmarking_results(benchmark, features)
 
             print('saving results')
-            results.to_csv(self.out_file, index=False)
+            results.to_pickle(self.out_file)
             print('Finished!')
 
 
