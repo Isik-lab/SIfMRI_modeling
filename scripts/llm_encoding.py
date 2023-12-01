@@ -67,7 +67,7 @@ class LLMEncoding:
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor)
 
             print('saving results')
-            results.to_csv(self.out_file, index=False)
+            results.to_pickle(self.out_file)
             print('Finished!')
 
 
