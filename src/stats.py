@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from scipy.spatial.distance import squareform
 from statsmodels.stats.multitest import multipletests
+import torch
 
 
 def filter_r(rs, ps, p_crit=0.05, correct=True, threshold=True):
@@ -125,25 +126,30 @@ def perm(a, b, n_perm=int(5e3), H0='greater', verbose=False):
     return r, p, r_null
 
 
-def perm_unique_variance(a, b, c, n_perm=int(5e3), H0='greater'):
-    if a.ndim == 3:
-        a_not_shuffle = a.reshape(a.shape[0] * a.shape[1], a.shape[-1])
-        b = b.reshape(b.shape[0] * b.shape[1], b.shape[-1])
-        c = c.reshape(c.shape[0] * c.shape[1], c.shape[-1])
-        r2 = corr2d(a_not_shuffle, b)**2 - corr2d(a_not_shuffle, c)**2
+def corr2d_gpu(x, y):
+    x_m = x - torch.nanmean(x, dim=0)
+    y_m = y - torch.nanmean(y, dim=0)
+
+    numer = torch.nansum((x_m * y_m), dim=0)
+    denom = torch.sqrt(torch.nansum((x_m * x_m), dim=0) * torch.nansum((y_m * y_m), dim=0))
+    denom[denom == 0] = float('nan')
+    return numer / denom
+
+
+def perm_gpu(a, b, n_perm=int(5e3), verbose=False):
+    g = torch.Generator()
+    r = corr2d(a, b)
+
+    if verbose:
+        iterator = tqdm(range(n_perm), total=n_perm, desc='Permutation testing')
     else:
-        r2 = corr2d(a, b)**2 - corr2d(a, c)**2
+        iterator = range(n_perm)
 
-    # Shuffle a and recompute r^2 n_perm times
-    r2_null = np.zeros((n_perm, a.shape[-1]))
-    for i in tqdm(range(n_perm), total=n_perm):
-        inds = np.random.default_rng(i).permutation(a.shape[0])
-        if a.ndim == 3:
-            a_shuffle = a[inds, :, :].reshape(a.shape[0] * a.shape[1], a.shape[-1])
-        else:  # a.ndim == 2:
-            a_shuffle = a[inds, :]
-        r2_null[i, :] = corr2d(a_shuffle, b)**2 - corr2d(a_shuffle, c)**2
-
-    p = calculate_p(r2_null, r2, n_perm, H0)
-    return r2, p, r2_null
+    r_null = np.zeros((n_perm, a.shape[-1]))
+    for i in iterator:
+        g.manual_seed(i)
+        inds = torch.randperm(a.shape[0], generator=g)
+        a_shuffle = a[inds]
+        r_null[i, :] = corr2d(a_shuffle, b)
+    return r, r_null
 

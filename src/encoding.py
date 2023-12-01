@@ -145,10 +145,10 @@ def get_glove_training_benchmarking_results(benchmark, feature_map,
         y_pred.append(pipe.predict(X[test_index]))
         y_true.append(y[test_index])
     
-    y_pred = torch.cat(y_pred, dim=0).cpu().detach().numpy()
-    y_true = torch.cat(y_true, dim=0).cpu().detach().numpy()
+    y_pred = torch.cat(y_pred, dim=0)
+    y_true = torch.cat(y_true, dim=0)
     print(f'y_pred shape: {y_pred.shape}')
-    scores, _, null_scores = stats.perm(y_pred, y_true)
+    scores, null_scores = stats.perm_gpu(y_pred, y_true)
 
     results = []
     for region in benchmark.metadata.stream_name.unique():
@@ -157,7 +157,7 @@ def get_glove_training_benchmarking_results(benchmark, feature_map,
                                             (benchmark.metadata.stream_name == region), 'voxel_id'].to_numpy()
             results.append({'stream_name': region,
                             'subj_id': subj_id,
-                            'score': np.mean(scores[voxel_id]),
-                            'score_null': np.mean(null_scores[voxel_id], axis=0),
+                            'score': torch.mean(scores[voxel_id]).cpu().detach().numpy(),
+                            'score_null': torch.mean(null_scores[voxel_id], dim=0).cpu().detach().numpy(),
                             'method': 'ridge'})
     return pd.DataFrame(results)
