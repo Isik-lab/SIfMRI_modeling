@@ -12,7 +12,7 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
-ARG1=${1:-nv_shuffled}
+perturbation=${1:-nv_shuffled}
 
 ml anaconda
 conda activate fmri_modeling
