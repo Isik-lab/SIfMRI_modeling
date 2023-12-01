@@ -148,7 +148,7 @@ def get_glove_training_benchmarking_results(benchmark, feature_map,
     y_pred = torch.cat(y_pred, dim=0)
     y_true = torch.cat(y_true, dim=0)
     print(f'y_pred shape: {y_pred.shape}')
-    scores, null_scores = stats.perm_gpu(y_pred, y_true)
+    scores, null_scores = stats.perm_gpu(y_pred, y_true, verbose=True)
 
     results = []
     for region in benchmark.metadata.stream_name.unique():
