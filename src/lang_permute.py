@@ -1,210 +1,188 @@
-import os, inflection, nltk
+import spacy
 import random
-from tqdm.auto import tqdm
+import string
+import pandas as pd
+from tqdm import tqdm
 
-ENV = os.environ # global constant
-ENV['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
-import spacy, spacy_transformers
-from transformers import pipeline
+def strip_sentence(sentence):
+    out = sentence.lower().rstrip('.').replace(',', '')
+    return out.replace('[mask]', '[MASK]')
 
-### Model Loading ----------------------------------------------
 
-SPACY_MODEL = 'en_core_web_trf'
-if 'spacy_model' in os.environ:
-    SPACY_MODEL = os.environ['spacy_model']
+def shuffle_sentence(sentence):
+    words = strip_sentence(sentence).split()  # Split sentence into words
+    random.shuffle(words)  # Shuffle the words
+    return ' '.join(words)  # Join the words back into a sentence
 
-def get_spacy_model(model_name='auto'):
-    env_name = 'SPACY_MODEL'
-    
-    if model_name == 'auto':
-        if os.environ.get(env_name):
-            model_name = os.environ.get(env_name)
-            
-        elif 'SPACY_MODEL' in globals():
-            model_name = eval(env_name)
 
-    model = spacy.load(model_name)
+def mask_prep_phrases(text, filler='[MASK]', model_name='en_core_web_trf'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
 
-    print(f'spacy backend: {get_spacy_name(model)}')
-            
-    return model # specified spacy transformer
+    masked_text = text
+    spans_to_mask = []
 
-def pos_extraction(sentences, model, pos_tags, 
-             lemmatize=False, shuffle=False,
-                   exclude=False):
-    
-    def shuffle_words(sentence, seed=0):
-        random.seed(seed) # set seed
-        words = sentence.split(' ')
-        random.shuffle(words)
-        return ' '.join(words)
-        
-    if not isinstance(sentences, list):
-        sentences = [sentences]
-    
-    extracts = batch_extract_pos(sentences, pos_tags, model,
-                                              lemmatize=lemmatize, exclude=exclude)
-    extracts = [' '.join(extract) for extract in extracts] 
-    
-    if shuffle:
-        return [shuffle_words(words) for words in extracts]
-    
-    return extracts
-
-def get_perturbation_data(perturb=None):
-    out_conditions = {'orig_ordered': {'pos': ['PUNC'], 'shuffle': False, 'exclude': True, 'lemmatize': False},
-                      'orig_shuffled': {'pos': ['PUNC'], 'shuffle': True, 'exclude': True, 'lemmatize': False},
-                      'excverb_shuffled': {'pos': ['VERB'], 'shuffle': True, 'exclude': True, 'lemmatize': False},
-                      'excnoun_shuffled': {'pos': ['NOUN'], 'shuffle': True, 'exclude': True, 'lemmatize': False},
-                  'lemmas_ordered': {'pos': ['PUNC'], 'shuffle': False, 'exclude': True, 'lemmatize': True},
-                  'lemmas_shuffled': {'pos': ['PUNC'], 'shuffle': True, 'exclude': True, 'lemmatize': True},
-                  'excnv_ordered': {'pos': ['NOUN', 'VERB'], 'shuffle': False, 'exclude': True, 'lemmatize': True},
-                  'excnv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': True, 'lemmatize': True},
-                  'nv_ordered': {'pos': ['NOUN', 'VERB'], 'shuffle': False, 'exclude': False, 'lemmatize': True},
-                  'nv_shuffled': {'pos': ['NOUN', 'VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': True},
-                  'verb_ordered': {'pos': ['VERB'], 'shuffle': False, 'exclude': False, 'lemmatize': False},
-                  'verb_shuffled': {'pos': ['VERB'], 'shuffle': True, 'exclude': False, 'lemmatize': False},
-                  'noun_ordered': {'pos': ['NOUN'], 'shuffle': False, 'exclude': False, 'lemmatize': False},
-                  'noun_shuffled': {'pos': ['NOUN'], 'shuffle': True, 'exclude': False, 'lemmatize': False}
-                  }
-    if perturb is not None:
-        return out_conditions[perturb]
-    else:
-        return list(out_conditions.keys())
-
-def get_spacy_name(model):
-    return model.meta['lang']+'_'+model.meta['name']
-
-### Typo Correction ----------------------------------------------
-
-def load_spellcheck():
-    if not 'fix_spelling' in globals():
-        model = "oliverguhr/spelling-correction-english-base"
-        fix_spelling = pipeline("text2text-generation", model)
-
-    return fix_spelling
-
-def correct_typos(texts):
-    if not 'fix_spelling' in globals():
-        fix_spelling = load_spellcheck()
-
-    output = fix_spelling(text, max_length = 2048)
-        
-    return [x['generated_text'] for x in outputs]
-
-### POS: NLTK --------------------------------------------------
-
-def get_nltk_pos_descriptions(report=True):
-    pos_tags = {
-        "ADJ": "Adjective",
-        "ADP": "Adposition (Pre- & Post-)",
-        "ADV": "Adverb",
-        "AUX": "Auxiliary Verb",
-        "CONJ": "Conjunction",
-        "CCONJ": "Coordinating Conjunction",
-        "DET": "Determiner",
-        "INTJ": "Interjection",
-        "NOUN": "Noun",
-        "NUM": "Numeral",
-        "PART": "Particle",
-        "PRON": "Pronoun",
-        "PROPN": "Proper Noun",
-        "PUNCT": "Punctuation",
-        "SCONJ": "Subordinating Conjunction",
-        "SYM": "Symbol",
-        "VERB": "Verb",
-        "X": "Other"
-    } # dictionary of major pos_tags
-
-    if not report:
-        return pos_tags
-
-    for pos_tag, description in pos_tags.items():
-        print(f"{pos_tag}: {description}")
-
-def extract_pos_nltk(sentence, kind = 'NOUN', exclude = []):
-    pos_tag = {'nouns': 'NN', 'verbs': 'VB'}[kind]
-    is_kind = lambda pos: pos_tag in pos[:2] 
-    inputs = nltk.word_tokenize(sentence)
-    return [word for (word, pos) in nltk.pos_tag(inputs) if is_kind(pos)
-            and word not in exclude] 
-    
-### POS: SPACY --------------------------------------------------
-
-def extract_pos_spacy(sentence, pos_tags, model='auto', exclude=False, 
-                      lemmatize=False, plural_noun_lemmas=True):
-
-    if model in ['auto', 'syntax_model']:
-        if 'syntax_model' in globals():
-            model = globals()['syntax_model']
-        else: # load the model
-            model = get_spacy_model()
-    
-    sentence = sentence.lower()
-        
-    doc = model(sentence)
-    extracted_tokens = []
-    
-    def extract_lemma(token):
-        lemma = token.lemma_
-            
-        if plural_noun_lemmas and token.tag_ == "NNS":
-            lemma = inflection.pluralize(lemma)
-        
-        return lemma
-        
     for token in doc:
-        if not exclude:
-            if token.pos_ in pos_tags:
-                extracted_tokens.append(extract_lemma(token) if lemmatize else token.text)
-                
-        if exclude:
-            if token.pos_ not in pos_tags:
-                extracted_tokens.append(extract_lemma(token) if lemmatize else token.text)
+        # Check for prepositions
+        if token.dep_ == 'prep':
+            # Extend the span to include the prepositional object and any modifiers
+            span_start = token.idx
+            if token.children:
+                last_child = max(token.children, key=lambda x: x.i)
+                span_end = last_child.idx + len(last_child.text)
+                spans_to_mask.append((span_start, span_end))
 
-    return extracted_tokens
+    # Sort spans in reverse order to avoid indexing issues
+    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
 
-def batch_extract_pos_spacy(sentences, pos_tags, model='auto', exclude=False, 
-                            lemmatize=False, plural_nouns=False, **kwargs):
+    for start, end in spans_to_mask:
+        masked_text = masked_text[:start] + filler + masked_text[end:]
 
-    if model in ['auto', 'syntax_model']:
-        if 'syntax_model' in globals():
-            model = globals()['syntax_model']
-        else: # load the model
-            model = get_spacy_model()
-    
-    sentences = [sentence.lower() for sentence in sentences]
+    return strip_sentence(masked_text)
 
-    description = 'POS Extraction (over Sentences)'
 
-    docs = [doc for doc in tqdm(model.pipe(sentences),
-                                desc=description,
-                                total=len(sentences))]
+def mask_direct_objects(text, filler='[MASK]', model_name='en_core_web_trf'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
 
-    def extract_lemma(token):
-        lemma = token.lemma_
-        if plural_nouns and token.tag_ == "NNS":
-            lemma = inflection.pluralize(lemma)
-        return lemma
+    masked_text = text
+    for token in doc:
+        # Check if the token is a direct object
+        if token.dep_ == 'dobj':
+            start = token.idx
+            end = start + len(token.text)
+            masked_text = masked_text[:start] + filler + masked_text[end:]
 
-    extracted_tokens_per_sentence = []
+    return strip_sentence(masked_text)
 
-    for doc in docs:
-        extracted_tokens = []
-        for token in doc:
-            if not exclude:
-                if token.pos_ in pos_tags:
-                    extracted_tokens.append(extract_lemma(token) if lemmatize else token.text)
-            elif token.pos_ not in pos_tags:
-                extracted_tokens.append(extract_lemma(token) if lemmatize else token.text)
-        extracted_tokens_per_sentence.append(extracted_tokens)
 
-    return extracted_tokens_per_sentence
+def mask_main_subjects(text, filler='[MASK]', model_name='en_core_web_trf'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
 
-### Perturbations --------------------------------------------------
+    masked_text = text
+    for sent in doc.sents:
+        for token in sent:
+            # Check for nominal subjects in the main clause
+            if token.dep_ in ['nsubj', 'nsubjpass', 'csubj'] and token.head == sent.root:
+                # Mask the subject span
+                start = token.left_edge.idx
+                end = token.right_edge.idx + len(token.right_edge.text)
+                masked_text = masked_text[:start] + filler + masked_text[end:]
+                # Update the doc to reflect the changes
+                doc = nlp(masked_text)
 
-extract_pos, batch_extract_pos = extract_pos_spacy, batch_extract_pos_spacy
-    
-    
+    return strip_sentence(masked_text)
 
+
+def mask_main_verb_phrase(text, filler='[MASK]', model_name='en_core_web_trf'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+
+    masked_text = text
+    for sent in doc.sents:
+        root = sent.root  # The root of the sentence is typically the main verb
+        # Find the span of the main verb and its immediate dependents
+        start = root.idx
+        end = root.idx + len(root.text)
+        for child in root.children:
+            if child.dep_ in ['aux', 'auxpass', 'advmod', 'neg']:
+                # Extend the span to include auxiliaries or adverbs
+                if child.idx < start:
+                    start = child.idx
+                elif child.idx + len(child.text) > end:
+                    end = child.idx + len(child.text)
+
+        # Replace the main verb phrase with [MASK]
+        masked_text = masked_text[:start] + filler + masked_text[end:]
+
+    return strip_sentence(masked_text)
+
+
+def mask_adverbial_clauses(text, filler='[MASK]', model_name='en_core_web_trf'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+
+    masked_text = text
+    spans_to_mask = []
+
+    for token in doc:
+        # Check for common subordinating conjunctions that introduce adverbial clauses
+        if token.dep_ == 'mark' and token.head.pos_ == 'VERB':
+            # Find the span of the adverbial clause
+            span_start = token.head.left_edge.i
+            span_end = token.head.right_edge.i
+            spans_to_mask.append((span_start, span_end))
+
+    # Sort spans in reverse order to avoid indexing issues
+    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
+
+    for span_start, span_end in spans_to_mask:
+        start = doc[span_start].idx
+        end = doc[span_end].idx + len(doc[span_end].text)
+        masked_text = masked_text[:start] + filler + masked_text[end:]
+
+    return strip_sentence(masked_text)
+
+
+def mask_all_nouns(text, filler='[MASK]', model_name='en_core_web_trf'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+
+    masked_text = text
+    spans_to_mask = []
+
+    for token in doc:
+        if token.pos_ in ["NOUN", "PROPN"]:
+            spans_to_mask.append((token.idx, token.idx + len(token.text)))
+
+    # Sort spans in reverse order
+    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
+
+    for start, end in spans_to_mask:
+        masked_text = masked_text[:start] + filler + masked_text[end:]
+
+    return strip_sentence(masked_text)
+
+
+def mask_all_verbs(text, filler='[MASK]', model_name='en_core_web_trf'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+
+    masked_text = text
+    spans_to_mask = []
+
+    for token in doc:
+        # Check for main verbs and auxiliary verbs
+        if token.pos_ == "VERB" or token.pos_ == "AUX":
+            spans_to_mask.append((token.idx, token.idx + len(token.text)))
+        # Check for "to" in infinitives
+        if token.text == "to" and token.dep_ == "aux":
+            # Find the main verb of the infinitive
+            main_verb = next((child for child in token.head.children if child.dep_ == "xcomp"), None)
+            if main_verb:
+                start = token.idx
+                end = main_verb.idx + len(main_verb.text)
+                spans_to_mask.append((start, end))
+
+    # Sort spans in reverse order
+    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
+
+    for start, end in spans_to_mask:
+        masked_text = masked_text[:start] + filler + masked_text[end:]
+
+    return strip_sentence(masked_text)
+
+
+def load_grammarcheck(model_name="grammarly/coedit-xl-composite"):
+    from transformers import AutoTokenizer, T5ForConditionalGeneration
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = T5ForConditionalGeneration.from_pretrained(model_name)
+    return tokenizer, model
+
+
+def correct_grammar(text, prompt, tokenizer, model):
+    input_ids = tokenizer(prompt + text, return_tensors="pt").input_ids
+    outputs = model.generate(input_ids, max_length=256)
+    return tokenizer.decode(outputs[0], skip_special_tokens=True)
