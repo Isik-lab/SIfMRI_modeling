@@ -2,7 +2,7 @@
 
 #SBATCH
 #SBATCH --job-name=model_encoding
-#SBATCH --time=5:00
+#SBATCH --time=50:00
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
