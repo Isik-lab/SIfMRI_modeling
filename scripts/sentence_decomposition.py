@@ -6,9 +6,9 @@ from tqdm import tqdm
 import argparse
 
 
-class SentenceDecomposiiton:
+class SentenceDecomposition:
     def __init__(self, args):
-        self.process = 'SentenceDecomposiiton'
+        self.process = 'SentenceDecomposition'
         self.data_dir = args.data_dir
         self.func_name = args.func_name
         self.overwrite = args.overwrite
@@ -72,7 +72,7 @@ def main():
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')        
     parser.add_argument('--cache', type=str, default='/home/emcmaho7/scratch4-lisik3/emcmaho7/cache')                
     args = parser.parse_args()
-    SentenceDecomposiiton(args).run()
+    SentenceDecomposition(args).run()
 
 
 if __name__ == '__main__':
