@@ -35,7 +35,7 @@ class SentenceDecomposition:
                 captions.update({col: corrected_text})
             out.append(captions)
         out = pd.DataFrame(out)
-        out.to_csv(self.out_name, index=False)
+        out.to_csv(self.out_file, index=False)
 
     def get_correct_grammar(self):
         if not os.path.isfile(self.grammar_file): 
