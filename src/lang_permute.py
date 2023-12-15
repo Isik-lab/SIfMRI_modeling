@@ -1,8 +1,6 @@
+#
 import spacy
 import random
-import string
-import pandas as pd
-from tqdm import tqdm
 
 
 def strip_sentence(sentence):
