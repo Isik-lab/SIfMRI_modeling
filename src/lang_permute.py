@@ -17,27 +17,29 @@ def shuffle_sentence(sentence):
 def mask_prep_phrases(text, filler='[MASK]', model_name='en_core_web_trf'):
     nlp = spacy.load(model_name)
     doc = nlp(text)
-
+    
     masked_text = text
     spans_to_mask = []
+    try: 
+        for token in doc:
+            # Check for prepositions
+            if token.dep_ == 'prep':
+                # Extend the span to include the prepositional object and any modifiers
+                span_start = token.idx
+                if token.children:
+                    last_child = max(token.children, key=lambda x: x.i)
+                    span_end = last_child.idx + len(last_child.text)
+                    spans_to_mask.append((span_start, span_end))
 
-    for token in doc:
-        # Check for prepositions
-        if token.dep_ == 'prep':
-            # Extend the span to include the prepositional object and any modifiers
-            span_start = token.idx
-            if token.children:
-                last_child = max(token.children, key=lambda x: x.i)
-                span_end = last_child.idx + len(last_child.text)
-                spans_to_mask.append((span_start, span_end))
+        # Sort spans in reverse order to avoid indexing issues
+        spans_to_mask.sort(key=lambda span: span[0], reverse=True)
 
-    # Sort spans in reverse order to avoid indexing issues
-    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
+        for start, end in spans_to_mask:
+            masked_text = masked_text[:start] + filler + masked_text[end:]
 
-    for start, end in spans_to_mask:
-        masked_text = masked_text[:start] + filler + masked_text[end:]
-
-    return strip_sentence(masked_text)
+        return strip_sentence(masked_text)
+    except:
+        return strip_sentence(masked_text)
 
 
 def mask_direct_objects(text, filler='[MASK]', model_name='en_core_web_trf'):
