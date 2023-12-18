@@ -6,7 +6,6 @@ import os
 from src.mri import Benchmark
 from deepjuice.structural import flatten_nested_list # utility for list flattening
 from src import encoding
-from src import lang_permute
 
 
 class LLMEncoding:
