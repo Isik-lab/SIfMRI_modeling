@@ -32,13 +32,13 @@ class LLMEncoding:
 
     def get_captions(self, benchmark):
         # Load the POS masking and merge with benchmark.stimulus_data
-        caps = pd.read_csv(f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv')
-        cols = [f'caption{str(i+1).zfill(2)}' for i in range(5)]
-        caps['captions'] = list(caps[cols].to_numpy())
-        benchmark.stimulus_data.drop(columns='captions', inplace=True)
-        benchmark.stimulus_data = benchmark.stimulus_data.merge(caps[['video_name', 'captions']], on='video_name')
-        benchmark.stimulus_data['captions'] = benchmark.stimulus_data['captions'].apply(str)
-        print(benchmark.stimulus_data.head())
+        if self.perturbation != 'none':
+            caps = pd.read_csv(f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv')
+            cols = [f'caption{str(i+1).zfill(2)}' for i in range(5)]
+            caps['captions'] = list(caps[cols].to_numpy())
+            benchmark.stimulus_data.drop(columns='captions', inplace=True)
+            benchmark.stimulus_data = benchmark.stimulus_data.merge(caps[['video_name', 'captions']], on='video_name')
+            benchmark.stimulus_data['captions'] = benchmark.stimulus_data['captions'].apply(str)
         
         # Make into a list
         all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
@@ -63,7 +63,7 @@ class LLMEncoding:
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor)
 
             print('saving results')
-            results.to_csv(self.out_file)
+            results.to_csv(self.out_file, index=False)
             print('Finished!')
 
 
