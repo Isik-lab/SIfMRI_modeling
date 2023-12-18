@@ -15,7 +15,6 @@ class LLMEncoding:
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
         self.perturbation = args.perturbation
-        self.spell_check = args.spell_check
         self.data_dir = args.data_dir
         print(vars(self))
 
@@ -33,21 +32,20 @@ class LLMEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def get_captions(self, benchmark):
+        # Load the POS masking and merge with benchmark.stimulus_data
+        caps = pd.read_csv(f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv')
+        cols = [f'caption{str(i+1).zfill(2)}' for i in range(5)]
+        caps['captions'] = list(caps[cols].to_numpy())
+        benchmark.stimulus_data.drop(columns='captions', inplace=True)
+        benchmark.stimulus_data = benchmark.stimulus_data.merge(caps[['video_name', 'captions']], on='video_name')
+        benchmark.stimulus_data['captions'] = benchmark.stimulus_data['captions'].apply(str)
+        print(benchmark.stimulus_data.head())
+        
+        # Make into a list
         all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
         captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
         print(captions[:5])
-        if self.spell_check:
-            fix_spelling = lang_permute.load_spellcheck()
-            return [cap['generated_text'] for cap in fix_spelling(captions)], (len(all_captions), 5)
-        else:
-            return captions, (len(all_captions), 5)
-
-    def get_pos(self, captions):
-        syntax_model = lang_permute.get_spacy_model()
-        perturb = lang_permute.get_perturbation_data(self.perturbation)
-        return lang_permute.pos_extraction(captions, syntax_model,
-                                           perturb['pos'], lemmatize=perturb['lemmatize'],
-                                           shuffle=perturb['shuffle'], exclude=perturb['exclude'])
+        return captions, (len(all_captions), 5)
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
@@ -58,24 +56,22 @@ class LLMEncoding:
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
             captions, _ = self.get_captions(benchmark)
-            if self.perturbation is not None and self.perturbation != 'none':
-                captions = self.get_pos(captions)
+            
             print('loading model...')
             feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
 
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor)
 
-            # print('saving results')
-            # results.to_pickle(self.out_file)
+            print('saving results')
+            results.to_csv(self.out_file)
             print('Finished!')
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
-    parser.add_argument('--perturbation', type=str, default=None)
-    parser.add_argument('--spell_check', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--perturbation', type=str, default='corrected_captions')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        

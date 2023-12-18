@@ -43,29 +43,35 @@ class Benchmark:
         if rois != 'none':
             self.metadata = self.metadata.loc[self.metadata.roi_name.isin(rois)].reset_index()
             voxel_id = self.metadata['voxel_id'].to_numpy()
+            self.metadata.drop(columns='index', inplace=True)
             self.response_data = self.response_data.iloc[voxel_id]
         else:
             self.metadata = self.metadata.loc[self.metadata.roi_name != 'none'].reset_index()
             voxel_id = self.metadata['voxel_id'].to_numpy()
+            self.metadata.drop(columns='index', inplace=True)
             self.response_data = self.response_data.iloc[voxel_id]
 
     def filter_streams(self, streams='none'):
         if streams != 'none':
             self.metadata = self.metadata.loc[self.metadata.stream_name.isin(streams)].reset_index()
             voxel_id = self.metadata['voxel_id'].to_numpy()
+            self.metadata.drop(columns='index', inplace=True)            
             self.response_data = self.response_data.iloc[voxel_id]
         else:
             self.metadata = self.metadata.loc[self.metadata.stream_name != 'none'].reset_index()
             voxel_id = self.metadata['voxel_id'].to_numpy()
+            self.metadata.drop(columns='index', inplace=True)
             self.response_data = self.response_data.iloc[voxel_id]
     
     def filter_subjids(self, subj_ids):
         self.metadata = self.metadata.loc[self.metadata.subj_id.isin(subj_ids)].reset_index()
         voxel_id = self.metadata['voxel_id'].to_numpy()
+        self.stimulus_data.drop(columns='index', inplace=True)
         self.response_data = self.response_data.iloc[voxel_id]
 
     def filter_stimulus(self, stimulus_set='train'):
         self.stimulus_data = self.stimulus_data[self.stimulus_data['stimulus_set'] == stimulus_set].reset_index()
         stim_idx = list(self.stimulus_data['index'].to_numpy().astype('str'))
+        self.stimulus_data.drop(columns='index', inplace=True)
         self.response_data = self.response_data[stim_idx]
 

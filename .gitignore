@@ -3,3 +3,4 @@ reports/presentations/*
 reports/writing/*
 */.ipynb_checkpoints/*
 */__pycache__/*
+*/*/*.pyc
