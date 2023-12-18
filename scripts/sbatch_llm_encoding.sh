@@ -6,8 +6,8 @@
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
-#SBATCH --mem-per-cpu=10G
-#SBATCH --cpus-per-gpu=10
+#SBATCH --mem-per-cpu=5G
+#SBATCH --cpus-per-gpu=5
 #SBATCH --gres=gpu:2
 #SBATCH --exclusive
 #SBATCH --mail-type=end
