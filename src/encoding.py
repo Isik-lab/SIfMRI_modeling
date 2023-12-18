@@ -117,7 +117,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                             'scores': scores.cpu().detach().numpy(), #send to CPU
                             'y_pred': y_pred.cpu().detach().numpy(),
                             'y_true': y_true.cpu().detach().numpy()})
-    return results
+    return pd.DataFrame(results)
 
 
 def get_glove_training_benchmarking_results(benchmark, feature_map,
