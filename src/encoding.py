@@ -113,10 +113,16 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
             print(f'y_pred shape: {y_pred.shape}')
             scores = score_func(y_pred, y_true)
 
-            results.append({**feature_map_info,
-                            'scores': scores.cpu().detach().numpy(), #send to CPU
-                            'y_pred': y_pred.cpu().detach().numpy(),
-                            'y_true': y_true.cpu().detach().numpy()})
+        results = []
+        for region in benchmark.metadata.stream_name.unique():
+            for subj_id in benchmark.metadata.subj_id.unique():
+                voxel_id = benchmark.metadata.loc[(benchmark.metadata.subj_id == subj_id) &
+                                                (benchmark.metadata.stream_name == region), 'voxel_id'].to_numpy()
+                results.append({**feature_map_info,
+                                'stream_name': region,
+                                'subj_id': subj_id,
+                                'score': torch.mean(scores[voxel_id]).cpu().detach().numpy(),
+                                'method': 'ridge'})
     return pd.DataFrame(results)
 
 
