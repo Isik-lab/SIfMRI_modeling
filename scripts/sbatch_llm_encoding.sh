@@ -1,13 +1,12 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --job-name=testing
+#SBATCH --job-name=model_encoding
 #SBATCH --time=5:00
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
-#SBATCH --mem-per-cpu=5G
-#SBATCH --cpus-per-gpu=5
+#SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:2
 #SBATCH --exclusive
 #SBATCH --mail-type=end
