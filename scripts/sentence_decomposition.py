@@ -42,18 +42,15 @@ class SentenceDecomposition:
         self.prompt = 'Rewrite the sentence, fix grammatical and spelling errors, and simplify the syntax: '
 
     def loop_captions(self, df_):
-        if self.func is not None:
-            out = []
-            for video_name, row in tqdm(df_.iterrows(), total=len(df_), desc=self.func_name):
-                captions = {'video_name': video_name}
-                for col in df_.columns:
-                    corrected_text = self.func(row[col])
-                    captions.update({col: corrected_text})
-                out.append(captions)
-            out = pd.DataFrame(out)
-            out.to_csv(self.out_file, index=False)
-        else:
-            df_.to_csv(self.out_file, index=False)
+        out = []
+        for video_name, row in tqdm(df_.iterrows(), total=len(df_), desc=self.func_name):
+            captions = {'video_name': video_name}
+            for col in df_.columns:
+                corrected_text = self.func(row[col])
+                captions.update({col: corrected_text})
+            out.append(captions)
+        out = pd.DataFrame(out)
+        out.to_csv(self.out_file, index=False)
 
     def get_correct_grammar(self):
         if not os.path.isfile(self.grammar_file): 
@@ -64,27 +61,31 @@ class SentenceDecomposition:
             tokenizer, gc_model = lang_permute.load_grammarcheck()
 
             # Loop through the captions to do the correction
-            out_df = []
+            out  = []
             for caption in tqdm(caption_arr, total=len(caption_arr), desc='Grammar correction'):
                 print(caption)
                 corrected_caption = lang_permute.correct_grammar(self.prompt, caption, tokenizer, gc_model)
-                out_df.append(corrected_caption)
+                out.append(corrected_caption)
+                break
             
             # Temporary saving for testing as insurance
-            with open(..., 'w', newline='') as self.grammar_file:
-                wr = csv.writer(self.grammar_file, quoting=csv.QUOTE_ALL)
-                wr.writerow(out_df)
-
-            out_df = pd.DataFrame(np.array(out_df).reshape(orig_shape), columns=columns)
-            out_df['video_name'] = videos
-            out_df.to_csv(self.grammar_file)
+            try:
+                out = pd.DataFrame(np.array(out).reshape(orig_shape), columns=columns)
+                out['video_name'] = videos
+                out.to_csv(self.grammar_file)
+            except:
+                out  = pd.DataFrame(out, columns=["colummn"])
+                out.to_csv(self.grammar_file, index=False)
         else: 
             print('loading the corrected captions')
-            out_df = pd.read_csv(self.grammar_file)
-        return out_df.set_index('video_name')
+            out = pd.read_csv(self.grammar_file)
+        return out.set_index('video_name')
 
     def run(self):
-        self.loop_captions(self.get_correct_grammar())
+        df = self.get_correct_grammar()
+        if self.func is not None:
+            self.loop_captions(df)
+        print('Finished!')
 
 
 def main():
