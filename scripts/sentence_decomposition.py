@@ -19,7 +19,10 @@ class SentenceDecomposition:
             os.environ['TRANSFORMERS_CACHE'] = args.cache
 
         # get the function from the string
-        self.func = getattr(lang_permute, self.func_name)
+        if self.func_name != 'corrected_captions':
+            self.func = getattr(lang_permute, self.func_name)
+        else:
+            self.func = None
         
         #make the output path and set file names
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
@@ -28,7 +31,7 @@ class SentenceDecomposition:
         self.prompt = 'Rewrite the sentence, fix grammatical and spelling errors, and simplify the syntax: '
 
     def loop_captions(self, df_):
-        if self.func != 'corrected_captions':
+        if self.func is not None:
             out = []
             for video_name, row in tqdm(df_.iterrows(), total=len(df_), desc=self.func_name):
                 captions = {'video_name': video_name}
