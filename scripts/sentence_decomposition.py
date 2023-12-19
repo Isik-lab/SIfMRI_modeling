@@ -30,7 +30,7 @@ class SentenceDecomposition:
 
         # get the function from the string
         if self.func_name == 'corrected_unmasked':
-            self.func = None
+            self.func = lang_permute.strip_sentence
         else:
             self.func = getattr(lang_permute, self.func_name)
             
