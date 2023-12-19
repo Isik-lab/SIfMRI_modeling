@@ -52,7 +52,7 @@ class SentenceDecomposition:
         return pd.DataFrame(out)
     
     def save_ablations(self, out):
-        annotations = pd.read_csv(f'{self.data_dir}/interim/ReorganizefMRI/stimulus_data.csv')
+        annotations = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         annotations.drop(columns='captions', inplace=True)
         cap_annot = annotations.merge(out, on='video_name')
         cap_annot['captions'] = cap_annot[self.columns].apply(lambda row: row.dropna().tolist(), axis=1)
