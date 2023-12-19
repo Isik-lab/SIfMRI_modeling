@@ -47,7 +47,7 @@ class SentenceDecomposition:
         for caption in tqdm(caption_arr, total=len(caption_arr), desc=self.func_name):
             perturbed_caption = self.func(caption)
             out.append(perturbed_caption)
-        out = pd.DataFrame(np.array(out).reshape(df_.shape), columns=self.columns)
+        out = pd.DataFrame(np.array(out).reshape(df_[self.columns].shape), columns=self.columns)
         out['video_name'] = df_['video_name'].to_list()
         return pd.DataFrame(out)
     
