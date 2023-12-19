@@ -29,7 +29,7 @@ class SentenceDecomposition:
             os.environ['TRANSFORMERS_CACHE'] = args.cache
 
         # get the function from the string
-        if self.func_name != 'corrected_captions':
+        if self.func_name != 'mask_none':
             self.func = getattr(lang_permute, self.func_name)
         else:
             self.func = None
@@ -41,13 +41,14 @@ class SentenceDecomposition:
         self.prompt = 'Rewrite the sentence, fix grammatical and spelling errors, and simplify the syntax: '
 
     def loop_captions(self, df_):
+        columns = ['caption' + str(i+1).zfill(2) for i in range(5)]
+        caption_arr = df_[columns].to_numpy().flatten()
         out = []
-        for video_name, row in tqdm(df_.iterrows(), total=len(df_), desc=self.func_name):
-            captions = {'video_name': video_name}
-            for col in df_.columns:
-                corrected_text = self.func(row[col])
-                captions.update({col: corrected_text})
-            out.append(captions)
+        for caption in tqdm(caption_arr, total=len(caption_arr), desc=self.func_name):
+            perturbed_caption = self.func(caption)
+            out.append(perturbed_caption)
+        out = pd.DataFrame(np.array(out).reshape(df_.shape), columns=columns)
+        out['video_name'] = df_['video_name'].to_list()
         return pd.DataFrame(out)
     
     def save_ablations(self, out):
@@ -75,14 +76,10 @@ class SentenceDecomposition:
                 out.append(corrected_caption)
             
             # Temporary saving for testing as insurance
-            try:
-                out = pd.DataFrame(np.array(out).reshape(orig_shape), columns=columns)
-                out['video_name'] = videos
-                out.to_csv(self.grammar_file, index=False)
-                out.set_index('video_name', inplace=True)
-            except:
-                out  = pd.DataFrame(out, columns=["colummn"])
-                out.to_csv(self.grammar_file, index=False)
+            out = pd.DataFrame(np.array(out).reshape(orig_shape), columns=columns)
+            out['video_name'] = videos
+            out.to_csv(self.grammar_file, index=False)
+            out.set_index('video_name', inplace=True)
         else: 
             print('loading the corrected captions')
             out = pd.read_csv(self.grammar_file).set_index('video_name')
@@ -91,7 +88,8 @@ class SentenceDecomposition:
     def run(self):
         df = self.get_correct_grammar()
         if self.func is not None:
-            self.loop_captions(df)
+            df = self.loop_captions(df)
+        self.save_ablations(df)
         print('Finished!')
 
 
