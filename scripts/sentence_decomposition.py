@@ -4,6 +4,7 @@ from pathlib import Path
 from src import lang_permute
 from tqdm import tqdm
 import argparse
+import numpy as np
 
 
 class SentenceDecomposition:
@@ -53,12 +54,14 @@ class SentenceDecomposition:
 
             tokenizer, gc_model = lang_permute.load_grammarcheck()
 
-            out_df = []
-            for caption in tqdm(caption_arr, total=len(caption_arr), desc='Grammar correction'):
+            out_df = np.zeros_like(caption_arr, dtype='str')
+            for i, caption in tqdm(enumerate(caption_arr), total=len(caption_arr), desc='Grammar correction'):
                 corrected_caption = lang_permute.correct_grammar(self.prompt, caption, tokenizer, gc_model)
-                out_df.append(corrected_caption)
-            out_df = pd.DataFrame(out_df)
-            out_df.to_csv(self.grammar_file, index=False)
+                out_df[i] = corrected_caption
+                break
+            out_df = pd.DataFrame(out_df.reshape(df[columns].shape),
+                                   columns=columns, index=df['video_name'].to_list())
+            out_df.to_csv(self.grammar_file)
         else: 
             print('loading the corrected captions')
             out_df = pd.read_csv(self.grammar_file)
