@@ -29,7 +29,7 @@ class SentenceDecomposition:
             os.environ['TRANSFORMERS_CACHE'] = args.cache
 
         # get the function from the string
-        if self.func_name != 'mask_none':
+        if self.func_name != 'corrected_unmasked':
             self.func = getattr(lang_permute, self.func_name)
         else:
             self.func = None
@@ -39,24 +39,24 @@ class SentenceDecomposition:
         self.out_file = f'{self.data_dir}/interim/{self.process}/{self.func_name}.csv'
         self.grammar_file = f'{self.data_dir}/interim/{self.process}/corrected_captions.csv'
         self.prompt = 'Rewrite the sentence, fix grammatical and spelling errors, and simplify the syntax: '
+        self.columns = ['caption' + str(i+1).zfill(2) for i in range(5)]
 
     def loop_captions(self, df_):
-        columns = ['caption' + str(i+1).zfill(2) for i in range(5)]
-        caption_arr = df_[columns].to_numpy().flatten()
+        caption_arr = df_[self.columns].to_numpy().flatten()
         out = []
         for caption in tqdm(caption_arr, total=len(caption_arr), desc=self.func_name):
             perturbed_caption = self.func(caption)
             out.append(perturbed_caption)
-        out = pd.DataFrame(np.array(out).reshape(df_.shape), columns=columns)
+        out = pd.DataFrame(np.array(out).reshape(df_.shape), columns=self.columns)
         out['video_name'] = df_['video_name'].to_list()
         return pd.DataFrame(out)
     
     def save_ablations(self, out):
-        annotations = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
-        cap_annot = annotations.merge(out.reset_index(), on='video_name')
-        caption_columns = [col for col in cap_annot.columns if col.startswith('caption')]
-        cap_annot['captions'] = cap_annot[caption_columns].apply(lambda row: row.dropna().tolist(), axis=1)
-        cap_annot = cap_annot.drop(columns=caption_columns)
+        annotations = pd.read_csv(f'{self.data_dir}/interim/ReorganizefMRI/stimulus_data.csv')
+        annotations.drop(columns='captions', inplace=True)
+        cap_annot = annotations.merge(out, on='video_name')
+        cap_annot['captions'] = cap_annot[self.columns].apply(lambda row: row.dropna().tolist(), axis=1)
+        cap_annot.drop(columns=self.columns, inplace=True)
         cap_annot.sort_values(by='video_name', inplace=True)
         cap_annot.to_csv(self.out_file, index=False)
 
@@ -79,10 +79,9 @@ class SentenceDecomposition:
             out = pd.DataFrame(np.array(out).reshape(orig_shape), columns=columns)
             out['video_name'] = videos
             out.to_csv(self.grammar_file, index=False)
-            out.set_index('video_name', inplace=True)
         else: 
             print('loading the corrected captions')
-            out = pd.read_csv(self.grammar_file).set_index('video_name')
+            out = pd.read_csv(self.grammar_file)
         return out
 
     def run(self):
