@@ -182,7 +182,7 @@ def load_grammarcheck(model_name="grammarly/coedit-xl-composite"):
     return tokenizer, model
 
 
-def correct_grammar(text, prompt, tokenizer, model):
+def correct_grammar(prompt, text, tokenizer, model):
     input_ids = tokenizer(prompt + text, return_tensors="pt").input_ids
     outputs = model.generate(input_ids, max_length=256)
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
