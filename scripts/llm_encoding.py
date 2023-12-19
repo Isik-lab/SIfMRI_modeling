@@ -22,22 +22,25 @@ class LLMEncoding:
         self.model_uid = args.model_uid
         self.perturbation = args.perturbation
         self.data_dir = args.data_dir
+
+        if self.perturbation == 'none':
+            self.stimulus_data_file = f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv'
+        else:
+            self.stimulus_data_file = f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv'
+        
+        model_name = self.model_uid.replace('sentence-transformers/', '')
+        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_perturbation-{self.perturbation}.csv'
         print(vars(self))
 
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
-        model_name = self.model_uid.replace('sentence-transformers/', '')
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_perturbation-{self.perturbation}.csv'
-
         self.streams = ['EVC']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
+
     
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
-        if self.perturbation == 'none':
-            stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
-        else:
-            stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv')
+        stimulus_data_ = pd.read_csv(self.stimulus_data_file)
         return Benchmark(metadata_, stimulus_data_, response_data_)
     
     def run(self):
@@ -64,7 +67,7 @@ class LLMEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
-    parser.add_argument('--perturbation', type=str, default='corrected_captions')
+    parser.add_argument('--perturbation', type=str, default='corrected_unmasked')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        

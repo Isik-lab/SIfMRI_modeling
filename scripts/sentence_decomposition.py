@@ -29,11 +29,11 @@ class SentenceDecomposition:
             os.environ['TRANSFORMERS_CACHE'] = args.cache
 
         # get the function from the string
-        if self.func_name != 'corrected_unmasked':
-            self.func = getattr(lang_permute, self.func_name)
-        else:
+        if self.func_name == 'corrected_unmasked':
             self.func = None
-        
+        else:
+            self.func = getattr(lang_permute, self.func_name)
+            
         #make the output path and set file names
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
         self.out_file = f'{self.data_dir}/interim/{self.process}/{self.func_name}.csv'
