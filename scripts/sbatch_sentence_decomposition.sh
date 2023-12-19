@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --job-name=model_encoding
+#SBATCH --job-name=sentence_decomp
 #SBATCH --time=50:00
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu

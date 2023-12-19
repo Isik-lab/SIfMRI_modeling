@@ -25,7 +25,7 @@ class LLMEncoding:
         print(vars(self))
 
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
-        model_name = self.model_uid.replace('/', '_')
+        model_name = self.model_uid.replace('sentence-transformers/', '')
         self.out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_perturbation-{self.perturbation}.csv'
 
         self.streams = ['EVC']
