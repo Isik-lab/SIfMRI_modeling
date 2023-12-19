@@ -72,14 +72,15 @@ class SentenceDecomposition:
             try:
                 out = pd.DataFrame(np.array(out).reshape(orig_shape), columns=columns)
                 out['video_name'] = videos
-                out.to_csv(self.grammar_file)
+                out.to_csv(self.grammar_file, index=False)
+                out.set_index('video_name', inplace=True)
             except:
                 out  = pd.DataFrame(out, columns=["colummn"])
                 out.to_csv(self.grammar_file, index=False)
         else: 
             print('loading the corrected captions')
-            out = pd.read_csv(self.grammar_file)
-        return out.set_index('video_name')
+            out = pd.read_csv(self.grammar_file).set_index('video_name')
+        return out
 
     def run(self):
         df = self.get_correct_grammar()
