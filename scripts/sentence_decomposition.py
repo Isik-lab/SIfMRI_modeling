@@ -66,7 +66,6 @@ class SentenceDecomposition:
                 print(caption)
                 corrected_caption = lang_permute.correct_grammar(self.prompt, caption, tokenizer, gc_model)
                 out.append(corrected_caption)
-                break
             
             # Temporary saving for testing as insurance
             try:
