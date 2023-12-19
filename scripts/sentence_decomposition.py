@@ -48,8 +48,18 @@ class SentenceDecomposition:
                 corrected_text = self.func(row[col])
                 captions.update({col: corrected_text})
             out.append(captions)
-        out = pd.DataFrame(out)
-        out.to_csv(self.out_file, index=False)
+        return pd.DataFrame(out)
+    
+
+    def save_ablations(self, out):
+        annotations = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
+        cap_annot = annotations.merge(out.reset_index(), on='video_name')
+        caption_columns = [col for col in cap_annot.columns if col.startswith('caption')]
+        cap_annot['captions'] = cap_annot[caption_columns].apply(lambda row: row.dropna().tolist(), axis=1)
+        cap_annot = cap_annot.drop(columns=caption_columns)
+        cap_annot.sort_values(by='video_name', inplace=True)
+        cap_annot.to_csv(self.out_file, index=False)
+
 
     def get_correct_grammar(self):
         if not os.path.isfile(self.grammar_file): 

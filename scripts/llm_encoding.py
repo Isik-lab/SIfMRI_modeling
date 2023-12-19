@@ -35,7 +35,7 @@ class LLMEncoding:
         if self.perturbation != 'none':
             caps = pd.read_csv(f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv')
             cols = [f'caption{str(i+1).zfill(2)}' for i in range(5)]
-            caps['captions'] = list(caps[cols].to_numpy())
+            caps['captions'] = caps[cols].apply(lambda row: row.dropna().tolist(), axis=1)
             benchmark.stimulus_data.drop(columns='captions', inplace=True)
             benchmark.stimulus_data = benchmark.stimulus_data.merge(caps[['video_name', 'captions']], on='video_name')
             benchmark.stimulus_data['captions'] = benchmark.stimulus_data['captions'].apply(str)
