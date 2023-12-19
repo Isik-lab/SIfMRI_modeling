@@ -60,6 +60,7 @@ class SentenceDecomposition:
             out_df = pd.DataFrame(out_df)
             out_df.to_csv(self.grammar_file, index=False)
         else: 
+            print('loading the corrected captions')
             out_df = pd.read_csv(self.grammar_file)
         return out_df.set_index('video_name')
 
