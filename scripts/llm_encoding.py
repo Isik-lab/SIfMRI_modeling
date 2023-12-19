@@ -8,6 +8,13 @@ from deepjuice.structural import flatten_nested_list # utility for list flatteni
 from src import encoding
 
 
+def captions_to_list(benchmark):
+    all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
+    captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
+    print(captions[:5])
+    return captions, (len(all_captions), 5)
+
+
 class LLMEncoding:
     def __init__(self, args):
         self.process = 'LLMEncoding'
@@ -27,24 +34,11 @@ class LLMEncoding:
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
-        stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
-        return Benchmark(metadata_, stimulus_data_, response_data_)
-
-    def get_captions(self, benchmark):
-        # Load the POS masking and merge with benchmark.stimulus_data
         if self.perturbation != 'none':
-            caps = pd.read_csv(f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv')
-            cols = [f'caption{str(i+1).zfill(2)}' for i in range(5)]
-            caps['captions'] = caps[cols].apply(lambda row: row.dropna().tolist(), axis=1)
-            benchmark.stimulus_data.drop(columns='captions', inplace=True)
-            benchmark.stimulus_data = benchmark.stimulus_data.merge(caps[['video_name', 'captions']], on='video_name')
-            benchmark.stimulus_data['captions'] = benchmark.stimulus_data['captions'].apply(str)
-        
-        # Make into a list
-        all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
-        captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
-        print(captions[:5])
-        return captions, (len(all_captions), 5)
+            stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
+        else:
+            stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv')
+        return Benchmark(metadata_, stimulus_data_, response_data_)
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
@@ -54,7 +48,7 @@ class LLMEncoding:
             print('loading data...')
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
-            captions, _ = self.get_captions(benchmark)
+            captions, _ = captions_to_list(benchmark)
             
             print('loading model...')
             feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
