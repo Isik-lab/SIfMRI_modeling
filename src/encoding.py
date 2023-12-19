@@ -89,12 +89,15 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                                 # layer_index_offset is used here in case of subsetting
                                 'model_layer_index': layer_index + layer_index_offset}
             
-            X = feature_map.squeeze().to(torch.float32).to(device)
+            # Avoiding "CUDA error: an illegal memory access was encountered"
+            X = feature_map.detach().clone().squeeze().to(torch.float32)
+            del feature_map
+            torch.cuda.empty_cache()
+
+            # Send the neural data to the GPU
             y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
 
-            y_pred = []
-            y_true = []
-
+            y_pred, y_true = [], [] #Initialize lists
             cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
             for train_index, test_index in cv_iterator:
                 pipe.fit(X[train_index], y[train_index])

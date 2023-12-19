@@ -5,7 +5,6 @@ from src import lang_permute
 from tqdm import tqdm
 import argparse
 import numpy as np
-import csv
 
 
 def load_caption_file(file):
