@@ -11,7 +11,7 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
-func=${1:-none}
+func=${1:-corrected_captions}
 
 ml anaconda
 conda activate fmri_modeling
