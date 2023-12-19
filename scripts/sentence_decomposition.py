@@ -63,12 +63,13 @@ class SentenceDecomposition:
             tokenizer, gc_model = lang_permute.load_grammarcheck()
 
             # Loop through the captions to do the correction
-            out_df = np.zeros_like(caption_arr, dtype='str')
-            for i, caption in tqdm(enumerate(caption_arr), total=len(caption_arr), desc='Grammar correction'):
+            out_df = []
+            for caption in tqdm(caption_arr, total=len(caption_arr), desc='Grammar correction'):
+                print(caption)
                 corrected_caption = lang_permute.correct_grammar(self.prompt, caption, tokenizer, gc_model)
-                out_df[i] = corrected_caption
+                out_df.append(corrected_caption)
                 break
-            out_df = pd.DataFrame(out_df.reshape(orig_shape), columns=columns)
+            out_df = pd.DataFrame(np.array(out_df).reshape(orig_shape), columns=columns)
             out_df['video_name'] = videos
             out_df.to_csv(self.grammar_file)
         else: 
