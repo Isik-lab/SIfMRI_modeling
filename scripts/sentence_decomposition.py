@@ -5,6 +5,7 @@ from src import lang_permute
 from tqdm import tqdm
 import argparse
 import numpy as np
+import csv
 
 
 def load_caption_file(file):
@@ -68,7 +69,12 @@ class SentenceDecomposition:
                 print(caption)
                 corrected_caption = lang_permute.correct_grammar(self.prompt, caption, tokenizer, gc_model)
                 out_df.append(corrected_caption)
-                break
+            
+            # Temporary saving for testing as insurance
+            with open(..., 'w', newline='') as self.grammar_file:
+                wr = csv.writer(self.grammar_file, quoting=csv.QUOTE_ALL)
+                wr.writerow(out_df)
+
             out_df = pd.DataFrame(np.array(out_df).reshape(orig_shape), columns=columns)
             out_df['video_name'] = videos
             out_df.to_csv(self.grammar_file)
