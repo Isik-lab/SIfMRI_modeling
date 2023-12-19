@@ -100,9 +100,11 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
             y_pred, y_true = [], [] #Initialize lists
             cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
             for train_index, test_index in cv_iterator:
-                pipe.fit(X[train_index], y[train_index])
-                y_pred.append(pipe.predict(X[test_index]))
-                y_true.append(y[test_index])
+                X_train, X_test = X[train_index].detach().clone(), X[test_index].detach().clone()
+                y_train, y_test = y[train_index].detach().clone(), y[test_index].detach().clone()
+                pipe.fit(X_train, y_train)
+                y_pred.append(pipe.predict(X_test))
+                y_true.append(y_test)
             
             scores = score_func(torch.cat(y_pred), torch.cat(y_true))
 
