@@ -7,6 +7,15 @@ import argparse
 import numpy as np
 
 
+def load_caption_file(file):
+    print('performing grammar correction')
+    df = pd.read_csv(file)
+    videos = df['video_name'].to_list()
+    columns = ['caption' + str(i+1).zfill(2) for i in range(5)]
+    caption_arr = df[columns].to_numpy().flatten()
+    return videos, columns, caption_arr, df[columns].shape
+
+
 class SentenceDecomposition:
     def __init__(self, args):
         self.process = 'SentenceDecomposition'
@@ -47,13 +56,8 @@ class SentenceDecomposition:
 
     def get_correct_grammar(self):
         if not os.path.isfile(self.grammar_file): 
-            # load the raw captions and reorganize
-            print('performing grammar correction')
-            df = pd.read_csv(f'{self.data_dir}/interim/CaptionData/captions.csv')
-            videos = df['video_name'].to_list()
-            df.set_index('video_name', inplace=True)
-            columns = ['caption' + str(i+1).zfill(2) for i in range(5)]
-            caption_arr = df[columns].to_numpy().flatten()
+            # Load the raw captions and reorganize
+            videos, columns, caption_arr, orig_shape = load_caption_file(f'{self.data_dir}/interim/CaptionData/captions.csv')
 
             # Load the grammar correction model
             tokenizer, gc_model = lang_permute.load_grammarcheck()
@@ -64,8 +68,8 @@ class SentenceDecomposition:
                 corrected_caption = lang_permute.correct_grammar(self.prompt, caption, tokenizer, gc_model)
                 out_df[i] = corrected_caption
                 break
-            out_df = pd.DataFrame(out_df.reshape(df[columns].shape),
-                                   columns=columns, index=videos)
+            out_df = pd.DataFrame(out_df.reshape(orig_shape), columns=columns)
+            out_df['video_name'] = videos
             out_df.to_csv(self.grammar_file)
         else: 
             print('loading the corrected captions')
