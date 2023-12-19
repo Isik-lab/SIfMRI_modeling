@@ -50,7 +50,6 @@ class SentenceDecomposition:
             out.append(captions)
         return pd.DataFrame(out)
     
-
     def save_ablations(self, out):
         annotations = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         cap_annot = annotations.merge(out.reset_index(), on='video_name')
@@ -59,7 +58,6 @@ class SentenceDecomposition:
         cap_annot = cap_annot.drop(columns=caption_columns)
         cap_annot.sort_values(by='video_name', inplace=True)
         cap_annot.to_csv(self.out_file, index=False)
-
 
     def get_correct_grammar(self):
         if not os.path.isfile(self.grammar_file): 
