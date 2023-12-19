@@ -47,20 +47,25 @@ class SentenceDecomposition:
 
     def get_correct_grammar(self):
         if not os.path.isfile(self.grammar_file): 
+            # load the raw captions and reorganize
+            print('performing grammar correction')
             df = pd.read_csv(f'{self.data_dir}/interim/CaptionData/captions.csv')
+            videos = df['video_name'].to_list()
             df.set_index('video_name', inplace=True)
             columns = ['caption' + str(i+1).zfill(2) for i in range(5)]
             caption_arr = df[columns].to_numpy().flatten()
 
+            # Load the grammar correction model
             tokenizer, gc_model = lang_permute.load_grammarcheck()
 
+            # Loop through the captions to do the correction
             out_df = np.zeros_like(caption_arr, dtype='str')
             for i, caption in tqdm(enumerate(caption_arr), total=len(caption_arr), desc='Grammar correction'):
                 corrected_caption = lang_permute.correct_grammar(self.prompt, caption, tokenizer, gc_model)
                 out_df[i] = corrected_caption
                 break
             out_df = pd.DataFrame(out_df.reshape(df[columns].shape),
-                                   columns=columns, index=df['video_name'].to_list())
+                                   columns=columns, index=videos)
             out_df.to_csv(self.grammar_file)
         else: 
             print('loading the corrected captions')
