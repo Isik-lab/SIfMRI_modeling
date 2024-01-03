@@ -14,14 +14,15 @@ class VisionEncoding:
     def __init__(self, args):
         self.process = 'VisionEncoding'
         self.overwrite = args.overwrite
-        self.model_uid = args.model_uid
+        self.model_uid = args.model_uids
         self.data_dir = args.data_dir
         print(vars(self))
 
-        Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
         model_name = self.model_uid.replace('/', '_')
         self.out_path = f'{self.data_dir}/interim/{self.process}/model-{model_name}'
         self.out_file = f'{self.data_dir}/interim/{self.process}/{model_name}.csv'
+
+        Path(self.out_path).mkdir(parents=True, exist_ok=True)
 
         self.streams = ['EVC']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
