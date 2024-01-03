@@ -12,7 +12,7 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
-model=$1
+model=${1:-slip_vit_s_yfcc15m}
 
 ml anaconda
 conda activate fmri_modeling
