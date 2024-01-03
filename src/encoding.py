@@ -125,7 +125,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
         row['layer_index'] = model_layer_index[i]
         row['layer'] = model_layer[i]
         row['score'] = scores_out[i]
-        results.append(scores)
+        results.append(row)
 
     return pd.concat(results)
 
