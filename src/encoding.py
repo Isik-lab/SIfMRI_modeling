@@ -102,10 +102,12 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                 y_pred.append(pipe.predict(X_test))
                 y_true.append(y_test)
             
-            # save the current scores the disk
+            
             scores = score_func(torch.cat(y_pred), torch.cat(y_true))
+
+            # save the current scores to disk
             scores_arr = scores.cpu().detach().numpy()
-            np.save(f'{file_path}/layer_{layer_index}.npy', )
+            np.save(f'{file_path}/layer_{layer_index}.npy', scores_arr)
 
             if scores_out is None:
                 scores_out = scores_arr.copy()
