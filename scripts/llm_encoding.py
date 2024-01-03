@@ -58,7 +58,7 @@ class LLMEncoding:
             feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
 
             print('running regressions')
-            results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_file)
+            results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_path)
 
             print('saving results')
             results.to_csv(self.out_file, index=False)
