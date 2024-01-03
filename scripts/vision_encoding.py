@@ -20,6 +20,7 @@ class VisionEncoding:
 
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
         model_name = self.model_uid.replace('/', '_')
+        self.out_path = f'{self.data_dir}/interim/{self.process}/model-{model_name}'
         self.out_file = f'{self.data_dir}/interim/{self.process}/{model_name}.csv'
 
         self.streams = ['EVC']
@@ -48,10 +49,10 @@ class VisionEncoding:
                                     flatten=True, progress=True)
             
             print('running regressions')
-            results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor)
+            results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor, self.out_path)
 
-            # print('saving results')
-            # results.to_csv(self.out_file, index=False)
+            print('saving results')
+            results.to_csv(self.out_file, index=False)
             print('Finished!')
 
 

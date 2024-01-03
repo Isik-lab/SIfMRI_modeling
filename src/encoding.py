@@ -51,7 +51,7 @@ def memory_saving_extraction(model_uid, captions):
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        keep=['Attention','BertModel'],
+                                        # keep=['Attention','BertModel'],
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
                                         output_device='cpu', exclude_oversize=False)
@@ -106,11 +106,11 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
 
             # save the current scores to disk
             scores_arr = scores.cpu().detach().numpy()
-            np.save(f'{file_path}/layer_{layer_index}.npy', scores_arr)
+            np.save(f'{file_path}/layer-{feature_map_uid}.npy', scores_arr)
 
             if scores_out is None:
                 scores_out = scores_arr.copy()
-                model_layer_index = np.ones_like(scores_out) + layer_index_offset
+                model_layer_index = np.ones_like(scores_out, dtype='int') + layer_index_offset
                 model_layer = np.zeros_like(scores_out, dtype='object')
                 model_layer.fill(feature_map_uid)
             else:
