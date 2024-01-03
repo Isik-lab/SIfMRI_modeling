@@ -14,7 +14,7 @@ class VisionEncoding:
     def __init__(self, args):
         self.process = 'VisionEncoding'
         self.overwrite = args.overwrite
-        self.model_uid = args.model_uids
+        self.model_uid = args.model_uid
         self.data_dir = args.data_dir
         print(vars(self))
 
