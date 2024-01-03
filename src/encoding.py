@@ -127,7 +127,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
         row['score'] = scores_out[i]
         results.append(row)
 
-    return pd.concat(results)
+    return pd.DataFrame(results)
 
 
 def get_glove_training_benchmarking_results(benchmark, feature_map,
