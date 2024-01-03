@@ -102,7 +102,6 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                 y_pred.append(pipe.predict(X_test))
                 y_true.append(y_test)
             
-            
             scores = score_func(torch.cat(y_pred), torch.cat(y_true))
 
             # save the current scores to disk
@@ -112,8 +111,8 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
             if scores_out is None:
                 scores_out = scores_arr.copy()
                 model_layer_index = np.ones_like(scores_out) + layer_index_offset
-                model_layer = np.ones_like(scores_out, dtype='str')
-                model_layer = model_layer.fill(feature_map_uid)
+                model_layer = np.zeros_like(scores_out, dtype='objec')
+                model_layer.fill(feature_map_uid)
             else:
                 # replace the value in the output if the previous value is less than the current value
                 scores_out[scores_out < scores_arr] = scores_arr[scores_out < scores_arr]
