@@ -111,7 +111,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
             if scores_out is None:
                 scores_out = scores_arr.copy()
                 model_layer_index = np.ones_like(scores_out) + layer_index_offset
-                model_layer = np.zeros_like(scores_out, dtype='objec')
+                model_layer = np.zeros_like(scores_out, dtype='object')
                 model_layer.fill(feature_map_uid)
             else:
                 # replace the value in the output if the previous value is less than the current value
