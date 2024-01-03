@@ -57,11 +57,13 @@ class ReorganziefMRI:
             betas_arr = betas_arr[reliability_mask].reshape((-1, betas_arr.shape[-1]))
             roi_labels = roi_labels[reliability_mask].flatten()
             stream_labels = stream_labels[reliability_mask].flatten()
+            voxel_indices = np.array(np.where(reliability_mask)).T
 
             # Add the subject data to list
             all_betas.append(betas_arr)
-            for roi, stream in zip(roi_labels, stream_labels):
-                all_rois.append({'roi_name': roi, 'stream_name': stream, 'subj_id': sub})
+            for roi, (stream, index) in zip(roi_labels, zip(stream_labels, voxel_indices)):
+                all_rois.append({'roi_name': roi, 'stream_name': stream, 'subj_id': sub,
+                                 'i_index': index[0], 'j_index': index[1], 'k_index': index[-1]})
 
         # metadata
         metadata = pd.DataFrame(all_rois)

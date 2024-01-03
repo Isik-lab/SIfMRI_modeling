@@ -8,8 +8,8 @@ from deepjuice.structural import flatten_nested_list # utility for list flatteni
 from src import encoding
 
 
-def captions_to_list(benchmark):
-    all_captions = benchmark.stimulus_data.captions.tolist() # list of strings
+def captions_to_list(input_captions):
+    all_captions = input_captions.tolist() # list of strings
     captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
     print(captions[:5])
     return captions, (len(all_captions), 5)
@@ -29,10 +29,11 @@ class LLMEncoding:
             self.stimulus_data_file = f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv'
         
         model_name = self.model_uid.replace('sentence-transformers/', '')
+        self.out_path = f'{self.data_dir}/interim/{self.process}/model-{model_name}_perturbation-{self.perturbation}'
         self.out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_perturbation-{self.perturbation}.csv'
         print(vars(self))
 
-        Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
+        Path(self.out_path).mkdir(parents=True, exist_ok=True)
         self.streams = ['EVC']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
 
@@ -51,13 +52,13 @@ class LLMEncoding:
             print('loading data...')
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
-            captions, _ = captions_to_list(benchmark)
+            captions, _ = captions_to_list(benchmark.stimulus_data.captions)
             
             print('loading model...')
             feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
 
             print('running regressions')
-            results = encoding.get_training_benchmarking_results(benchmark, feature_extractor)
+            results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_file)
 
             print('saving results')
             results.to_csv(self.out_file, index=False)

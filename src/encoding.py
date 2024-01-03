@@ -60,6 +60,7 @@ def memory_saving_extraction(model_uid, captions):
 
 
 def get_training_benchmarking_results(benchmark, feature_extractor,
+                                      file_path,
                                       layer_index_offset=0,
                                       device='auto',
                                       n_splits=4, random_seed=0):
@@ -75,7 +76,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                             device=device, scale_X=True,)
 
     layer_index = 0 # keeps track of depth
-    results = []
+    scores_out = None
     for feature_maps in feature_extractor:
         feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
@@ -83,11 +84,6 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
 
             # reduce dimensionality of feature_maps by sparse random projection
             feature_map = get_feature_map_srps(feature_map, device=device)
-        
-            # main data to add to our scoresheet per feature_map
-            feature_map_info = {'model_layer': feature_map_uid, 
-                                # layer_index_offset is used here in case of subsetting
-                                'model_layer_index': layer_index + layer_index_offset}
             
             # Avoiding "CUDA error: an illegal memory access was encountered"
             X = feature_map.detach().clone().squeeze().to(torch.float32)
@@ -106,18 +102,31 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                 y_pred.append(pipe.predict(X_test))
                 y_true.append(y_test)
             
+            # save the current scores the disk
             scores = score_func(torch.cat(y_pred), torch.cat(y_true))
+            scores_arr = scores.cpu().detach().numpy()
+            np.save(f'{file_path}/layer_{layer_index}.npy', )
 
-            for region in benchmark.metadata.stream_name.unique():
-                for subj_id in benchmark.metadata.subj_id.unique():
-                    voxel_id = benchmark.metadata.loc[(benchmark.metadata.subj_id == subj_id) &
-                                                    (benchmark.metadata.stream_name == region), 'voxel_id'].to_numpy()
-                    results.append({**feature_map_info,
-                                    'stream_name': region,
-                                    'subj_id': subj_id,
-                                    'score': torch.mean(scores[voxel_id]).cpu().detach().numpy(),
-                                    'method': 'ridge'})
-    return pd.DataFrame(results)
+            if scores_out is None:
+                scores_out = scores_arr.copy()
+                model_layer_index = np.ones_like(scores_out) + layer_index_offset
+                model_layer = np.ones_like(scores_out, dtype='str')
+                model_layer = model_layer.fill(feature_map_uid)
+            else:
+                # replace the value in the output if the previous value is less than the current value
+                scores_out[scores_out < scores_arr] = scores_arr[scores_out < scores_arr]
+                model_layer_index[scores_out < scores_arr] = layer_index + layer_index_offset
+                model_layer[scores_out < scores_arr] = feature_map_uid
+
+    # Make scoresheet based on the benchmark metadata
+    results = []
+    for i, row in benchmark.metadata.iterrows():
+        row['layer_index'] = model_layer_index[i]
+        row['layer'] = model_layer[i]
+        row['score'] = scores_out[i]
+        results.append(scores)
+
+    return pd.concat(results)
 
 
 def get_glove_training_benchmarking_results(benchmark, feature_map,
