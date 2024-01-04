@@ -1,6 +1,7 @@
 data/*
 reports/presentations/*
 reports/writing/*
+reports/figures/*
 */.ipynb_checkpoints/*
 */__pycache__/*
 */*/*.pyc

@@ -26,6 +26,8 @@ class ReorganziefMRI:
         for sub in tqdm(range(4)):
             sub = str(sub+1).zfill(2)
             reliability_mask = np.load(f'{self.data_dir}/raw/reliability_mask/sub-{sub}_space-T1w_desc-test-fracridge_reliability-mask.npy').astype('bool')
+            reliability_values = np.load(f'{self.data_dir}/raw/reliability_mask/sub-{sub}_space-T1w_desc-test-fracridge_reliability-values.npy')
+            reliability_values = reliability_values[reliability_mask]
 
             # Beta files
             betas_arr = []
@@ -61,8 +63,9 @@ class ReorganziefMRI:
 
             # Add the subject data to list
             all_betas.append(betas_arr)
-            for roi, (stream, index) in zip(roi_labels, zip(stream_labels, voxel_indices)):
-                all_rois.append({'roi_name': roi, 'stream_name': stream, 'subj_id': sub,
+            for (roi, stream), (reliability, index) in zip(zip(roi_labels, stream_labels),
+                                                            zip(reliability_values, voxel_indices)):
+                all_rois.append({'roi_name': roi, 'stream_name': stream, 'subj_id': sub, 'reliability': reliability,
                                  'i_index': index[0], 'j_index': index[1], 'k_index': index[-1]})
 
         # metadata

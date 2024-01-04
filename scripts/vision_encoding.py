@@ -20,7 +20,7 @@ class VisionEncoding:
 
         model_name = self.model_uid.replace('/', '_')
         self.out_path = f'{self.data_dir}/interim/{self.process}/model-{model_name}'
-        self.out_file = f'{self.data_dir}/interim/{self.process}/{model_name}.csv'
+        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}.csv'
 
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
 
