@@ -8,14 +8,12 @@ def gen_mask(files, rel_mask=None):
     roi = []
     for f in files:
         roi_hemi = nib.load(f).get_fdata().astype('bool')
-        roi.append(roi_hemi)
-    roi_mask = np.sum(roi, axis=0)
-    #add the rel_mask if defined
-    if rel_mask is not None:
-        roi_mask += rel_mask
-        return roi_mask > 1 #Equivalent to roi_mask and rel_mask
-    else:
-        return roi_mask.astype('bool')
+        if rel_mask is not None: 
+             #add the rel_mask if defined
+            roi.append(np.logical_and(roi_hemi, rel_mask))
+        else:
+            roi.append(roi_hemi)
+    return np.logical_or.reduce(roi)
 
 
 class Benchmark:

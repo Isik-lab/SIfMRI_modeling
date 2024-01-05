@@ -17,7 +17,7 @@ class ReorganziefMRI:
         print(vars(self))
         self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'FFA',
                      'PPA', 'pSTS', 'face-pSTS', 'aSTS']
-        self.streams = ['EVC']
+        self.streams = ['evc']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
 
     def generate_benchmark(self, sort_idx):
@@ -25,9 +25,8 @@ class ReorganziefMRI:
         all_betas = []
         for sub in tqdm(range(4)):
             sub = str(sub+1).zfill(2)
-            reliability_mask = np.load(f'{self.data_dir}/raw/reliability_mask/sub-{sub}_space-T1w_desc-test-fracridge_reliability-mask.npy').astype('bool')
-            reliability_values = np.load(f'{self.data_dir}/raw/reliability_mask/sub-{sub}_space-T1w_desc-test-fracridge_reliability-values.npy')
-            reliability_values = reliability_values[reliability_mask]
+            reliability_mask = nib.load(f'{self.data_dir}/raw/reliability_mask/sub-{sub}_space-T1w_desc-test-fracridge_reliability-mask.nii.gz').get_fdata().astype('bool')
+            reliability = nib.load(f'{self.data_dir}/raw/reliability_mask/sub-{sub}_space-T1w_desc-test-fracridge_stat-r_statmap.nii.gz').get_fdata()
 
             # Beta files
             betas_arr = []
@@ -36,42 +35,41 @@ class ReorganziefMRI:
                 betas_arr.append(nib.load(betas_file).get_fdata())
             betas_arr = np.concatenate(betas_arr, axis=-1)
             betas_arr = betas_arr[..., sort_idx] #resort by the stimulus_data frame
+            all_betas.append(betas_arr[reliability_mask].reshape((-1, betas_arr.shape[-1]))) # Only save the reliable voxels
 
-            # metadata
-            beta_labels = betas_arr[:,:,:,0]
-            beta_labels[np.invert(np.isnan(beta_labels))] = 1
-            roi_labels = beta_labels.astype(str)
-            stream_labels = beta_labels.astype(str)
-            reliability_mask = reliability_mask.reshape(roi_labels.shape)
+            # voxel metadata arrays in the same shape as the brain
+            roi_labels = np.zeros_like(reliability_mask, dtype='object')
+            stream_labels = np.zeros_like(reliability_mask, dtype='object')
 
             # Add the roi labels
             for roi in self.rois:
-                files = sorted(glob(f'{self.data_dir}/raw/localizers/sub-{sub}/*roi-{roi}*.nii.gz'))
-                roi_mask = gen_mask(files)
-                roi_labels[roi_mask] = roi
+                roi_mask = []
+                for hemi in ['lh', 'rh']:
+                    hemi_mask_file = glob(f'{self.data_dir}/raw/localizers/sub-{sub}/sub-{sub}*roi-{roi}*hemi-{hemi}*mask.nii.gz')[0]
+                    hemi_mask = nib.load(hemi_mask_file).get_fdata().astype('bool')
+                    hemi_reliability_mask = np.logical_and(reliability_mask, hemi_mask)
+                    roi_labels[hemi_reliability_mask] = roi
+                    roi_mask.append(hemi_reliability_mask[..., np.newaxis])
+                print(f'{roi}: ', np.mean(reliability[np.any(np.concatenate(roi_mask, axis=-1), axis=-1)]**2))
 
+            # Add the stream labels
             for stream in self.streams:
-                files = sorted(glob(f'{self.data_dir}/raw/localizers/sub-{sub}/*roi-{stream}*.nii.gz'))
-                stream_mask = gen_mask(files)
-                stream_labels[stream_mask] = stream
+                stream_mask_file = glob(f'{self.data_dir}/raw/streams/sub-{sub}/sub-{sub}*roi-{stream}*mask.nii.gz')[0]
+                stream_mask = nib.load(stream_mask_file).get_fdata().astype('bool')
+                stream_reliability_mask = np.logical_and(reliability_mask, stream_mask)
+                stream_labels[stream_reliability_mask] = stream
 
-            # Only save the reliable voxels
-            betas_arr = betas_arr[reliability_mask].reshape((-1, betas_arr.shape[-1]))
-            roi_labels = roi_labels[reliability_mask].flatten()
-            stream_labels = stream_labels[reliability_mask].flatten()
+            # Add the subject's voxel metadata to list
             voxel_indices = np.array(np.where(reliability_mask)).T
-
-            # Add the subject data to list
-            all_betas.append(betas_arr)
-            for (roi, stream), (reliability, index) in zip(zip(roi_labels, stream_labels),
-                                                            zip(reliability_values, voxel_indices)):
-                all_rois.append({'roi_name': roi, 'stream_name': stream, 'subj_id': sub, 'reliability': reliability,
+            for (roi, stream), (r, index) in zip(zip(roi_labels[reliability_mask], stream_labels[reliability_mask]),
+                                                 zip(reliability[reliability_mask], voxel_indices)):
+                all_rois.append({'roi_name': roi, 'stream_name': stream, 'subj_id': sub, 'reliability': r,
                                  'i_index': index[0], 'j_index': index[1], 'k_index': index[-1]})
 
         # metadata
         metadata = pd.DataFrame(all_rois)
-        metadata.loc[metadata.stream_name == '1.0', 'stream_name'] = 'none'
-        metadata.loc[metadata.roi_name == '1.0', 'roi_name'] = 'none'
+        metadata.loc[metadata.stream_name == 0, 'stream_name'] = 'none'
+        metadata.loc[metadata.roi_name == 0, 'roi_name'] = 'none'
         # this makes a unique voxel_id for every voxel across all subjects
         metadata = metadata.reset_index().rename(columns={'index': 'voxel_id'})
         print(metadata.roi_name.unique())
