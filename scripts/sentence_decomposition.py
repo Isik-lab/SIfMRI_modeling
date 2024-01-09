@@ -65,6 +65,7 @@ class SentenceDecomposition:
     def get_correct_grammar(self):
         original_caption_file = f'{self.data_dir}/interim/CaptionData/captions.csv'
         if not os.path.isfile(self.grammar_file) and self.grammar_correction: 
+            print('correcting the captions...')
             # Load the raw captions and reorganize
             videos, columns, caption_arr, orig_shape = load_caption_file(original_caption_file)
 
@@ -86,6 +87,7 @@ class SentenceDecomposition:
             print('loading the corrected captions')
             out = pd.read_csv(self.grammar_file)
         else: #not self.grammar_correction
+            print('loading the original captions')
             out = pd.read_csv(original_caption_file)
         return out
 
