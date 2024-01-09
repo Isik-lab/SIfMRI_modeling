@@ -8,7 +8,6 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=14
 #SBATCH --gres=gpu:2
-#SBATCH --exclusive
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
