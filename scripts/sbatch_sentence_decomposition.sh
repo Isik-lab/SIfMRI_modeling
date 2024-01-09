@@ -12,8 +12,9 @@
 #SBATCH --mail-user=emcmaho7@jh.edu
 
 func=${1:-corrected_captions}
+grammar=${2:-grammar_correction}
 
 ml anaconda
 conda activate fmri_modeling
 
-python sentence_decomposition.py --func_name $func --overwrite
+python sentence_decomposition.py --func_name $func --overwrite --${grammar}
