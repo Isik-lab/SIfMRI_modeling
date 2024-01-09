@@ -12,7 +12,7 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
-perturbation=${1:-corrected_unmasked}
+perturbation=${1:-stripped_orig}
 model=${2:-sentence-transformers/all-MiniLM-L6-v2}
 
 echo "perturbation: $perturbation"
