@@ -6,7 +6,7 @@
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=14
 #SBATCH --gres=gpu:2
 #SBATCH --exclusive
 #SBATCH --mail-type=end
