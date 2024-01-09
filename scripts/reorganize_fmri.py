@@ -96,9 +96,9 @@ class ReorganziefMRI:
     def run(self):
         stimulus_data, sort_idx = self.load_stimulus_data()
         metadata, response_data = self.generate_benchmark(sort_idx)
-        stimulus_data.to_csv(f'{self.data_dir}/interim/{self.process}/stimulus_data.csv', index=False)
-        metadata.to_csv(f'{self.data_dir}/interim/{self.process}/metadata.csv', index=False)
-        response_data.to_csv(f'{self.data_dir}/interim/{self.process}/response_data.csv.gz', index=False, compression='gzip')
+        # stimulus_data.to_csv(f'{self.data_dir}/interim/{self.process}/stimulus_data.csv', index=False)
+        # metadata.to_csv(f'{self.data_dir}/interim/{self.process}/metadata.csv', index=False)
+        # response_data.to_csv(f'{self.data_dir}/interim/{self.process}/response_data.csv.gz', index=False, compression='gzip')
 
 
 def main():

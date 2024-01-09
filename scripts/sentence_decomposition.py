@@ -21,6 +21,7 @@ class SentenceDecomposition:
         self.process = 'SentenceDecomposition'
         self.data_dir = args.data_dir
         self.func_name = args.func_name
+        self.grammar_correction = args.grammar_correction
         self.overwrite = args.overwrite
         print(vars(self))
 
@@ -29,7 +30,8 @@ class SentenceDecomposition:
             os.environ['TRANSFORMERS_CACHE'] = args.cache
 
         # get the function from the string
-        if self.func_name == 'corrected_unmasked':
+        if self.func_name == 'corrected_unmasked' or self.func_name == 'stripped_orig':
+            # Strip the punctution for the original caption or the grammar corrected caption
             self.func = lang_permute.strip_sentence
         else:
             self.func = getattr(lang_permute, self.func_name)
@@ -61,9 +63,10 @@ class SentenceDecomposition:
         cap_annot.to_csv(self.out_file, index=False)
 
     def get_correct_grammar(self):
-        if not os.path.isfile(self.grammar_file): 
+        original_caption_file = f'{self.data_dir}/interim/CaptionData/captions.csv'
+        if not os.path.isfile(self.grammar_file) and self.grammar_correction: 
             # Load the raw captions and reorganize
-            videos, columns, caption_arr, orig_shape = load_caption_file(f'{self.data_dir}/interim/CaptionData/captions.csv')
+            videos, columns, caption_arr, orig_shape = load_caption_file(original_caption_file)
 
             # Load the grammar correction model
             tokenizer, gc_model = lang_permute.load_grammarcheck()
@@ -79,9 +82,11 @@ class SentenceDecomposition:
             out = pd.DataFrame(np.array(out).reshape(orig_shape), columns=columns)
             out['video_name'] = videos
             out.to_csv(self.grammar_file, index=False)
-        else: 
+        elif os.path.isfile(self.grammar_file) and self.grammar_correction: 
             print('loading the corrected captions')
             out = pd.read_csv(self.grammar_file)
+        else: #not self.grammar_correction
+            out = pd.read_csv(original_caption_file)
         return out
 
     def run(self):
@@ -94,8 +99,9 @@ class SentenceDecomposition:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--func_name', type=str, default='shuffle_sentence')
+    parser.add_argument('--func_name', type=str, default=None)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--grammar_correction', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')        
     parser.add_argument('--cache', type=str, default='/home/emcmaho7/scratch4-lisik3/emcmaho7/cache')                
