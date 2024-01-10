@@ -46,10 +46,6 @@ def glove_feature_extraction(captions):
     return model.encode(captions)
 
 
-def tokenize_captions(tokenizer_, captions_):
-    return tokenizer_(captions_, return_tensors='pt', padding='max_length')
-
-
 def moving_grouped_average(outputs, input_dim=0, skip=5):
     return torch.stack([outputs[i*skip:i*skip+skip].mean(dim=input_dim) 
                         for i in range(outputs.size(0) // skip)])
@@ -57,7 +53,10 @@ def moving_grouped_average(outputs, input_dim=0, skip=5):
 
 def memory_saving_extraction(model_uid, captions):
     model, tokenizer = load_llm(model_uid)
-    tokenized_captions = tokenize_captions(tokenizer, captions)
+    if 'gpt2' not in model_uid: 
+        tokenized_captions = tokenizer(captions, return_tensors='pt', padding='max_length')
+    else:
+        tokenized_captions = tokenizer(captions, return_tensors='pt')
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
