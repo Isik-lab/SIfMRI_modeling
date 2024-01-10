@@ -56,7 +56,7 @@ def memory_saving_extraction(model_uid, captions):
     if 'gpt2' not in model_uid: 
         tokenized_captions = tokenizer(captions, return_tensors='pt', padding='max_length')
     else:
-        tokenized_captions = tokenizer(captions, return_tensors='pt')
+        tokenized_captions = tokenizer(captions, return_tensors='pt', padding=True, truncation=True)
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
