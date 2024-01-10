@@ -68,8 +68,10 @@ def memory_saving_extraction(model_uid, captions):
         model, tokenizer = load_gpt()
     tokenized_captions = tokenize_captions(tokenizer, captions)
     print(tokenized_captions['input_ids'])
+    print(tokenized_captions['attention_mask'])
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
+    print(tensor_dataset.shape)
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
                                         # keep=['Attention','BertModel'],
