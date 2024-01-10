@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, AutoModel
 from torch.utils.data import DataLoader, TensorDataset
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
-from deepjuice.systempops.devices import cuda_device_report
+from deepjuice.systemops.devices import cuda_device_report
 from sentence_transformers import SentenceTransformer
 
 
