@@ -17,6 +17,7 @@ from sentence_transformers import SentenceTransformer
 def load_llm(model_uid):
     model_ = AutoModel.from_pretrained(model_uid)
     tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
+    tokenizer_.enable_padding()
     print(f'{tokenizer_.eos_token=}')
     print(f'{tokenizer_.eos_token_id=}')
     print(f'{tokenizer_.pad_token=}')
@@ -46,10 +47,11 @@ def moving_grouped_average(outputs, input_dim=0, skip=5):
 
 def memory_saving_extraction(model_uid, captions):
     model, tokenizer = load_llm(model_uid)
-    if 'gpt2' not in model_uid: 
-        tokenized_captions = tokenizer(captions, return_tensors='pt', padding='max_length')
-    else:
-        tokenized_captions = tokenizer(captions, return_tensors='pt', padding=True, truncation=True)
+    tokenized_captions = tokenizer(captions, return_tensors='pt', padding='max_length')
+    # if 'gpt2' not in model_uid: 
+    #     tokenized_captions = tokenizer(captions, return_tensors='pt', padding='max_length')
+    # else:
+    #     tokenized_captions = tokenizer(captions, return_tensors='pt', padding=True, truncation=True)
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
