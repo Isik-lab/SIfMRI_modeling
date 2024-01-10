@@ -1,5 +1,5 @@
 #
-from deepjuice.alignment import TorchRidgeGCV, get_scorer
+from deepjuice.alignment import TorchRidgeGCV, get_scoring_method
 import torch
 import numpy as np
 from sklearn.model_selection import KFold
@@ -94,7 +94,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
     alphas = [10.**power for power in np.arange(-5, 2)]
-    score_func = get_scorer('pearsonr')
+    score_func = get_scoring_method('pearsonr')
     pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
                             device=device, scale_X=True,)
 
@@ -163,7 +163,7 @@ def get_glove_training_benchmarking_results(benchmark, feature_map,
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
     alphas = [10.**power for power in np.arange(-5, 2)]
-    score_func = get_scorer('pearsonr')
+    score_func = get_scoring_method('pearsonr')
     pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
                             device=device, scale_X=True,)
 
