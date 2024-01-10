@@ -69,8 +69,11 @@ def memory_saving_extraction(model_uid, captions, device):
     else:
         model, tokenizer = load_gpt()
     tokenized_captions = tokenize_captions(tokenizer, captions)
-    dataloader = DataLoader(TensorDataset(tokenized_captions['input_ids'],
-                                    tokenized_captions['attention_mask']), batch_size = 20)
+    tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
+                                    tokenized_captions['attention_mask'])
+    print(f'{tensor_dataset=}')
+    dataloader = DataLoader(tensor_dataset, batch_size = 20)
+    print(f'{dataloader=}')
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
