@@ -5,6 +5,7 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 from deepjuice.structural import flatten_nested_list # utility for list flattening
+import torch
 from src import encoding
 
 
@@ -36,7 +37,10 @@ class LLMEncoding:
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
         self.streams = ['EVC']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
-
+        if torch.cuda.is_available():
+            self.device = 'gpu'
+        else:
+            self.device = 'cpu'
     
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')

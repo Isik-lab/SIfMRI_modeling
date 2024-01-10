@@ -9,8 +9,7 @@ from transformers import AutoTokenizer, AutoModel
 from torch.utils.data import DataLoader, TensorDataset
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
-from deepjuice.tensorfy import get_device_name
-from deepjuice.datasets import get_image_loader
+from deepjuice.systempops.devices import cuda_device_report
 from sentence_transformers import SentenceTransformer
 
 
@@ -85,11 +84,11 @@ def memory_saving_extraction(model_uid, captions):
 def get_training_benchmarking_results(benchmark, feature_extractor,
                                       file_path,
                                       layer_index_offset=0,
-                                      device='auto',
+                                      device='gpu',
                                       n_splits=4, random_seed=0):
     # use a CUDA-capable device, if available, else: CPU
-    if device == 'auto': device = get_device_name(device)
     print(f'device: {device}')
+    print(cuda_device_report())
 
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
@@ -153,42 +152,42 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
     return pd.DataFrame(results)
 
 
-def get_glove_training_benchmarking_results(benchmark, feature_map,
-                                      device='auto',
-                                      n_splits=4, random_seed=0):
-    # use a CUDA-capable device, if available, else: CPU
-    if device == 'auto': device = get_device_name(device)
-    print(f'device: {device}')
+# def get_glove_training_benchmarking_results(benchmark, feature_map,
+#                                       device='auto',
+#                                       n_splits=4, random_seed=0):
+#     # use a CUDA-capable device, if available, else: CPU
+#     if device == 'auto': device = get_device_name(device)
+#     print(f'device: {device}')
 
-    # initialize pipe and kfold splitter
-    cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
-    alphas = [10.**power for power in np.arange(-5, 2)]
-    score_func = get_scoring_method('pearsonr')
-    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
-                            device=device, scale_X=True,)
+#     # initialize pipe and kfold splitter
+#     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
+#     alphas = [10.**power for power in np.arange(-5, 2)]
+#     score_func = get_scoring_method('pearsonr')
+#     pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
+#                             device=device, scale_X=True,)
 
             
-    X = torch.from_numpy(feature_map).to(torch.float32).to(device)
-    y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
+#     X = torch.from_numpy(feature_map).to(torch.float32).to(device)
+#     y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
 
-    y_pred = []
-    y_true = []
-    cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
-    for train_index, test_index in cv_iterator:
-        pipe.fit(X[train_index], y[train_index])
-        y_pred.append(pipe.predict(X[test_index]))
-        y_true.append(y[test_index])
+#     y_pred = []
+#     y_true = []
+#     cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
+#     for train_index, test_index in cv_iterator:
+#         pipe.fit(X[train_index], y[train_index])
+#         y_pred.append(pipe.predict(X[test_index]))
+#         y_true.append(y[test_index])
     
-    scores = score_func(torch.cat(y_pred), torch.cat(y_true))
-    scores = scores.cpu().detach().numpy() #send to CPU
+#     scores = score_func(torch.cat(y_pred), torch.cat(y_true))
+#     scores = scores.cpu().detach().numpy() #send to CPU
 
-    results = []
-    for region in benchmark.metadata.stream_name.unique():
-        for subj_id in benchmark.metadata.subj_id.unique():
-            voxel_id = benchmark.metadata.loc[(benchmark.metadata.subj_id == subj_id) &
-                                            (benchmark.metadata.stream_name == region), 'voxel_id'].to_numpy()
-            results.append({'stream_name': region,
-                            'subj_id': subj_id,
-                            'score': np.mean(scores[voxel_id]),
-                            'method': 'ridge'})
-    return pd.DataFrame(results)
+#     results = []
+#     for region in benchmark.metadata.stream_name.unique():
+#         for subj_id in benchmark.metadata.subj_id.unique():
+#             voxel_id = benchmark.metadata.loc[(benchmark.metadata.subj_id == subj_id) &
+#                                             (benchmark.metadata.stream_name == region), 'voxel_id'].to_numpy()
+#             results.append({'stream_name': region,
+#                             'subj_id': subj_id,
+#                             'score': np.mean(scores[voxel_id]),
+#                             'method': 'ridge'})
+#     return pd.DataFrame(results)
