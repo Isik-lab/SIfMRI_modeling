@@ -67,6 +67,7 @@ def memory_saving_extraction(model_uid, captions):
     else:
         model, tokenizer = load_gpt()
     tokenized_captions = tokenize_captions(tokenizer, captions)
+    print(tokenized_captions['input_ids'])
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
