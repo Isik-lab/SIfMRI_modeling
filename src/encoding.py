@@ -17,6 +17,10 @@ from sentence_transformers import SentenceTransformer
 def load_llm(model_uid):
     model_ = AutoModel.from_pretrained(model_uid)
     tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
+    print(f'{tokenizer_.eos_token=}')
+    print(f'{tokenizer_.eos_token_id=}')
+    print(f'{tokenizer_.pad_token=}')
+    print(f'{tokenizer_.pad_token_id=}')
     return model_, tokenizer_
 
 
@@ -46,9 +50,6 @@ def moving_grouped_average(outputs, input_dim=0, skip=5):
 
 def memory_saving_extraction(model_uid, captions):
     model, tokenizer = load_llm(model_uid)
-    if tokenizer.pad_token is None:
-        tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        model.resize_token_embeddings(len(tokenizer))
     tokenized_captions = tokenize_captions(tokenizer, captions)
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
