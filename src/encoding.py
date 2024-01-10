@@ -21,13 +21,6 @@ def load_llm(model_uid):
     print(f'{tokenizer_.eos_token_id=}')
     print(f'{tokenizer_.pad_token=}')
     print(f'{tokenizer_.pad_token_id=}')
-
-    if tokenizer_.pad_token_id is None:
-        tokenizer_.pad_token = tokenizer_.eos_token
-        print(f'{tokenizer_.eos_token=}')
-        print(f'{tokenizer_.eos_token_id=}')
-        print(f'{tokenizer_.pad_token=}')
-        print(f'{tokenizer_.pad_token_id=}')
     return model_, tokenizer_
 
 
