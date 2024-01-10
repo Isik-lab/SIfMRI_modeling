@@ -59,7 +59,7 @@ class LLMEncoding:
             captions, _ = captions_to_list(benchmark.stimulus_data.captions)
             
             print('loading model...')
-            feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions)
+            feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions, self.device)
 
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_path)
