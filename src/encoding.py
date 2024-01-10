@@ -30,7 +30,6 @@ def load_gpt():
     SPECIAL_TOKENS = {"bos_token": "<|endoftext|>", 
                       "eos_token": "<|endoftext|>",
                       "pad_token": "[PAD]",
-                      "pad_token_id": 0,
                       "additional_special_tokens": ["[SYS]", "[USR]", "[KG]", "[SUB]", "[PRED]", "[OBJ]", "[TRIPLE]", "[SEP]", "[Q]","[DOM]", 'frankie_and_bennys', 'cb17dy']
                       }
     tokenizer_.add_special_tokens(SPECIAL_TOKENS)
