@@ -52,7 +52,10 @@ def glove_feature_extraction(captions):
 
 
 def tokenize_captions(tokenizer_, captions_):
-    return tokenizer_(captions_, return_tensors='pt', padding='max_length')
+    tokenized_captions_ = tokenizer_(captions_, return_tensors='pt', padding='max_length') 
+    print(f'{tokenized_captions_["input_ids"]=}')
+    print(f'{tokenized_captions_["attention_mask"]=}')
+    return tokenized_captions_
 
 
 def moving_grouped_average(outputs, input_dim=0, skip=5):
@@ -60,22 +63,18 @@ def moving_grouped_average(outputs, input_dim=0, skip=5):
                         for i in range(outputs.size(0) // skip)])
 
 
-def memory_saving_extraction(model_uid, captions):
+def memory_saving_extraction(model_uid, captions, device):
     if 'gpt2' not in model_uid:
         model, tokenizer = load_llm(model_uid)
     else:
         model, tokenizer = load_gpt()
     tokenized_captions = tokenize_captions(tokenizer, captions)
-    print(f'{tokenized_captions["input_ids"]=}')
-    print(f'{tokenized_captions["attention_mask"]=}')
-    tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
-                                    tokenized_captions['attention_mask'])
-    dataloader = DataLoader(tensor_dataset, batch_size = 20)
+    dataloader = DataLoader(TensorDataset(tokenized_captions['input_ids'],
+                                    tokenized_captions['attention_mask']), batch_size = 20)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        # keep=['Attention','BertModel'],
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
-                                        output_device='cpu', exclude_oversize=False)
+                                        output_device=device, exclude_oversize=False)
     feature_extractor.modify_settings(flatten=True)
     return feature_extractor
 
@@ -83,7 +82,7 @@ def memory_saving_extraction(model_uid, captions):
 def get_training_benchmarking_results(benchmark, feature_extractor,
                                       file_path,
                                       layer_index_offset=0,
-                                      device='gpu',
+                                      device='cuda',
                                       n_splits=4, random_seed=0):
     # use a CUDA-capable device, if available, else: CPU
     print(f'device: {device}')

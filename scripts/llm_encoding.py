@@ -38,7 +38,7 @@ class LLMEncoding:
         self.streams = ['EVC']
         self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
         if torch.cuda.is_available():
-            self.device = 'gpu'
+            self.device = 'cuda'
         else:
             self.device = 'cpu'
     
