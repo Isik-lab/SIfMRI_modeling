@@ -17,11 +17,23 @@ from sentence_transformers import SentenceTransformer
 def load_llm(model_uid):
     model_ = AutoModel.from_pretrained(model_uid)
     tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
-    tokenizer_.enable_padding()
     print(f'{tokenizer_.eos_token=}')
     print(f'{tokenizer_.eos_token_id=}')
     print(f'{tokenizer_.pad_token=}')
     print(f'{tokenizer_.pad_token_id=}')
+    return model_, tokenizer_
+
+
+def load_gpt():
+    from transformers import GPT2TokenizerFast
+    model_ = AutoModel.from_pretrained('gpt2')
+    tokenizer_ = GPT2TokenizerFast.from_pretrained('gpt2')
+    SPECIAL_TOKENS = {"bos_token": "<|endoftext|>", 
+                      "eos_token": "<|endoftext|>",
+                      "pad_token": "[PAD]",
+                      "additional_special_tokens": ["[SYS]", "[USR]", "[KG]", "[SUB]", "[PRED]", "[OBJ]", "[TRIPLE]", "[SEP]", "[Q]","[DOM]", 'frankie_and_bennys', 'cb17dy']
+                      }
+    tokenizer_.add_special_tokens(SPECIAL_TOKENS)
     return model_, tokenizer_
 
 
@@ -40,18 +52,21 @@ def glove_feature_extraction(captions):
     return model.encode(captions)
 
 
+def tokenize_captions(tokenizer_, captions_):
+    return tokenizer_(captions_, return_tensors='pt', padding='max_length')
+
+
 def moving_grouped_average(outputs, input_dim=0, skip=5):
     return torch.stack([outputs[i*skip:i*skip+skip].mean(dim=input_dim) 
                         for i in range(outputs.size(0) // skip)])
 
 
 def memory_saving_extraction(model_uid, captions):
-    model, tokenizer = load_llm(model_uid)
-    tokenized_captions = tokenizer(captions, return_tensors='pt', padding='max_length')
-    # if 'gpt2' not in model_uid: 
-    #     tokenized_captions = tokenizer(captions, return_tensors='pt', padding='max_length')
-    # else:
-    #     tokenized_captions = tokenizer(captions, return_tensors='pt', padding=True, truncation=True)
+    if 'gpt2' not in model_uid:
+        model, tokenizer = load_llm(model_uid)
+    else:
+        model, tokenizer = load_gpt()
+    tokenized_captions = tokenize_captions(tokenizer, captions)
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
                                     tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size = 20)
