@@ -30,7 +30,6 @@ def load_gpt():
     SPECIAL_TOKENS = {"bos_token": "<|endoftext|>", 
                       "eos_token": "<|endoftext|>",
                       "pad_token": "[PAD]",
-                      "additional_special_tokens": ["[SYS]", "[USR]", "[KG]", "[SUB]", "[PRED]", "[OBJ]", "[TRIPLE]", "[SEP]", "[Q]","[DOM]", 'frankie_and_bennys', 'cb17dy']
                       }
     tokenizer_.add_special_tokens(SPECIAL_TOKENS)
     print(f'{tokenizer_.eos_token=}')
@@ -38,6 +37,13 @@ def load_gpt():
     print(f'{tokenizer_.pad_token=}')
     print(f'{tokenizer_.pad_token_id=}')
     return model_, tokenizer_
+
+
+def tokenize_captions(tokenizer_, captions_):
+    tokenized_captions_ = tokenizer_(captions_, return_tensors='pt', padding='max_length') 
+    print(f'{tokenized_captions_["input_ids"]=}')
+    print(f'{tokenized_captions_["attention_mask"]=}')
+    return tokenized_captions_
 
 
 def load_glove():
@@ -53,13 +59,6 @@ def load_glove():
 def glove_feature_extraction(captions):
     model = load_glove()
     return model.encode(captions)
-
-
-def tokenize_captions(tokenizer_, captions_):
-    tokenized_captions_ = tokenizer_(captions_, return_tensors='pt', padding='max_length') 
-    print(f'{tokenized_captions_["input_ids"]=}')
-    print(f'{tokenized_captions_["attention_mask"]=}')
-    return tokenized_captions_
 
 
 def moving_grouped_average(outputs, input_dim=0, skip=5):
