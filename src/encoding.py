@@ -177,7 +177,6 @@ def get_glove_training_benchmarking_results(benchmark,
 
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
-    cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
     score_func = get_scoring_method('pearsonr')
     pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
                             device=device, scale_X=True,)
@@ -192,6 +191,7 @@ def get_glove_training_benchmarking_results(benchmark,
     y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
 
     y_pred, y_true = [], [] #Initialize lists
+    cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
     for train_index, test_index in cv_iterator:
         X_train, X_test = X[train_index].detach().clone(), X[test_index].detach().clone()
         y_train, y_test = y[train_index].detach().clone(), y[test_index].detach().clone()
