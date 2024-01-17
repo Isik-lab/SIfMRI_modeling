@@ -26,11 +26,9 @@ class GLoVeEncoding:
         else:
             self.stimulus_data_file = f'{self.data_dir}/interim/SentenceDecomposition/{self.perturbation}.csv'
         
-        self.out_path = f'{self.data_dir}/interim/{self.process}/model-glove_perturbation-{self.perturbation}'
         self.out_file = f'{self.data_dir}/interim/{self.process}/model-glove_perturbation-{self.perturbation}.csv'
         print(vars(self))
 
-        Path(self.out_path).mkdir(parents=True, exist_ok=True)
         if torch.cuda.is_available():
             self.device = 'cuda'
         else:
