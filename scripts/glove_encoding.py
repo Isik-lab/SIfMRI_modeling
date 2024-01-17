@@ -50,7 +50,7 @@ class GLoVeEncoding:
             print('loading data...')
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
-            captions, reshape_dim = encoding.get_captions(benchmark)
+            captions, reshape_dim = encoding.captions_to_list(benchmark.stimulus_data.captions)
 
             print('loading model...')
             features = get_features(captions, reshape_dim)
