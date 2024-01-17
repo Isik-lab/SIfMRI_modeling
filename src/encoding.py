@@ -167,7 +167,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
     return pd.DataFrame(results)
 
 
-def get_glove_training_benchmarking_results(benchmark,
+def get_glove_training_benchmarking_results(benchmark, feature_map,
                                       device='cuda',
                                       n_splits=4, random_seed=0, 
                                       alphas=[10.**power for power in np.arange(-5, 2)]):
