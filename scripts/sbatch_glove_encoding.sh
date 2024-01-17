@@ -12,7 +12,7 @@
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
 
-perturbation=${1:-nv_shuffled}
+perturbation=${1:-stripped_orig}
 echo "perturbation: $perturbation"
 
 ml anaconda

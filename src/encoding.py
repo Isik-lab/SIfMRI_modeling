@@ -11,6 +11,15 @@ from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
 from sentence_transformers import SentenceTransformer
+from deepjuice.structural import flatten_nested_list # utility for list flattening
+
+
+
+def captions_to_list(input_captions):
+    all_captions = input_captions.tolist() # list of strings
+    captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
+    print(captions[:5])
+    return captions, (len(all_captions), 5)
 
 
 def load_llm(model_uid):
@@ -89,7 +98,9 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                                       file_path,
                                       layer_index_offset=0,
                                       device='cuda',
-                                      n_splits=4, random_seed=0):
+                                      n_splits=4, random_seed=0,
+                                      alphas=[10.**power for power in np.arange(-5, 2)]):
+
     # use a CUDA-capable device, if available, else: CPU
     print(f'device: {device}')
     print(cuda_device_report())
@@ -156,42 +167,44 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
     return pd.DataFrame(results)
 
 
-# def get_glove_training_benchmarking_results(benchmark, feature_map,
-#                                       device='auto',
-#                                       n_splits=4, random_seed=0):
-#     # use a CUDA-capable device, if available, else: CPU
-#     if device == 'auto': device = get_device_name(device)
-#     print(f'device: {device}')
+def get_glove_training_benchmarking_results(benchmark,
+                                      device='cuda',
+                                      n_splits=4, random_seed=0, 
+                                      alphas=[10.**power for power in np.arange(-5, 2)]):
+    # use a CUDA-capable device, if available, else: CPU
+    print(f'device: {device}')
+    print(cuda_device_report())
 
-#     # initialize pipe and kfold splitter
-#     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
-#     alphas = [10.**power for power in np.arange(-5, 2)]
-#     score_func = get_scoring_method('pearsonr')
-#     pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
-#                             device=device, scale_X=True,)
-
+    # initialize pipe and kfold splitter
+    cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
+    cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
+    score_func = get_scoring_method('pearsonr')
+    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
+                            device=device, scale_X=True,)
             
-#     X = torch.from_numpy(feature_map).to(torch.float32).to(device)
-#     y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
+    # Avoiding "CUDA error: an illegal memory access was encountered"
+    feature_map = get_feature_map_srps(feature_map, device=device)
+    X = feature_map.detach().clone().squeeze().to(torch.float32)
+    del feature_map
+    torch.cuda.empty_cache()
 
-#     y_pred = []
-#     y_true = []
-#     cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
-#     for train_index, test_index in cv_iterator:
-#         pipe.fit(X[train_index], y[train_index])
-#         y_pred.append(pipe.predict(X[test_index]))
-#         y_true.append(y[test_index])
+    # Send the neural data to the GPU
+    y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
+
+    y_pred, y_true = [], [] #Initialize lists
+    for train_index, test_index in cv_iterator:
+        X_train, X_test = X[train_index].detach().clone(), X[test_index].detach().clone()
+        y_train, y_test = y[train_index].detach().clone(), y[test_index].detach().clone()
+        pipe.fit(X_train, y_train)
+        y_pred.append(pipe.predict(X_test))
+        y_true.append(y_test)
     
-#     scores = score_func(torch.cat(y_pred), torch.cat(y_true))
-#     scores = scores.cpu().detach().numpy() #send to CPU
+    scores = score_func(torch.cat(y_pred), torch.cat(y_true)).cpu().detach().numpy()
 
-#     results = []
-#     for region in benchmark.metadata.stream_name.unique():
-#         for subj_id in benchmark.metadata.subj_id.unique():
-#             voxel_id = benchmark.metadata.loc[(benchmark.metadata.subj_id == subj_id) &
-#                                             (benchmark.metadata.stream_name == region), 'voxel_id'].to_numpy()
-#             results.append({'stream_name': region,
-#                             'subj_id': subj_id,
-#                             'score': np.mean(scores[voxel_id]),
-#                             'method': 'ridge'})
-#     return pd.DataFrame(results)
+    # Make scoresheet based on the benchmark metadata
+    results = []
+    for i, row in benchmark.metadata.iterrows():
+        row['score'] = scores[i]
+        results.append(row)
+
+    return pd.DataFrame(results)
