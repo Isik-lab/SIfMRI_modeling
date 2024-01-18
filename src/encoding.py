@@ -12,7 +12,7 @@ from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
 from sentence_transformers import SentenceTransformer
 from deepjuice.structural import flatten_nested_list # utility for list flattening
-
+import clip
 
 
 def captions_to_list(input_captions):
@@ -46,6 +46,21 @@ def load_gpt():
     print(f'{tokenizer_.pad_token=}')
     print(f'{tokenizer_.pad_token_id=}')
     return model_, tokenizer_
+
+
+def clip_extraction(captions, backbone='RN50', device='cuda'):
+    model, _ = clip.load(backbone, device=device)
+    model = model.token_embedding.eval() #select the language encoder
+    tokenized_captions = clip.tokenize(captions)
+    tensor_dataset = TensorDataset(tokenized_captions)
+    print(f'{tensor_dataset=}')
+    dataloader = DataLoader(tensor_dataset, batch_size = 20)
+    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
+                                        tensor_fn=moving_grouped_average,
+                                        sample_size=5, reduce_size_by=5,
+                                        output_device='cuda', exclude_oversize=False)
+    feature_extractor.modify_settings(flatten=True)
+    return feature_extractor
 
 
 def tokenize_captions(tokenizer_, captions_):
