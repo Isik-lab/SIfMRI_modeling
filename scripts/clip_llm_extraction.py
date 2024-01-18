@@ -59,7 +59,7 @@ class CLIPLEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
+    parser.add_argument('--backbone', type=str, default='RN50')
     parser.add_argument('--perturbation', type=str, default='corrected_unmasked')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
