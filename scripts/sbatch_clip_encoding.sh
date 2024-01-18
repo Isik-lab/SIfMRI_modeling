@@ -20,4 +20,4 @@ echo "backbone: $backbone"
 ml anaconda
 conda activate fmri_modeling
 
-python llm_encoding.py --backbone $backbone --perturbation $perturbation --overwrite
+python clip_llm_encoding.py --backbone $backbone --perturbation $perturbation --overwrite
