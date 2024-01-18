@@ -12,12 +12,12 @@
 #SBATCH --mail-user=emcmaho7@jh.edu
 
 perturbation=${1:-stripped_orig}
-model=${2:-RN50}
+backbone=${2:-RN50}
 
 echo "perturbation: $perturbation"
-echo "model: $model"
+echo "backbone: $backbone"
 
 ml anaconda
 conda activate fmri_modeling
 
-python llm_encoding.py --backbone $model --perturbation $perturbation --overwrite
+python llm_encoding.py --backbone $backbone --perturbation $perturbation --overwrite
