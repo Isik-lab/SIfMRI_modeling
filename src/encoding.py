@@ -49,6 +49,12 @@ def load_gpt():
 
 
 def clip_extraction(captions, backbone='RN50', device='cuda'):
+    """
+        input:
+            captions: a list of strings of the captions of the images
+        output: 
+            feature_extractor: DeepJuice feature extractor object
+    """
     model, _ = clip.load(backbone, device=device)
     model = model.token_embedding.eval() #select the language encoder
     tokenized_captions = clip.tokenize(captions)
@@ -96,10 +102,10 @@ def memory_saving_extraction(model_uid, captions, device):
     else:
         model, tokenizer = load_gpt()
     tokenized_captions = tokenize_captions(tokenizer, captions)
-    tensor_dataset = TensorDataset(tokenized_captions['input_ids'],
-                                    tokenized_captions['attention_mask'])
+    tensor_dataset = TensorDataset(tokenized_captions)
+    # tensor_dataset = TensorDataset(['input_ids'], tokenized_captions['attention_mask'])
     print(f'{tensor_dataset=}')
-    dataloader = DataLoader(tensor_dataset, batch_size = 20)
+    dataloader = DataLoader(tensor_dataset, batch_size=20)
     print(f'{dataloader=}')
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
                                         tensor_fn=moving_grouped_average,
