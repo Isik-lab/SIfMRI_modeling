@@ -15,17 +15,18 @@ class VisionEncoding:
         self.process = 'VisionEncoding'
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
+        self.model_input = args.model_input
         self.data_dir = args.data_dir
+        if self.model_input == 'videos':
+            self.extension = 'mp4'
+        else:
+            self.extension = 'png'
         print(vars(self))
 
         model_name = self.model_uid.replace('/', '_')
         self.out_path = f'{self.data_dir}/interim/{self.process}/model-{model_name}'
         self.out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}.csv'
-
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
-
-        self.streams = ['EVC']
-        self.streams += [f'{level}_{stream}' for level in ['mid', 'high'] for stream in ['ventral', 'lateral', 'parietal']]
     
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
@@ -40,12 +41,12 @@ class VisionEncoding:
         else:
             print('loading data...')
             benchmark = self.load_fmri()
-            benchmark.add_image_path(self.data_dir + '/raw/images/')
+            benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/')
             benchmark.filter_stimulus(stimulus_set='train')
 
             print('loading model...')
             model, preprocess = get_deepjuice_model(self.model_uid)
-            dataloader = get_image_loader(benchmark.stimulus_data['image_path'], preprocess)
+            dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
             feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
                                     flatten=True, progress=True)
             
@@ -60,6 +61,7 @@ class VisionEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='slip_vit_s_yfcc15m')
+    parser.add_argument('--model_input', type='str', default='images')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
