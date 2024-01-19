@@ -36,15 +36,8 @@ def load_gpt():
     from transformers import GPT2TokenizerFast
     model_ = AutoModel.from_pretrained('gpt2')
     tokenizer_ = GPT2TokenizerFast.from_pretrained('gpt2')
-    SPECIAL_TOKENS = {"bos_token": "<|endoftext|>", 
-                      "eos_token": "<|endoftext|>",
-                      "pad_token": "[PAD]",
-                      }
-    tokenizer_.add_special_tokens(SPECIAL_TOKENS)
-    print(f'{tokenizer_.eos_token=}')
-    print(f'{tokenizer_.eos_token_id=}')
-    print(f'{tokenizer_.pad_token=}')
-    print(f'{tokenizer_.pad_token_id=}')
+    tokenizer_.add_special_tokens({'pad_token': '[PAD]'})
+    model_.resize_token_embeddings(len(tokenizer_))
     return model_, tokenizer_
 
 
