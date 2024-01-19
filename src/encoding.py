@@ -6,7 +6,8 @@ from sklearn.model_selection import KFold
 from tqdm import tqdm
 import pandas as pd
 from transformers import AutoTokenizer, AutoModel
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, TensorDataset, Dataset
+from torch import tensor
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
@@ -39,6 +40,34 @@ def load_gpt():
     tokenizer_.add_special_tokens({'pad_token': '[PAD]'})
     model_.resize_token_embeddings(len(tokenizer_))
     return model_, tokenizer_
+
+
+class CustomDataset(Dataset):
+    def __init__(self, input_ids, attention_masks):
+        self.input_ids = input_ids
+        self.attention_masks = attention_masks
+
+    def __len__(self):
+        return len(self.input_ids)
+
+    def __getitem__(self, idx):
+        return {
+            'input_ids': tensor(self.input_ids[idx], dtype=torch.long),
+            'attention_mask': tensor(self.attention_masks[idx], dtype=torch.long)
+        }
+
+
+def gpt_extraction(captions, device):
+    model, tokenizer = load_gpt()
+    tokenized_captions = tokenize_captions(tokenizer, captions)
+    tensor_dataset = CustomDataset(['input_ids'], tokenized_captions['attention_mask'])
+    dataloader = DataLoader(tensor_dataset, batch_size=20)
+    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
+                                        tensor_fn=moving_grouped_average,
+                                        sample_size=5, reduce_size_by=5,
+                                        output_device=device, exclude_oversize=False)
+    feature_extractor.modify_settings(flatten=True)
+    return feature_extractor
 
 
 def clip_extraction(captions, backbone='RN50', device='cuda'):
@@ -90,16 +119,10 @@ def moving_grouped_average(outputs, input_dim=0, skip=5):
 
 
 def memory_saving_extraction(model_uid, captions, device):
-    if 'gpt2' not in model_uid:
-        model, tokenizer = load_llm(model_uid)
-    else:
-        model, tokenizer = load_gpt()
+    model, tokenizer = load_llm(model_uid)
     tokenized_captions = tokenize_captions(tokenizer, captions)
-    tensor_dataset = TensorDataset(tokenized_captions)
-    # tensor_dataset = TensorDataset(['input_ids'], tokenized_captions['attention_mask'])
-    print(f'{tensor_dataset=}')
+    tensor_dataset = TensorDataset(['input_ids'], tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size=20)
-    print(f'{dataloader=}')
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,

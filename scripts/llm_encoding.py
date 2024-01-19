@@ -48,7 +48,10 @@ class LLMEncoding:
             captions, _ = encoding.captions_to_list(benchmark.stimulus_data.captions)
             
             print('loading model...')
-            feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions, self.device)
+            if 'gpt2' in self.model_uid:
+                feature_extractor = encoding.gpt_extraction(captions, self.device)
+            else:
+                feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions, self.device)
 
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_path)
