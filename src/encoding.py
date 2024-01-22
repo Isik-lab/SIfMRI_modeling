@@ -60,7 +60,8 @@ class CustomDataset(Dataset):
 def gpt_extraction(captions, device):
     model, tokenizer = load_gpt()
     tokenized_captions = tokenize_captions(tokenizer, captions)
-    tensor_dataset = CustomDataset(['input_ids'], tokenized_captions['attention_mask'])
+    tensor_dataset = CustomDataset(tokenized_captions['input_ids'],
+                                   tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size=20)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
                                         tensor_fn=moving_grouped_average,
