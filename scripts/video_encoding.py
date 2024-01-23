@@ -1,108 +1,84 @@
-import torch
-import json
-from torchvision.transforms import Compose, Lambda
-from torchvision.transforms._transforms_video import (
-    CenterCropVideo,
-    NormalizeVideo,
-)
-from pytorchvideo.data.encoded_video import EncodedVideo
-from pytorchvideo.transforms import (
-    ApplyTransformToKey,
-    ShortSideScale,
-    UniformTemporalSubsample,
-    UniformCropVideo
-)
-from typing import Dict
+#/Applications/anaconda3/envs/nibabel/bin/python
+from pathlib import Path
+import argparse
+import pandas as pd
 import os
+from src.mri import Benchmark
+from src import encoding
+import torch
+from deepjuice.extraction import FeatureExtractor
+from src.video import get_video_loader, get_slowfast_transform
 
-device = 'cuda'
-# Pick a pretrained model and load the pretrained weights
-model_name = "slowfast_r50"
-model = torch.hub.load("facebookresearch/pytorchvideo", model=model_name, pretrained=True)
 
-# Set to eval mode and move to desired device
-model = model.to(device)
-model = model.eval()
+class VideoEncoding:
+    def __init__(self, args):
+        self.process = 'VideoEncoding'
+        self.overwrite = args.overwrite
+        self.model_name = args.model_name
+        self.model_input = args.model_input
+        self.data_dir = args.data_dir
+        if self.model_input == 'videos':
+            self.extension = 'mp4'
+        else:
+            self.extension = 'png'
+        print(vars(self))
+        if torch.cuda.is_available():
+            self.device = 'cuda'
+        else:
+            self.device = 'cpu'
+        self.out_path = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}'
+        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.csv'
+        Path(self.out_path).mkdir(parents=True, exist_ok=True)
+    
+    def load_fmri(self):
+        metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
+        response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
+        stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
+        return Benchmark(metadata_, stimulus_data_, response_data_)
+    
+    def run(self):
+        if os.path.exists(self.out_file) and not self.overwrite: 
+            # results = pd.read_csv(self.out_file)
+            print('Output file already exists. To run again pass --overwrite.')
+        else:
+            print('loading data...')
+            benchmark = self.load_fmri()
+            benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
+            benchmark.filter_stimulus(stimulus_set='train')
 
-os.system('wget https://dl.fbaipublicfiles.com/pyslowfast/dataset/class_names/kinetics_classnames.json')
-with open("kinetics_classnames.json", "r") as f:
-    kinetics_classnames = json.load(f)
+            print('loading model...')
+            model = torch.hub.load("facebookresearch/pytorchvideo",
+                                   model=self.model_name, pretrained=True).to(self.device).eval()
+            preprocess, clip_duration = get_slowfast_transform()
+            dataloader = get_video_loader(benchmark.stimulus_data['stimulus_path'], 
+                                          preprocess, clip_duration)
+            feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
+                                    flatten=True, progress=True)
+            
+            print('running regressions')
+            results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor, self.out_path)
 
-# Create an id to label name mapping
-kinetics_id_to_classname = {}
-for k, v in kinetics_classnames.items():
-    kinetics_id_to_classname[v] = str(k).replace('"', "")
+            print('saving results')
+            results.to_csv(self.out_file, index=False)
+            print('Finished!')
 
-side_size = 256
-mean = [0.45, 0.45, 0.45]
-std = [0.225, 0.225, 0.225]
-crop_size = 256
-num_frames = 32
-sampling_rate = 2
-frames_per_second = 30
-alpha = 4
 
-class PackPathway(torch.nn.Module):
-    """
-    Transform for converting video frames as a list of tensors.
-    """
-    def __init__(self):
-        super().__init__()
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model_name', type=str, default='slowfast_r50')
+    parser.add_argument('--model_input', type='str', default='images')
+    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--data_dir', '-data', type=str,
+                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
+                        # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
 
-    def forward(self, frames: torch.Tensor):
-        fast_pathway = frames
-        # Perform temporal sampling from the fast pathway.
-        slow_pathway = torch.index_select(
-            frames,
-            1,
-            torch.linspace(
-                0, frames.shape[1] - 1, frames.shape[1] // alpha
-            ).long(),
-        )
-        frame_list = [slow_pathway, fast_pathway]
-        return frame_list
+    args = parser.parse_args()
+    VideoEncoding(args).run()
 
-transform =  ApplyTransformToKey(
-    key="video",
-    transform=Compose(
-        [
-            UniformTemporalSubsample(num_frames),
-            Lambda(lambda x: x/255.0),
-            NormalizeVideo(mean, std),
-            ShortSideScale(
-                size=side_size
-            ),
-            CenterCropVideo(crop_size),
-            PackPathway()
-        ]
-    ),
-)
 
-# The duration of the input clip is also specific to the model.
-clip_duration = (num_frames * sampling_rate)/frames_per_second
+if __name__ == '__main__':
+    main()
 
-video_path = '../data/raw/videos/-YwZOeyAQC8_15.mp4'
-start_sec = 0
-end_sec = start_sec + clip_duration
 
-# Initialize an EncodedVideo helper class
-video = EncodedVideo.from_path(video_path)
 
-# Load the desired clip
-video_data = video.get_clip(start_sec=start_sec, end_sec=end_sec)
 
-# Apply a transform to normalize the video input
-video_data = transform(video_data)
-
-# Move the inputs to the desired device
-inputs = video_data["video"]
-inputs = [i.to(device)[None, ...] for i in inputs]
-
-preds = model(inputs)
-post_act = torch.nn.Softmax(dim=1)
-preds = post_act(preds)
-pred_classes = preds.topk(k=5).indices
-
-# Map the predicted classes to the label names
-pred_class_names = [kinetics_id_to_classname[int(i)] for i in pred_classes[0]]
-print("Predicted labels: %s" % ", ".join(pred_class_names))
