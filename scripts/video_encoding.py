@@ -66,7 +66,7 @@ class VideoEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str, default='slowfast_r50')
-    parser.add_argument('--model_input', type='str', default='images')
+    parser.add_argument('--model_input', type=str, default='images')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
