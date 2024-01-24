@@ -30,7 +30,7 @@ class VideoData(CustomDataset):
 
 def get_video_loader(video_set, transforms, clip_duration, batch_size = 64, **kwargs):
     if isinstance(video_set, pd.Series) or isinstance(video_set, list):
-        return DataLoader(VideoData(video_set, transforms, clip_duration), batch_size, **kwargs)
+        return DataLoader(VideoData(video_set, clip_duration, transforms), batch_size, **kwargs)
 
 
 def get_transform(model_name):
