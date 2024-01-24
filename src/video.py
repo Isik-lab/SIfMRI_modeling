@@ -5,7 +5,7 @@ from deepjuice.procedural.datasets import CustomDataset
 from pytorchvideo.data.encoded_video import EncodedVideo
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Lambda
-from pytorchvideo.transforms import ShortSideScale, NormalizeVideo
+from pytorchvideo.transforms import ShortSideScale, Normalize
 from pytorchvideo.data.encoded_video import EncodedVideo
 from pytorchvideo.transforms import ApplyTransformToKey, UniformTemporalSubsample
 
@@ -73,12 +73,12 @@ def slowfast_transform():
    
     clip_duration = (num_frames * sampling_rate)/frames_per_second
     transform = ApplyTransformToKey(
-        key="video",
+        key="visdeo",
         transform=Compose(
             [
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x/255.0),
-                NormalizeVideo(mean, std),
+                Normalize(mean, std),
                 ShortSideScale(crop_size),
                 SlowFast_PackPathway()
             ]
