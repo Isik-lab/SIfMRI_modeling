@@ -17,4 +17,4 @@ model=${1:-slowfast_r50}
 ml anaconda
 conda activate fmri_modeling
 
-python vision_encoding.py --model_name $model --model_input videos --overwrite
+python video_encoding.py --model_name $model --model_input videos --overwrite

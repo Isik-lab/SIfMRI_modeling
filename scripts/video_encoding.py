@@ -7,7 +7,7 @@ from src.mri import Benchmark
 from src import encoding
 import torch
 from deepjuice.extraction import FeatureExtractor
-from src.video import get_video_loader, get_slowfast_transform
+from src.video import get_video_loader, get_transform
 
 
 class VideoEncoding:
@@ -49,7 +49,7 @@ class VideoEncoding:
             print('loading model...')
             model = torch.hub.load("facebookresearch/pytorchvideo",
                                    model=self.model_name, pretrained=True).to(self.device).eval()
-            preprocess, clip_duration = get_slowfast_transform()
+            preprocess, clip_duration = get_transform(self.model_name)
             dataloader = get_video_loader(benchmark.stimulus_data['stimulus_path'], 
                                           preprocess, clip_duration)
             feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',

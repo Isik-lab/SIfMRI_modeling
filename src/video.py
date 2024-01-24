@@ -1,9 +1,9 @@
 #
+import torch
+import pandas as pd
 from deepjuice.datasets import CustomDataset
 from pytorchvideo.data.encoded_video import EncodedVideo
 from torch.utils.data import DataLoader
-import pandas as pd
-import torch
 from torchvision.transforms import Compose, Lambda
 from torchvideo.transforms import ResizeVideo, NormalizeVideo
 from pytorchvideo.data.encoded_video import EncodedVideo
@@ -31,12 +31,15 @@ class VideoData(CustomDataset):
 def get_video_loader(video_set, transforms, clip_duration, batch_size = 64, **kwargs):
     if isinstance(video_set, pd.Series) or isinstance(video_set, list):
         return DataLoader(VideoData(video_set, transforms, clip_duration), batch_size, **kwargs)
-    
+
+
+def get_transform(model_name):
+    if 'slowfast' in model_name:
+        return slowfast_transform()
 
 ####################
 # SlowFast transform
 ####################
-
 
 class SlowFast_PackPathway(torch.nn.Module):
     """
@@ -60,7 +63,7 @@ class SlowFast_PackPathway(torch.nn.Module):
         return frame_list
 
 
-def get_slowfast_transform():
+def slowfast_transform():
     mean = [0.45, 0.45, 0.45]
     std = [0.225, 0.225, 0.225]
     crop_size = 256
