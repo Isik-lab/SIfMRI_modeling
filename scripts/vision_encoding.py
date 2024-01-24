@@ -6,7 +6,7 @@ import os
 from src.mri import Benchmark
 from src import encoding
 from deepjuice.model_zoo.options import get_deepjuice_model
-from deepjuice.datasets import get_image_loader
+from deepjuice.procedural.datasets import get_image_loader
 from deepjuice.extraction import FeatureExtractor
 
 

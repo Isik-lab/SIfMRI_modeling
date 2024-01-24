@@ -1,7 +1,7 @@
 #
 import torch
 import pandas as pd
-from deepjuice.datasets import CustomDataset
+from deepjuice.procedural.datasets import CustomDataset
 from pytorchvideo.data.encoded_video import EncodedVideo
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Lambda
