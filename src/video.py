@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Lambda
 from pytorchvideo.transforms import ShortSideScale, Normalize
 from pytorchvideo.data.encoded_video import EncodedVideo
-from pytorchvideo.transforms import ApplyTransformToKey, UniformTemporalSubsample
+from pytorchvideo.transforms import UniformTemporalSubsample
 
 
 class VideoData(CustomDataset):
@@ -72,9 +72,7 @@ def slowfast_transform():
     frames_per_second = 30
    
     clip_duration = (num_frames * sampling_rate)/frames_per_second
-    transform = ApplyTransformToKey(
-        key="videos",
-        transform=Compose(
+    transform = Compose(
             [
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x/255.0),
@@ -82,6 +80,5 @@ def slowfast_transform():
                 ShortSideScale(crop_size),
                 SlowFast_PackPathway()
             ]
-        ),
-    )
+        )
     return transform, clip_duration
