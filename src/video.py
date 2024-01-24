@@ -5,10 +5,7 @@ from deepjuice.procedural.datasets import CustomDataset
 from pytorchvideo.data.encoded_video import EncodedVideo
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Lambda
-from torchvision.transforms._transforms_video import (
-    ResizeVideo,
-    NormalizeVideo,
-)
+from torchvideo.transforms import ResizeVideo, NormalizeVideo
 from pytorchvideo.data.encoded_video import EncodedVideo
 from pytorchvideo.transforms import ApplyTransformToKey, UniformTemporalSubsample
 
