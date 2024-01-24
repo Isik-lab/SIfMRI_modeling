@@ -73,7 +73,7 @@ def slowfast_transform():
    
     clip_duration = (num_frames * sampling_rate)/frames_per_second
     transform = ApplyTransformToKey(
-        key="visdeo",
+        key="videos",
         transform=Compose(
             [
                 UniformTemporalSubsample(num_frames),
