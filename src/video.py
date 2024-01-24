@@ -5,7 +5,7 @@ from deepjuice.procedural.datasets import CustomDataset
 from pytorchvideo.data.encoded_video import EncodedVideo
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Lambda
-from torchvideo.transforms import ResizeVideo, NormalizeVideo
+from pytorchvideo.transforms import ShortSideScale, NormalizeVideo
 from pytorchvideo.data.encoded_video import EncodedVideo
 from pytorchvideo.transforms import ApplyTransformToKey, UniformTemporalSubsample
 
@@ -79,7 +79,7 @@ def slowfast_transform():
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x/255.0),
                 NormalizeVideo(mean, std),
-                ResizeVideo(crop_size),
+                ShortSideScale(crop_size),
                 SlowFast_PackPathway()
             ]
         ),
