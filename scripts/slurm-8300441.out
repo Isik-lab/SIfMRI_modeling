@@ -1,0 +1,48 @@
+Using cache found in /home/emcmaho7/.cache/torch/hub/facebookresearch_pytorchvideo_main
+{'process': 'VideoEncoding', 'overwrite': True, 'model_name': 'slowfast_r50', 'model_input': 'videos', 'data_dir': '/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data', 'extension': 'mp4'}
+loading data...
+                         video_name  ...                                      stimulus_path
+0                -YwZOeyAQC8_15.mp4  ...  /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI...
+1                1AIVH5cEWrI_35.mp4  ...  /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI...
+2  2-8-0-2-5-4-8-8-5028025488_7.mp4  ...  /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI...
+3                 3PJaYWt0cws_5.mp4  ...  /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI...
+4  7-5-1-0-3-6-9-8-3775103698_9.mp4  ...  /home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI...
+
+[5 rows x 13 columns]
+loading model...
+Traceback (most recent call last):
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/scripts/video_encoding.py", line 80, in <module>
+    main()
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/scripts/video_encoding.py", line 76, in main
+    VideoEncoding(args).run()
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/scripts/video_encoding.py", line 55, in run
+    feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/extraction.py", line 58, in __init__
+    sample_maps = self.get_sample(model, inputs, **kwargs)
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/extraction.py", line 244, in get_sample
+    return get_extraction_sample(model, inputs, **sample_kwargs)
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/extraction.py", line 1072, in get_extraction_sample
+    input_sample = get_input_sample(inputs, input_dim, n=sample_size)
+  File "/scratch4/lisik3/emcmaho7/DeepJuiceDev/deepjuice/extraction.py", line 1219, in get_input_sample
+    inputs = next(iter(inputs))
+  File "/home/emcmaho7/.conda/envs/fmri_modeling/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 630, in __next__
+    data = self._next_data()
+  File "/home/emcmaho7/.conda/envs/fmri_modeling/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 674, in _next_data
+    data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+  File "/home/emcmaho7/.conda/envs/fmri_modeling/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 51, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/emcmaho7/.conda/envs/fmri_modeling/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 51, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/src/video.py", line 24, in __getitem__
+    video_data = self.transforms(video_data)
+  File "/home/emcmaho7/.conda/envs/fmri_modeling/lib/python3.10/site-packages/torchvision/transforms/transforms.py", line 95, in __call__
+    img = t(img)
+  File "/home/emcmaho7/.conda/envs/fmri_modeling/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/emcmaho7/.conda/envs/fmri_modeling/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/emcmaho7/.conda/envs/fmri_modeling/lib/python3.10/site-packages/pytorchvideo/transforms/transforms.py", line 74, in forward
+    return pytorchvideo.transforms.functional.uniform_temporal_subsample(
+  File "/home/emcmaho7/.conda/envs/fmri_modeling/lib/python3.10/site-packages/pytorchvideo/transforms/functional.py", line 36, in uniform_temporal_subsample
+    t = x.shape[temporal_dim]
+AttributeError: 'dict' object has no attribute 'shape'
