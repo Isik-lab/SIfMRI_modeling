@@ -18,6 +18,6 @@ echo "perturbation: $perturbation"
 echo "backbone: $backbone"
 
 ml anaconda
-conda activate fmri_modeling
+conda activate deepjuice
 
 python clip_llm_encoding.py --backbone $backbone --perturbation $perturbation --overwrite

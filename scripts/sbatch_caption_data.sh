@@ -12,6 +12,6 @@
 #SBATCH --mail-user=emcmaho7@jh.edu
 
 ml anaconda
-conda activate fmri_modeling
+conda activate deepjuice
 
 python caption_data.py

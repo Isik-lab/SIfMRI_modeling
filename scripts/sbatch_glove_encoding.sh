@@ -15,6 +15,6 @@ perturbation=${1:-stripped_orig}
 echo "perturbation: $perturbation"
 
 ml anaconda
-conda activate fmri_modeling
+conda activate deepjuice
 
 python glove_encoding.py --perturbation $perturbation --overwrite

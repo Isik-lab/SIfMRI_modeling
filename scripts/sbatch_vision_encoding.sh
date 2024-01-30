@@ -15,6 +15,6 @@
 model=${1:-slip_vit_s_yfcc15m}
 
 ml anaconda
-conda activate fmri_modeling
+conda activate deepjuice
 
 python vision_encoding.py --model_uid $model --overwrite

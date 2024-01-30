@@ -18,6 +18,6 @@ echo "perturbation: $perturbation"
 echo "model: $model"
 
 ml anaconda
-conda activate fmri_modeling
+conda activate deepjuice
 
 python llm_encoding.py --model_uid $model --perturbation $perturbation --overwrite
