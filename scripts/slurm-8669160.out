@@ -1,0 +1,121 @@
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 1: setenv: command not found
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 2: setenv: command not found
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 3: setenv: command not found
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 4: setenv: command not found
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 34: syntax error near unexpected token `"${1}"'
+/data/apps/linux-centos8-cascadelake/gcc-9.3.0/anaconda3-2020.07-i7qavhiohb2uwqs4eqjeefzx3kp5jqdu/etc/profile.d/conda.csh: line 34: `    switch ( "${1}" )'
+perturbation: stripped_orig
+model: gpt2
+{'process': 'LLMEncoding', 'overwrite': True, 'model_uid': 'gpt2', 'perturbation': 'stripped_orig', 'data_dir': '/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data', 'stimulus_data_file': '/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data/interim/SentenceDecomposition/stripped_orig.csv', 'out_path': '/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data/interim/LLMEncoding/model-gpt2_perturbation-stripped_orig', 'out_file': '/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data/interim/LLMEncoding/model-gpt2_perturbation-stripped_orig.csv'}
+loading data...
+['a man sits playing video games on his tv while holding a baby with two small dogs resting on a nearby sofa', 'a man with a baby on his lap playing wii', 'a man in shorts sits in a chair next to a standard lamp with a smiling baby on his lap operating a wii remote controller while two small dogs are sat on a nearby sofa', 'a man playing on the wii which is making the baby chuckle while the dog ignores them from the other sofa', 'father & child enjoying a show']
+loading model...
+tokenized_captions_["input_ids"]=tensor([[   64,   582, 10718,  ..., 50257, 50257, 50257],
+        [   64,   582,   351,  ..., 50257, 50257, 50257],
+        [   64,   582,   287,  ..., 50257, 50257, 50257],
+        ...,
+        [   64,   582,  5742,  ..., 50257, 50257, 50257],
+        [   64,   582,   318,  ..., 50257, 50257, 50257],
+        [   64,   257,  5156,  ..., 50257, 50257, 50257]])
+tokenized_captions_["attention_mask"]=tensor([[1, 1, 1,  ..., 0, 0, 0],
+        [1, 1, 1,  ..., 0, 0, 0],
+        [1, 1, 1,  ..., 0, 0, 0],
+        ...,
+        [1, 1, 1,  ..., 0, 0, 0],
+        [1, 1, 1,  ..., 0, 0, 0],
+        [1, 1, 1,  ..., 0, 0, 0]])
+DeepJuice:INFO (_log) - Extracting sample feature_maps with torchinfo.
+Extraction Error Report
+(These Layers Skipped)
+  Embedding-1-2
+   --(add_features) IndexError: No dimension equal to input_size.
+  GPT2Attention-3-2
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-1
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-6
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-2
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-10
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-3
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-14
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-4
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-18
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-5
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-22
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-6
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-26
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-7
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-30
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-8
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-34
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-9
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-38
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-10
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-42
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-11
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Attention-3-46
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+  GPT2Block-2-12
+   --(tensor_fn) RuntimeError: stack expects a non-empty TensorList
+FeatureExtractor Handle for GPT2Model
+  137 feature maps (+37 duplicates); 200 inputs
+  Memory required for full extraction: 247.278 GB
+  Memory usage limiting device set to: cuda:0
+  Memory usage limit currently set to: 24.378 GB
+  12 batch(es) required for current memory limit 
+   Batch-001: 12 feature maps; 24.024 GB 
+   Batch-002: 15 feature maps; 24.024 GB 
+   Batch-003: 12 feature maps; 21.681 GB 
+   Batch-004: 11 feature maps; 19.923 GB 
+   Batch-005: 11 feature maps; 19.923 GB 
+   Batch-006: 11 feature maps; 19.923 GB 
+   Batch-007: 11 feature maps; 19.923 GB 
+   Batch-008: 11 feature maps; 19.923 GB 
+   Batch-009: 11 feature maps; 19.923 GB 
+   Batch-010: 11 feature maps; 19.923 GB 
+   Batch-011: 11 feature maps; 19.923 GB 
+   Batch-012: 10 feature maps; 18.165 GB
+running regressions
+device: cuda
+(0) NVIDIA A100-PCIE-40GB: 40.0 GB (80.0% Free)
+None
+Traceback (most recent call last):
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/scripts/llm_encoding.py", line 77, in <module>
+    main()
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/scripts/llm_encoding.py", line 73, in main
+    LLMEncoding(args).run()
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/scripts/llm_encoding.py", line 57, in run
+    results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_path)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch4/lisik3/emcmaho7/SIfMRI_modeling/src/encoding.py", line 155, in get_training_benchmarking_results
+    for feature_maps in feature_extractor:
+  File "/scratch4/lisik3/emcmaho7/alphajuice/deepjuice/extraction.py", line 131, in __next__
+    return next(self._batch_gen) # multibatch
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch4/lisik3/emcmaho7/alphajuice/deepjuice/extraction.py", line 752, in generate_batches
+    yield get_feature_maps(self.model, self.inputs, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch4/lisik3/emcmaho7/alphajuice/deepjuice/extraction.py", line 1029, in get_feature_maps
+    feature_maps = {uid: torch.empty(n_inputs, *shape).to(output_device) 
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.93 GiB. GPU 0 has a total capacity of 39.56 GiB of which 1.27 GiB is free. Including non-PyTorch memory, this process has 38.29 GiB memory in use. Of the allocated memory 36.84 GiB is allocated by PyTorch, and 85.30 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
