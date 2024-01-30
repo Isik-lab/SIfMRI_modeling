@@ -18,7 +18,6 @@ class VisionEncoding:
         self.process = 'VisionEncoding'
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
-        self.model_input = args.model_input
         self.data_dir = args.data_dir
         self.fresh_start = args.fresh_start
         self.key_frames = [0, 22, 45, 67, 89]
