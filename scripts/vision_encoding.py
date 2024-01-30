@@ -21,10 +21,7 @@ class VisionEncoding:
         self.data_dir = args.data_dir
         self.fresh_start = args.fresh_start
         self.key_frames = [0, 22, 45, 67, 89]
-        if self.model_input == 'videos':
-            self.extension = 'mp4'
-        else:
-            self.extension = 'png'
+        self.device = 'cuda:0'
         print(vars(self))
 
         model_name = self.model_uid.replace('/', '_')
@@ -53,8 +50,7 @@ class VisionEncoding:
             print('Output file already exists. To run again pass --overwrite.')
         else:
             benchmark = self.load_fmri()
-            model_uid, device = 'torchvision_alexnet_imagenet1k_v1', 'cuda:0'
-            results = run_visual_event_pipeline(model_uid, benchmark, device)
+            results = run_visual_event_pipeline(self.model_uid, benchmark, self.device)
             
             # benchmark = self.load_fmri()
             # benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
@@ -76,8 +72,7 @@ class VisionEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_uid', type=str, default='slip_vit_s_yfcc15m')
-    parser.add_argument('--model_input', type='str', default='images')
+    parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
