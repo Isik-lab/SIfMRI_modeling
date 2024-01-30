@@ -1,7 +1,76 @@
-import os, re, cv2
-
+#
+import pandas as pd
+import os
+from glob import glob
+from tqdm import tqdm 
+import os, cv2
 from PIL import Image
 from IPython.display import HTML
+from deepjuice.structural import get_fn_kwargs
+import torch
+
+
+def visual_events_benchmark(event_data, video_dir, image_dir, 
+                            key_frames=['F','L','M'],
+                            target_index=None, **kwargs):
+
+    # event data is our annotations:
+    if isinstance(event_data, str):
+        event_data = pd.read_csv(event_data)
+
+    event_data.columns = [col.replace(' ', '_') for 
+                          col in event_data.columns]
+
+    video_kwargs = get_fn_kwargs(parse_video_data, kwargs)
+    video_data = parse_video_data(video_dir, **video_kwargs)
+
+    process_kwargs = get_fn_kwargs(process_event_videos, kwargs)
+    process_kwargs['key_frames'] = key_frames
+    
+    process_event_videos(video_data, image_dir, **process_kwargs)
+
+    all_frame_paths = sorted(glob(f'{image_dir}/*.png'))
+    
+    event_index = {}
+    image_paths = []
+
+    def get_frame_index(frame_path):
+        return int(frame_path.split('frame_')[-1].split('.')[0])
+
+    frame_indices = [get_frame_index(path) for 
+                     path in all_frame_paths]
+
+    frame_indices = sorted(pd.unique(frame_indices).tolist())
+                               
+    if target_index is not None:
+        if target_index in ['middle', 'median']:
+            target_index = (int(len(frame_indices) // 2))
+            
+        if isinstance(target_index, int):
+            frame_indices = [frame_indices[target_index]]
+            
+        else: # interpretable error
+            raise ValueError("target_index should be None or one of {int, 'middle'}")
+
+    event_data = event_data.merge(video_data)
+            
+    for video_id in event_data.video_id:
+        for frame_id in frame_indices:
+            image_paths += sorted([path for path in all_frame_paths 
+                                   if f'video_{video_id}' in path
+                                   and f'frame_{frame_id}' in path])
+                                  
+            index_offset = (int(video_id)-1) * len(frame_indices)
+            index_range = range(index_offset, index_offset + len(frame_indices))
+            
+            event_index[video_id] = torch.Tensor(index_range).long()
+
+    response_data = event_data.loc[:, 'expanse':'arousal'] # human subjects responses
+
+    return {'response_data': response_data,
+            'image_paths': image_paths,
+            'group_indices': event_index}
+
 
 def display_video(video_path):
     video_html = f"""
@@ -10,6 +79,7 @@ def display_video(video_path):
     </video>
     """
     return HTML(video_html)
+
 
 def process_video(video_path, target_frames=None, verbose=False):
     # Load the video
@@ -28,8 +98,6 @@ def process_video(video_path, target_frames=None, verbose=False):
     
     # Frame index counter
     frame_idx = 0
-
-
     while True:
         # Read a frame from the video
         ret, frame = video.read()
@@ -53,6 +121,7 @@ def process_video(video_path, target_frames=None, verbose=False):
 
     return extracted_frames
 
+
 def count_total_frames(video_path):
     video = cv2.VideoCapture(video_path)
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -60,6 +129,7 @@ def count_total_frames(video_path):
 
     return total_frames
     
+
 def get_sequence_idx(sequence_length=None, every_nth=1, *keys, 
                      first=False, last=False, middle=False):
     
@@ -137,3 +207,50 @@ def extract_frames(video_path, video_id, output_dir=None,
             output_file = output_files[frame_id]
             if not os.path.exists(output_file):
                 frame.save(output_file)
+
+
+def parse_video_data(video_directory, output_file=None, 
+                     root=None, **kwargs):
+
+    if not os.path.exists(video_directory):
+        raise ValueError(f'video directory: {video_directory} does not exist')
+    
+    video_paths = sorted(glob(f'{video_directory}/*.mp4', recursive=True))
+
+    video_uids = []
+    video_data = []
+    for _, video_path in enumerate(video_paths):        
+        video_name = video_path.split('/')[-1]
+        if video_name not in video_uids:
+            video_uids.append(video_name)
+    
+        video_abspath = os.path.abspath(video_path)
+        if root and root=='absolute':
+            video_path = video_abspath
+
+        if root is not None:
+            video_path = os.path.join(root, video_path)
+            
+        video_data.append({'video_name': video_name, 'video_path': video_path})
+
+    group = ['video_name']
+    
+    video_data = (pd.DataFrame(video_data)
+                  .sort_values(by=group)
+                  .reset_index(drop=True))
+    
+    video_ids = video_data.groupby(group).ngroup().values
+    video_data.insert(2, 'video_id', [str(i+1).zfill(3) for i in video_ids])
+
+    if output_file and not os.path.exists(output_file):
+        video_data.to_csv(output_file, index = None)
+
+    return video_data 
+
+
+def process_event_videos(video_data, output_dir, key_frames=['F','L'], keep_every=12):
+    for i, row in tqdm(video_data.iterrows(), total = video_data.shape[0],
+                       desc = 'Processing Event Videos'):
+        
+        extract_frames(row['video_path'], row['video_id'], 
+                       output_dir, *key_frames, keep_every=keep_every)

@@ -5,131 +5,35 @@ import numpy as np
 from sklearn.model_selection import KFold
 from tqdm import tqdm
 import pandas as pd
-from transformers import AutoTokenizer, AutoModel
-from torch.utils.data import DataLoader, TensorDataset, Dataset
-from torch import tensor
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
-from sentence_transformers import SentenceTransformer
-from deepjuice.structural import flatten_nested_list # utility for list flattening
-import clip
+from deepjuice.procedural import pandas_query
+from deepjuice.model_zoo.options import get_deepjuice_model
+from deepjuice.procedural.datasets import get_data_loader
+from deepjuice.extraction import FeatureExtractor
+from deepjuice.procedural.cv_ops import CVIndexer
+from deepjuice.alignment import TorchRidgeGCV
+from deepjuice.reduction import compute_srp
+from deepjuice.alignment import compute_score
 
 
-def captions_to_list(input_captions):
-    all_captions = input_captions.tolist() # list of strings
-    captions = flatten_nested_list([eval(captions)[:5] for captions in all_captions])
-    print(captions[:5])
-    return captions, (len(all_captions), 5)
-
-
-def load_llm(model_uid):
-    model_ = AutoModel.from_pretrained(model_uid)
-    tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
-    print(f'{tokenizer_.eos_token=}')
-    print(f'{tokenizer_.eos_token_id=}')
-    print(f'{tokenizer_.pad_token=}')
-    print(f'{tokenizer_.pad_token_id=}')
-    return model_, tokenizer_
-
-
-def load_gpt():
-    from transformers import GPT2TokenizerFast
-    model_ = AutoModel.from_pretrained('gpt2')
-    tokenizer_ = GPT2TokenizerFast.from_pretrained('gpt2')
-    tokenizer_.add_special_tokens({'pad_token': '[PAD]'})
-    model_.resize_token_embeddings(len(tokenizer_))
-    return model_, tokenizer_
-
-
-class CustomDataset(Dataset):
-    def __init__(self, input_ids, attention_masks):
-        self.input_ids = input_ids
-        self.attention_masks = attention_masks
-
-    def __len__(self):
-        return len(self.input_ids)
-
-    def __getitem__(self, idx):
-        return {
-            'input_ids': tensor(self.input_ids[idx], dtype=torch.long),
-            'attention_mask': tensor(self.attention_masks[idx], dtype=torch.long)
-        }
-
-
-def gpt_extraction(captions, device):
-    model, tokenizer = load_gpt()
-    tokenized_captions = tokenize_captions(tokenizer, captions)
-    tensor_dataset = CustomDataset(tokenized_captions['input_ids'],
-                                   tokenized_captions['attention_mask'])
-    dataloader = DataLoader(tensor_dataset, batch_size=20)
-    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        tensor_fn=moving_grouped_average,
-                                        sample_size=5, reduce_size_by=5,
-                                        output_device=device, exclude_oversize=False)
-    feature_extractor.modify_settings(flatten=True)
-    return feature_extractor
-
-
-def clip_extraction(captions, backbone='RN50', device='cuda'):
-    """
-        input:
-            captions: a list of strings of the captions of the images
-        output: 
-            feature_extractor: DeepJuice feature extractor object
-    """
-    model, _ = clip.load(backbone, device=device)
-    model = model.token_embedding.eval() #select the language encoder
-    tokenized_captions = clip.tokenize(captions)
-    tensor_dataset = TensorDataset(tokenized_captions)
-    print(f'{tensor_dataset=}')
-    dataloader = DataLoader(tensor_dataset, batch_size = 20)
-    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        tensor_fn=moving_grouped_average,
-                                        sample_size=5, reduce_size_by=5,
-                                        output_device='cuda', exclude_oversize=False)
-    feature_extractor.modify_settings(flatten=True)
-    return feature_extractor
-
-
-def tokenize_captions(tokenizer_, captions_):
-    tokenized_captions_ = tokenizer_(captions_, return_tensors='pt', padding='max_length') 
-    print(f'{tokenized_captions_["input_ids"]=}')
-    print(f'{tokenized_captions_["attention_mask"]=}')
-    return tokenized_captions_
-
-
-def load_glove():
-    model = SentenceTransformer('sentence-transformers/average_word_embeddings_glove.6B.300d')
-    model = model.eval()
-    if torch.cuda.is_available():
-        model = model.cuda()
-    else:
-        print('torch error')
-    return model
-
-
-def glove_feature_extraction(captions):
-    model = load_glove()
-    return model.encode(captions)
-
-
-def moving_grouped_average(outputs, input_dim=0, skip=5):
+def moving_grouped_average(outputs, skip=5, input_dim=0):
+    from math import ceil as roundup # for rounding upwards
     return torch.stack([outputs[i*skip:i*skip+skip].mean(dim=input_dim) 
-                        for i in range(outputs.size(0) // skip)])
+                        for i in range(roundup(outputs.shape[input_dim] / skip))])
 
 
-def memory_saving_extraction(model_uid, captions, device):
-    model, tokenizer = load_llm(model_uid)
-    tokenized_captions = tokenize_captions(tokenizer, captions)
-    tensor_dataset = TensorDataset(['input_ids'], tokenized_captions['attention_mask'])
-    dataloader = DataLoader(tensor_dataset, batch_size=20)
-    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        tensor_fn=moving_grouped_average,
-                                        sample_size=5, reduce_size_by=5,
-                                        output_device=device, exclude_oversize=False)
-    feature_extractor.modify_settings(flatten=True)
-    return feature_extractor
+def get_nearest_multiple(a, b):
+    # Find the nearest multiple of b to a
+    nearest_multiple = round(a / b) * b
+    if nearest_multiple % 2 != 0:
+        if (nearest_multiple - a) < (a - (nearest_multiple - b)):
+            nearest_multiple += b
+        else:
+            nearest_multiple -= b
+            
+    return nearest_multiple # integer space
 
 
 def get_training_benchmarking_results(benchmark, feature_extractor,
@@ -246,3 +150,132 @@ def get_glove_training_benchmarking_results(benchmark, feature_map,
         results.append(row)
 
     return pd.DataFrame(results)
+
+
+def run_visual_event_pipeline(model_uid, benchmark, device, **kwargs):
+
+    model, preprocess = get_deepjuice_model(model_uid)
+    
+    response_data = benchmark['response_data']
+    image_paths = benchmark['image_paths']
+    group_index = benchmark['group_indices']
+    
+    target_names = response_data.columns.tolist()
+    n_inputs = len(response_data) # unique total
+
+    dataloader = get_data_loader(image_paths, preprocess)
+    extractor_desc = 'Global Progress (Extractor Batch)'
+    
+    scoresheet_list = [] # append scoresheets by layer / metric
+    method_info = {'regression': {'encoding_model': 'RidgeCV'},
+                   'cvfunction': {'method': '10-iter-5-fold'}}
+
+    sample_group_index = list(group_index.values())[0]
+    average_over_nmany = len(sample_group_index)
+
+    stimulus_info = {'frame_set': None}
+
+    if average_over_nmany >= 1:
+        tensor_fn = None # pass
+        
+        stimulus_info['frame_set'] = 'middle_frame'
+
+    if average_over_nmany >= 2:
+        skip = average_over_nmany
+
+        stimulus_info['frame_set'] = f'average_of_{skip}'
+
+        def tensor_fn(tensor):
+            return moving_grouped_average(tensor, skip)
+
+        batch_size = dataloader.batch_size
+        if kwargs.get('batch_size', None):
+            batch_size = kwargs.pop('batch_size')
+        
+        batch_size = get_nearest_multiple(batch_size, skip)
+        
+        dataloader = get_data_loader(image_paths, preprocess,
+                                     batch_size = batch_size)
+
+    method_info['stimulus_set'] = stimulus_info.copy()
+
+    extractor = FeatureExtractor(model, dataloader, 
+                                 tensor_fn=tensor_fn,
+                                 n_inputs=n_inputs,
+                                 initial_report=False)
+    
+    extractor.modify_settings(flatten=True, batch_progress=True)
+        
+    cv_indexer = CVIndexer(200, iterations=10, random_state=0,
+                           iterable_format='list')
+    
+    cv_iter_idx = cv_indexer.kfold_split(kfolds=5) # get kfolds
+
+    global_srp_matrix = extractor.get_global_srp_matrix()
+    global_srp_on_gpu = global_srp_matrix.clone().to(device)
+
+    y_actual = torch.from_numpy(response_data.to_numpy())
+    y_actual = y_actual.to(torch.float32).to(device) 
+    y_cvsplit, y_heldout = y_actual[:200], y_actual[200:]
+    
+    regression = TorchRidgeGCV(alphas=np.logspace(-1,5,7).tolist(), 
+                               device=device, scale_X=True)
+
+    shape_report = kwargs.pop('print_shapes', False) # for debug
+
+    scoresheet_list = [] # fill with results from each feature map
+
+    for batch_index, feature_maps in enumerate(tqdm(extractor, desc=extractor_desc)):
+
+        feature_map_iterator = tqdm(feature_maps.items(), desc='Social Event Annotation (Layer)')
+
+        for layer_index, (model_layer, feature_map) in enumerate(feature_map_iterator):
+            feature_map_info = {'model_uid': model_uid, 'model_layer': model_layer, 
+                                'model_layer_index': layer_index+1}
+
+
+            srp_kwargs = {'device': device, 'srp_matrix': global_srp_on_gpu}
+            feature_map = compute_srp(feature_map, **srp_kwargs)
+
+
+            feature_map = feature_map.squeeze().to(torch.float32).to(device)
+        
+            for cv_iter, kfold_split_idx in enumerate(cv_iter_idx):
+                y_pred = torch.ones(y_cvsplit.shape, device=device)
+                
+                for kfold, cv_split_idx in kfold_split_idx.items():
+                    X, y = {}, {} # fill with split + cv_idx
+                    for split, cv_idx in cv_split_idx.items():
+                        X[split] = feature_map[cv_idx, :]
+                        y[split] = y_cvsplit[cv_idx]
+
+                    if shape_report:
+                        print(list(X['train'].shape), list(X['test'].shape),
+                              list(y['train'].shape), list(y['test'].shape))
+        
+                    regression.fit(X['train'], y['train'])
+                    
+                    y_preds = {'train': regression.cv_y_pred_, 
+                               'test': regression.predict(X['test'])}
+        
+                    y_pred[cv_split_idx['test']] = y_preds['test']
+        
+                for score_type in ['pearsonr']:
+                    y_true = y_cvsplit.clone()
+                    
+                    scores = compute_score(y_true, y_pred, score_type)
+                    
+                    for target_index, target_name in enumerate(target_names):
+                        score_val = scores[target_index].item()
+                        
+                        scoresheet = {**feature_map_info,
+                                      'target': target_name,
+                                      'cv_iter': cv_iter,
+                                      'score': score_val}
+
+                        for info_type in method_info:
+                            scoresheet = {**scoresheet, **method_info[info_type]}
+        
+                        scoresheet_list.append(scoresheet)
+
+    return pd.DataFrame(scoresheet_list)
