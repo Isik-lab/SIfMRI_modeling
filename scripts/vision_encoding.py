@@ -9,7 +9,8 @@ import shutil
 # from deepjuice.model_zoo.options import get_deepjuice_model
 # from deepjuice.procedural.datasets import get_image_loader
 # from deepjuice.extraction import FeatureExtractor
-from src.video_ops import visual_events_benchmark, run_visual_event_pipeline
+from src.video_ops import visual_events_benchmark
+from src.encoding import run_visual_event_pipeline
 
 
 class VisionEncoding:
