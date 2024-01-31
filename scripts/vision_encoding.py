@@ -19,7 +19,6 @@ class VisionEncoding:
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
-        self.fresh_start = args.fresh_start
         self.key_frames = [0, 22, 45, 67, 89]
         self.device = 'cuda:0'
         print(vars(self))
@@ -30,7 +29,7 @@ class VisionEncoding:
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
     
     def load_fmri(self):
-        if os.path.exists(f'{self.data_dir}/raw/frames') and self.fresh_start:
+        if os.path.exists(f'{self.data_dir}/raw/frames') and self.overwrite:
             shutil.rmtree(f'{self.data_dir}/raw/frames') # delete dir
 
         benchmark = visual_events_benchmark(event_data=f'{self.data_dir}/raw/annotations/annotations.csv', 
