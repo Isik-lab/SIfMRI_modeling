@@ -72,7 +72,6 @@ def visual_events_benchmark(stimulus_data, video_dir, image_dir,
             event_index[video_id] = torch.Tensor(index_range).long()
 
     return {'stimulus_data': stimulus_data, 
-            'response_data': response_data,
             'image_paths': image_paths,
             'group_indices': event_index}
 
