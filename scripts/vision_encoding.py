@@ -32,7 +32,7 @@ class VisionEncoding:
         if os.path.exists(f'{self.data_dir}/raw/frames') and self.overwrite:
             shutil.rmtree(f'{self.data_dir}/raw/frames') # delete dir
 
-        benchmark = visual_events_benchmark(event_data=f'{self.data_dir}/raw/annotations/annotations.csv', 
+        benchmark = visual_events_benchmark(stimulus_data=f'{self.data_dir}/raw/annotations/annotations.csv', 
                                             video_dir=f'{self.data_dir}/raw/videos', 
                                             image_dir=f'{self.data_dir}/raw/frames',
                                             key_frames=self.key_frames,

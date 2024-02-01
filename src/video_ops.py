@@ -18,11 +18,11 @@ def visual_events_benchmark(stimulus_data, video_dir, image_dir,
     if isinstance(stimulus_data, str):
         stimulus_data = pd.read_csv(stimulus_data)
 
-    if isinstance(metadata, str):
-        metadata = pd.read_csv(metadata)
+    # if isinstance(metadata, str):
+    #     metadata = pd.read_csv(metadata)
 
-    if isinstance(response_data, str):
-        response_data = pd.read_csv(response_data)
+    # if isinstance(response_data, str):
+    #     response_data = pd.read_csv(response_data)
 
     stimulus_data.columns = [col.replace(' ', '_') for 
                           col in stimulus_data.columns]
