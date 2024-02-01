@@ -20,7 +20,7 @@ class VisionEncoding:
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
         self.key_frames = [0, 22, 45, 67, 89]
-        self.device = 'cuda:0'
+        self.device = args.device
         print(vars(self))
 
         model_name = self.model_uid.replace('/', '_')
@@ -73,6 +73,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--device', type=str, default='cuda:0')
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')

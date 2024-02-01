@@ -10,16 +10,22 @@ from deepjuice.structural import get_fn_kwargs
 import torch
 
 
-def visual_events_benchmark(event_data, video_dir, image_dir, 
+def visual_events_benchmark(stimulus_data, video_dir, image_dir, 
                             key_frames=['F','L','M'],
                             target_index=None, **kwargs):
 
     # event data is our annotations:
-    if isinstance(event_data, str):
-        event_data = pd.read_csv(event_data)
+    if isinstance(stimulus_data, str):
+        stimulus_data = pd.read_csv(stimulus_data)
 
-    event_data.columns = [col.replace(' ', '_') for 
-                          col in event_data.columns]
+    if isinstance(metadata, str):
+        metadata = pd.read_csv(metadata)
+
+    if isinstance(response_data, str):
+        response_data = pd.read_csv(response_data)
+
+    stimulus_data.columns = [col.replace(' ', '_') for 
+                          col in stimulus_data.columns]
 
     video_kwargs = get_fn_kwargs(parse_video_data, kwargs)
     video_data = parse_video_data(video_dir, **video_kwargs)
@@ -52,9 +58,9 @@ def visual_events_benchmark(event_data, video_dir, image_dir,
         else: # interpretable error
             raise ValueError("target_index should be None or one of {int, 'middle'}")
 
-    event_data = event_data.merge(video_data)
+    stimulus_data = stimulus_data.merge(video_data)
             
-    for video_id in event_data.video_id:
+    for video_id in stimulus_data.video_id:
         for frame_id in frame_indices:
             image_paths += sorted([path for path in all_frame_paths 
                                    if f'video_{video_id}' in path
@@ -65,9 +71,8 @@ def visual_events_benchmark(event_data, video_dir, image_dir,
             
             event_index[video_id] = torch.Tensor(index_range).long()
 
-    response_data = event_data.loc[:, 'expanse':'arousal'] # human subjects responses
-
-    return {'response_data': response_data,
+    return {'stimulus_data': stimulus_data, 
+            'response_data': response_data,
             'image_paths': image_paths,
             'group_indices': event_index}
 
