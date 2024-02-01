@@ -75,3 +75,9 @@ class Benchmark:
         self.stimulus_data.drop(columns='index', inplace=True)
         self.response_data = self.response_data[stim_idx]
 
+    def update(self, iterable):
+        """
+            iterable: dict
+        """
+        for key, value in iterable.items():
+            setattr(self, key, value)

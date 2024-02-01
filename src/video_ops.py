@@ -10,7 +10,7 @@ from deepjuice.structural import get_fn_kwargs
 import torch
 
 
-def visual_events_benchmark(stimulus_data, video_dir, image_dir, 
+def visual_events(stimulus_data, video_dir, image_dir, 
                             key_frames=['F','L','M'],
                             target_index=None, **kwargs):
 

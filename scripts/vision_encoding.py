@@ -4,12 +4,12 @@ import argparse
 import pandas as pd
 import os
 import shutil
-# from src.mri import Benchmark
+from src.mri import Benchmark
 # from src import encoding
 # from deepjuice.model_zoo.options import get_deepjuice_model
 # from deepjuice.procedural.datasets import get_image_loader
 # from deepjuice.extraction import FeatureExtractor
-from src.video_ops import visual_events_benchmark
+from src.video_ops import visual_events
 from src.encoding import run_visual_event_pipeline
 
 
@@ -29,19 +29,22 @@ class VisionEncoding:
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
     
     def load_fmri(self):
+        metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
+        response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
+        stimulus_data_ = pd.read_csv(self.stimulus_data_file)
+        return Benchmark(metadata_, stimulus_data_, response_data_)
+
+    def get_frames(self, benchmark):
         if os.path.exists(f'{self.data_dir}/raw/frames') and self.overwrite:
             shutil.rmtree(f'{self.data_dir}/raw/frames') # delete dir
 
-        benchmark = visual_events_benchmark(stimulus_data=f'{self.data_dir}/raw/annotations/annotations.csv', 
+        events = visual_events(stimulus_data=benchmark.stimulus_data, 
                                             video_dir=f'{self.data_dir}/raw/videos', 
                                             image_dir=f'{self.data_dir}/raw/frames',
                                             key_frames=self.key_frames,
                                             target_index=None)
+        benchmark.update(events)
         return benchmark
-        # metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
-        # response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
-        # stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
-        # return Benchmark(metadata_, stimulus_data_, response_data_)
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
@@ -49,6 +52,8 @@ class VisionEncoding:
             print('Output file already exists. To run again pass --overwrite.')
         else:
             benchmark = self.load_fmri()
+            benchmark.filter_stimulus(stimulus_set='train')
+            benchmark = self.get_frames(benchmark)
             results = run_visual_event_pipeline(self.model_uid, benchmark, self.device)
             
             # benchmark = self.load_fmri()
