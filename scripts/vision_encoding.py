@@ -56,7 +56,7 @@ class VisionEncoding:
 
             # print('loading model...')
             model, preprocess = get_deepjuice_model(self.model_uid)
-            dataloader = get_data_loader(benchmark['image_paths'], preprocess)
+            dataloader = get_data_loader(benchmark.image_paths, preprocess)
 
             # define function to average over frames 
             skip = len(list(benchmark['group_indices'].values())[0])
