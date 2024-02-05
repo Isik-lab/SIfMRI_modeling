@@ -172,7 +172,7 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
 
     # Get the SRP matrix
     global_srp_matrix = feature_extractor.get_global_srp_matrix()
-    global_srp_on_gpu = global_srp_matrix.clone().to(device)
+    global_srp_on_gpu = global_srp_matrix.clone().to(device+':1')
 
     layer_index = 0 # keeps track of depth
     scores_out = None
@@ -181,7 +181,7 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1 # one layer deeper in feature_maps
 
-            srp_kwargs = {'device': device+':2', 'srp_matrix': global_srp_on_gpu}
+            srp_kwargs = {'device': device+':1', 'srp_matrix': global_srp_on_gpu}
             feature_map = compute_srp(feature_map, **srp_kwargs)
 
             # Avoiding "CUDA error: an illegal memory access was encountered"
