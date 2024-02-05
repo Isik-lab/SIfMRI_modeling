@@ -168,8 +168,9 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
                             device=device, scale_X=True,)
     
     # Send the neural data to the GPU
+    print(f'{benchmark.response_data=}')
     y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
-
+    print(f'{y=}')
 
     layer_index = 0 # keeps track of depth
     scores_out = None
