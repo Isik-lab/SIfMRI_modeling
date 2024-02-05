@@ -178,7 +178,7 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1 # one layer deeper in feature_maps
 
-            feature_map = get_feature_map_srps(feature_map, device=device+':1')
+            feature_map = get_feature_map_srps(feature_map, device=device)
 
             # Avoiding "CUDA error: an illegal memory access was encountered"
             X = feature_map.detach().clone().squeeze().to(torch.float32)
