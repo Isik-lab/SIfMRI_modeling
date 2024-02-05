@@ -20,7 +20,7 @@ class VisionEncoding:
         self.save_frames = args.save_frames
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
-        self.key_frames = list(np.arange(1, 90, 15) - 1)
+        self.key_frames = list(np.arange(1, 90, 30) - 1)
         self.device = args.device
         print(vars(self))
 
