@@ -61,7 +61,7 @@ class VisionEncoding:
             dataloader = get_data_loader(benchmark.image_paths, preprocess)
 
             # define function to average over frames 
-            skip = len(list(benchmark['group_indices'].values())[0])
+            skip = len(list(benchmark.group_indices.values())[0])
             def tensor_fn(tensor):
                 return moving_grouped_average(tensor, skip)
             
