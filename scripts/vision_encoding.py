@@ -21,6 +21,7 @@ class VisionEncoding:
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
         self.key_frames = list(np.arange(0, 90, 30))
+        self.video_batch = 20
         self.device = args.device
         print(vars(self))
 
@@ -58,7 +59,8 @@ class VisionEncoding:
 
             # print('loading model...')
             model, preprocess = get_deepjuice_model(self.model_uid)
-            dataloader = get_data_loader(benchmark.image_paths, preprocess)
+            dataloader = get_data_loader(benchmark.image_paths, preprocess,
+                                         batch_size=len(self.key_frames)*self.video_batchß)
 
             # define function to average over frames 
             skip = len(list(benchmark.group_indices.values())[0])
@@ -68,8 +70,8 @@ class VisionEncoding:
             #define the feature extractor
             extractor = FeatureExtractor(model, dataloader, 
                                         tensor_fn=tensor_fn,
-                                        initial_report=False, 
-                                        batch_size=len(self.key_frames))
+                                        initial_report=True,
+                                        output_devce=self.device)
             extractor.modify_settings(flatten=True, batch_progress=True)
             
             # print('running regressions')
