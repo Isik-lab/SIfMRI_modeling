@@ -17,6 +17,7 @@ class VisionEncoding:
     def __init__(self, args):
         self.process = 'VisionEncoding'
         self.overwrite = args.overwrite
+        self.save_frames = args.save_frames
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
         self.key_frames = list(np.arange(0, 90))
@@ -35,7 +36,8 @@ class VisionEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def get_frames(self, benchmark):
-        shutil.rmtree(f'{self.data_dir}/raw/frames') # delete frames
+        if self.save_frames:
+            shutil.rmtree(f'{self.data_dir}/raw/frames') # delete frames
         events = visual_events(stimulus_data=benchmark.stimulus_data, 
                                             video_dir=f'{self.data_dir}/raw/videos', 
                                             image_dir=f'{self.data_dir}/raw/frames',
@@ -81,6 +83,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--save_frames', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--device', type=str, default='cuda:0')
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
