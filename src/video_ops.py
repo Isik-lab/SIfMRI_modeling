@@ -26,14 +26,13 @@ def visual_events(stimulus_data, video_dir, image_dir,
 
     stimulus_data.columns = [col.replace(' ', '_') for 
                           col in stimulus_data.columns]
-
-    video_kwargs = get_fn_kwargs(parse_video_data, kwargs)
-    video_data = parse_video_data(video_dir, **video_kwargs)
+    stimulus_data['video_path'] = stimulus_data['video_name'].apply(lambda x:
+                                                                     os.path.join(video_dir, x))
+    stimulus_data = parse_video_data(stimulus_data)
 
     process_kwargs = get_fn_kwargs(process_event_videos, kwargs)
     process_kwargs['key_frames'] = key_frames
-    
-    process_event_videos(video_data, image_dir, **process_kwargs)
+    process_event_videos(stimulus_data, image_dir, **process_kwargs)
 
     all_frame_paths = sorted(glob(f'{image_dir}/*.png'))
     
@@ -57,8 +56,6 @@ def visual_events(stimulus_data, video_dir, image_dir,
             
         else: # interpretable error
             raise ValueError("target_index should be None or one of {int, 'middle'}")
-
-    stimulus_data = stimulus_data.merge(video_data)
             
     for video_id in stimulus_data.video_id:
         for frame_id in frame_indices:
@@ -166,6 +163,7 @@ def get_sequence_idx(sequence_length=None, every_nth=1, *keys,
     
     return list(sorted(set(output_idx)))
 
+
 def extract_frames(video_path, video_id, output_dir=None, 
                    *key_frames, keep_every=1, **kwargs):
 
@@ -213,41 +211,14 @@ def extract_frames(video_path, video_id, output_dir=None,
                 frame.save(output_file)
 
 
-def parse_video_data(video_directory, output_file=None, 
-                     root=None, **kwargs):
-
-    if not os.path.exists(video_directory):
-        raise ValueError(f'video directory: {video_directory} does not exist')
+def parse_video_data(video_data, group=['video_name']):
     
-    video_paths = sorted(glob(f'{video_directory}/*.mp4', recursive=True))
-
-    video_uids = []
-    video_data = []
-    for _, video_path in enumerate(video_paths):        
-        video_name = video_path.split('/')[-1]
-        if video_name not in video_uids:
-            video_uids.append(video_name)
-    
-        video_abspath = os.path.abspath(video_path)
-        if root and root=='absolute':
-            video_path = video_abspath
-
-        if root is not None:
-            video_path = os.path.join(root, video_path)
-            
-        video_data.append({'video_name': video_name, 'video_path': video_path})
-
-    group = ['video_name']
-    
-    video_data = (pd.DataFrame(video_data)
+    video_data = (video_data
                   .sort_values(by=group)
                   .reset_index(drop=True))
     
     video_ids = video_data.groupby(group).ngroup().values
     video_data.insert(2, 'video_id', [str(i+1).zfill(3) for i in video_ids])
-
-    if output_file and not os.path.exists(output_file):
-        video_data.to_csv(output_file, index = None)
 
     return video_data 
 
