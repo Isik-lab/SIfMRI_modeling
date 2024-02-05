@@ -18,14 +18,6 @@ def visual_events(stimulus_data, video_dir, image_dir,
     if isinstance(stimulus_data, str):
         stimulus_data = pd.read_csv(stimulus_data)
 
-    # if isinstance(metadata, str):
-    #     metadata = pd.read_csv(metadata)
-
-    # if isinstance(response_data, str):
-    #     response_data = pd.read_csv(response_data)
-
-    stimulus_data.columns = [col.replace(' ', '_') for 
-                          col in stimulus_data.columns]
     stimulus_data['video_path'] = stimulus_data['video_name'].apply(lambda x:
                                                                      os.path.join(video_dir, x))
     stimulus_data = parse_video_data(stimulus_data)
@@ -71,15 +63,6 @@ def visual_events(stimulus_data, video_dir, image_dir,
     return {'stimulus_data': stimulus_data, 
             'image_paths': image_paths,
             'group_indices': event_index}
-
-
-def display_video(video_path):
-    video_html = f"""
-    <video width="500" autoplay="true" loop="true">
-      <source src="{video_path}" type="video/mp4">
-    </video>
-    """
-    return HTML(video_html)
 
 
 def process_video(video_path, target_frames=None, verbose=False):
@@ -223,8 +206,8 @@ def parse_video_data(video_data, group=['video_name']):
     return video_data 
 
 
-def process_event_videos(video_data, output_dir, key_frames=['F','L'], keep_every=12):
-    for i, row in tqdm(video_data.iterrows(), total = video_data.shape[0],
+def process_event_videos(video_data, output_dir, key_frames=['F','L'], keep_every=1):
+    for _, row in tqdm(video_data.iterrows(), total = video_data.shape[0],
                        desc = 'Processing Event Videos'):
         
         extract_frames(row['video_path'], row['video_id'], 

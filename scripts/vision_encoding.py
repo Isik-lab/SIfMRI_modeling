@@ -2,15 +2,15 @@
 from pathlib import Path
 import argparse
 import pandas as pd
+import numpy as np
 import os
 import shutil
 from src.mri import Benchmark
-# from src import encoding
-# from deepjuice.model_zoo.options import get_deepjuice_model
-# from deepjuice.procedural.datasets import get_image_loader
-# from deepjuice.extraction import FeatureExtractor
+from deepjuice.model_zoo.options import get_deepjuice_model
+from deepjuice.procedural.datasets import get_data_loader
+from deepjuice.extraction import FeatureExtractor
 from src.video_ops import visual_events
-from src.encoding import run_visual_event_pipeline
+from src.encoding import get_vision_benchmarking_results, moving_grouped_average
 
 
 class VisionEncoding:
@@ -19,7 +19,7 @@ class VisionEncoding:
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
-        self.key_frames = [0, 22, 45, 67, 89]
+        self.key_frames = list(np.arange(0, 90))
         self.device = args.device
         print(vars(self))
 
@@ -35,9 +35,7 @@ class VisionEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def get_frames(self, benchmark):
-        if os.path.exists(f'{self.data_dir}/raw/frames') and self.overwrite:
-            shutil.rmtree(f'{self.data_dir}/raw/frames') # delete dir
-
+        shutil.rmtree(f'{self.data_dir}/raw/frames') # delete frames
         events = visual_events(stimulus_data=benchmark.stimulus_data, 
                                             video_dir=f'{self.data_dir}/raw/videos', 
                                             image_dir=f'{self.data_dir}/raw/frames',
@@ -45,6 +43,7 @@ class VisionEncoding:
                                             target_index=None)
         benchmark.update(events)
         return benchmark
+    
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
@@ -54,20 +53,24 @@ class VisionEncoding:
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
             benchmark = self.get_frames(benchmark)
-            results = run_visual_event_pipeline(self.model_uid, benchmark, self.device)
-            
-            # benchmark = self.load_fmri()
-            # benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
-            # benchmark.filter_stimulus(stimulus_set='train')
 
             # print('loading model...')
-            # model, preprocess = get_deepjuice_model(self.model_uid)
-            # dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
-            # feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
-            #                         flatten=True, progress=True)
+            model, preprocess = get_deepjuice_model(self.model_uid)
+            dataloader = get_data_loader(benchmark['image_paths'], preprocess)
+
+            # define function to average over frames 
+            skip = len(list(benchmark['group_indices'].values())[0])
+            def tensor_fn(tensor):
+                return moving_grouped_average(tensor, skip)
+            
+            #define the feature extractor
+            extractor = FeatureExtractor(model, dataloader, 
+                                        tensor_fn=tensor_fn,
+                                        batch_size=len(self.key_frames))
+            extractor.modify_settings(flatten=True, batch_progress=True)
             
             # print('running regressions')
-            # results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor, self.out_path)
+            results = get_vision_benchmarking_results(benchmark, extractor, self.out_path)
 
             print('saving results')
             results.to_csv(self.out_file, index=False)
