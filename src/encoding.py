@@ -157,8 +157,8 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
                                     n_splits=4, random_seed=0):
 
     # use a CUDA-capable device, if available, else: CPU
-    print(f'device: {device}')
-    print(cuda_device_report())
+    print(f'{device=}')
+    print(f'{cuda_device_report()=}')
 
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
@@ -181,7 +181,7 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1 # one layer deeper in feature_maps
 
-            srp_kwargs = {'device': device, 'srp_matrix': global_srp_on_gpu}
+            srp_kwargs = {'device': device+':2', 'srp_matrix': global_srp_on_gpu}
             feature_map = compute_srp(feature_map, **srp_kwargs)
 
             # Avoiding "CUDA error: an illegal memory access was encountered"

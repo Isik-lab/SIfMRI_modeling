@@ -20,7 +20,7 @@ class VisionEncoding:
         self.save_frames = args.save_frames
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
-        self.key_frames = list(np.arange(0, 90))
+        self.key_frames = list(np.arange(0, 90, 3))
         self.device = args.device
         print(vars(self))
 
@@ -68,6 +68,7 @@ class VisionEncoding:
             #define the feature extractor
             extractor = FeatureExtractor(model, dataloader, 
                                         tensor_fn=tensor_fn,
+                                        initial_report=False, 
                                         batch_size=len(self.key_frames))
             extractor.modify_settings(flatten=True, batch_progress=True)
             
@@ -83,7 +84,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--save_frames', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--save_frames', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--device', type=str, default='cuda:0')
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        

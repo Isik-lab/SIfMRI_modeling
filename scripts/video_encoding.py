@@ -53,7 +53,8 @@ class VideoEncoding:
             dataloader = get_video_loader(benchmark.stimulus_data['stimulus_path'], 
                                           preprocess, clip_duration)
             feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
-                                    flatten=True, progress=True)
+                                                     initial_report=False, 
+                                                     flatten=True, progress=True)
             
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor, self.out_path)
