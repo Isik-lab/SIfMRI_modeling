@@ -170,9 +170,6 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
     # Send the neural data to the GPU
     y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
 
-    # Get the SRP matrix
-    global_srp_matrix = feature_extractor.get_global_srp_matrix()
-    global_srp_on_gpu = global_srp_matrix.clone().to(device+':1')
 
     layer_index = 0 # keeps track of depth
     scores_out = None
@@ -181,8 +178,7 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1 # one layer deeper in feature_maps
 
-            srp_kwargs = {'device': device+':1', 'srp_matrix': global_srp_on_gpu}
-            feature_map = compute_srp(feature_map, **srp_kwargs)
+            feature_map = get_feature_map_srps(feature_map, device=device+':1')
 
             # Avoiding "CUDA error: an illegal memory access was encountered"
             X = feature_map.detach().clone().squeeze().to(torch.float32)
