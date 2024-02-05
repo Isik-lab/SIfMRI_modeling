@@ -168,9 +168,10 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
                             device=device, scale_X=True,)
     
     # Send the neural data to the GPU
-    print(f'{benchmark.response_data=}')
+    print(f'{benchmark.response_data.head()=}')
     y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
     print(f'{y=}')
+    print(f'{y.shape=}')
 
     layer_index = 0 # keeps track of depth
     scores_out = None
@@ -183,14 +184,15 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
 
             # Avoiding "CUDA error: an illegal memory access was encountered"
             X = feature_map.detach().clone().squeeze().to(torch.float32)
+            print(f'{X.shape=}')
             del feature_map
             torch.cuda.empty_cache()
 
             y_pred, y_true = [], [] #Initialize lists
             cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
             for train_index, test_index in cv_iterator:
-                X_train, X_test = X[train_index], X[test_index]
-                y_train, y_test = y[train_index], y[test_index]
+                X_train, X_test = X[train_index].detach().clone(), X[test_index].detach().clone()
+                y_train, y_test = y[train_index].detach().clone(), y[test_index].detach().clone()
                 pipe.fit(X_train, y_train)
                 y_pred.append(pipe.predict(X_test))
                 y_true.append(y_test)
