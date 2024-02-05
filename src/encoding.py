@@ -192,8 +192,8 @@ def get_vision_benchmarking_results(benchmark, feature_extractor, file_path,
             y_pred, y_true = [], [] #Initialize lists
             cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
             for train_index, test_index in cv_iterator:
-                X_train, X_test = X[train_index].detach().clone(), X[test_index].detach().clone()
-                y_train, y_test = y[train_index].detach().clone(), y[test_index].detach().clone()
+                X_train, X_test = X[train_index], X[test_index]
+                y_train, y_test = y[train_index], y[test_index]
                 pipe.fit(X_train, y_train)
                 y_pred.append(pipe.predict(X_test))
                 y_true.append(y_test)
