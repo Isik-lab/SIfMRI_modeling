@@ -148,7 +148,7 @@ def get_sequence_idx(sequence_length=None, every_nth=1, *keys,
 
 
 def extract_frames(video_path, video_id, output_dir=None, 
-                   *key_frames, keep_every=1, **kwargs):
+                   *key_frames, keep_every=30, **kwargs):
 
     if all(isinstance(index, int) for index in key_frames):
         frame_idx = list(key_frames)
@@ -206,7 +206,7 @@ def parse_video_data(video_data, group=['video_name']):
     return video_data 
 
 
-def process_event_videos(video_data, output_dir, key_frames=['F','L'], keep_every=1):
+def process_event_videos(video_data, output_dir, key_frames=['F','L'], keep_every=30):
     for _, row in tqdm(video_data.iterrows(), total = video_data.shape[0],
                        desc = 'Processing Event Videos'):
         
