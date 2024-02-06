@@ -13,7 +13,7 @@ from src.encoding import moving_grouped_average
 
 def slip_language_model(path_to_slip='../../SLIP', device='cuda'):
     from slip import models #SLIP models downloaded from https://github.com/facebookresearch/SLIP/blob/main/models.py
-    from slip from tokenizer import SimpleTokenizer#custom tokenizer for SLIP https://github.com/facebookresearch/SLIP/blob/main/tokenizer.py
+    from slip.tokenizer import SimpleTokenizer#custom tokenizer for SLIP https://github.com/facebookresearch/SLIP/blob/main/tokenizer.py
     from slip import utils #https://github.com/facebookresearch/SLIP/blob/main/utils.py
     from collections import OrderedDict
 
