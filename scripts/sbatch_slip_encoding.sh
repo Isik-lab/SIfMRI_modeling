@@ -17,6 +17,6 @@ echo "perturbation: $perturbation"
 echo "backbone: $backbone"
 
 ml anaconda
-conda activate deepjuice
+conda activate slip
 
 python slip_llm_encoding.py --perturbation $perturbation --overwrite
