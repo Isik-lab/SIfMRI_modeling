@@ -63,6 +63,7 @@ class VisionEncoding:
                                          batch_size=len(self.key_frames)*self.video_batch)
 
             # define function to average over frames 
+            print(f'{benchmark.group_indices.values()=}')
             skip = len(list(benchmark.group_indices.values())[0])
             def tensor_fn(tensor):
                 return moving_grouped_average(tensor, skip)
