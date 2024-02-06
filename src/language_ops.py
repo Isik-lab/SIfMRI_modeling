@@ -1,5 +1,5 @@
 #
-import clip
+import os
 import torch
 from transformers import AutoTokenizer, AutoModel
 from torch.utils.data import DataLoader, TensorDataset, Dataset
@@ -10,6 +10,37 @@ from transformers import GPT2TokenizerFast
 from deepjuice.extraction import FeatureExtractor
 from src.encoding import moving_grouped_average
 
+
+def slip_language_model(path_to_slip='..', device='cuda'):
+    cur_dir = os.getcwd()
+    os.chdir('..')
+    import models #SLIP models downloaded from https://github.com/facebookresearch/SLIP/blob/main/models.py
+    from tokenizer import SimpleTokenizer#custom tokenizer for SLIP https://github.com/facebookresearch/SLIP/blob/main/tokenizer.py
+    import utils #https://github.com/facebookresearch/SLIP/blob/main/utils.py
+    from collections import OrderedDict
+    os.chdir(cur_dir)
+
+    model_filepath = os.path.join(path_to_slip, 'models', 'clip_base_25ep.pt')
+
+    ### following code is taken from https://github.com/facebookresearch/SLIP/blob/main/eval_zeroshot.py
+    #load model information (weights + metadata)
+    ckpt = torch.load(model_filepath, map_location=device)
+    state_dict = OrderedDict()
+    for k, v in ckpt['state_dict'].items():
+        state_dict[k.replace('module.', '')] = v
+
+    # create model architecture and load weights
+    old_args = ckpt['args']
+    print("=> creating model: {}".format(old_args.model))
+    model = getattr(models, old_args.model)(rand_embed=False,
+        ssl_mlp_dim=old_args.ssl_mlp_dim, ssl_emb_dim=old_args.ssl_emb_dim)
+    # model.cuda()
+    model.load_state_dict(state_dict, strict=True)
+
+    #put model in evaluation mode
+    model.eval()
+
+    return utils.get_model(model), SimpleTokenizer()
 
 
 def captions_to_list(input_captions):
@@ -66,27 +97,6 @@ def gpt_extraction(captions, device):
     return feature_extractor
 
 
-def clip_extraction(captions, backbone='RN50', device='cuda'):
-    """
-        input:
-            captions: a list of strings of the captions of the images
-        output: 
-            feature_extractor: DeepJuice feature extractor object
-    """
-    model, _ = clip.load(backbone, device=device)
-    model = model.token_embedding.eval() #select the language encoder
-    tokenized_captions = clip.tokenize(captions)
-    tensor_dataset = TensorDataset(tokenized_captions)
-    print(f'{tensor_dataset=}')
-    dataloader = DataLoader(tensor_dataset, batch_size = 20)
-    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        tensor_fn=moving_grouped_average,
-                                        sample_size=5, reduce_size_by=5,
-                                        output_device='cuda', exclude_oversize=False)
-    feature_extractor.modify_settings(flatten=True)
-    return feature_extractor
-
-
 def tokenize_captions(tokenizer_, captions_):
     tokenized_captions_ = tokenizer_(captions_, return_tensors='pt', padding='max_length') 
     print(f'{tokenized_captions_["input_ids"]=}')
@@ -111,6 +121,19 @@ def glove_feature_extraction(captions):
 
 def memory_saving_extraction(model_uid, captions, device):
     model, tokenizer = load_llm(model_uid)
+    tokenized_captions = tokenize_captions(tokenizer, captions)
+    tensor_dataset = TensorDataset(['input_ids'], tokenized_captions['attention_mask'])
+    dataloader = DataLoader(tensor_dataset, batch_size=20)
+    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
+                                        tensor_fn=moving_grouped_average,
+                                        sample_size=5, reduce_size_by=5,
+                                        output_device=device, exclude_oversize=False)
+    feature_extractor.modify_settings(flatten=True)
+    return feature_extractor
+
+
+def slip_extraction(captions, device):
+    model, tokenizer = slip_language_model()
     tokenized_captions = tokenize_captions(tokenizer, captions)
     tensor_dataset = TensorDataset(['input_ids'], tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size=20)

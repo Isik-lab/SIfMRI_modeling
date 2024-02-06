@@ -8,9 +8,9 @@ import torch
 from src import encoding
 
 
-class CLIPLEncoding:
+class SLIPEncoding:
     def __init__(self, args):
-        self.process = 'CLIPLEncoding'
+        self.process = 'SLIPEncoding'
         self.overwrite = args.overwrite
         self.backbone = args.backbone
         self.perturbation = args.perturbation
@@ -45,9 +45,9 @@ class CLIPLEncoding:
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
             captions, _ = encoding.captions_to_list(benchmark.stimulus_data.captions)
-            
+
             print('loading model...')
-            feature_extractor = encoding.clip_extraction(captions, self.backbone, self.device)
+            feature_extractor = encoding.slip_extraction(captions, self.backbone, self.device)
 
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_path)
@@ -66,7 +66,7 @@ def main():
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
     args = parser.parse_args()
-    CLIPLEncoding(args).run()
+    SLIPEncoding(args).run()
 
 
 if __name__ == '__main__':
