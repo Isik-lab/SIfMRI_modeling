@@ -44,7 +44,7 @@ class SLIPEncoding:
             print('loading data...')
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
-            captions, _ = encoding.captions_to_list(benchmark.stimulus_data.captions)
+            captions, _ = language_ops.captions_to_list(benchmark.stimulus_data.captions)
 
             print('loading model...')
             feature_extractor = language_ops.slip_extraction(captions, self.device)
