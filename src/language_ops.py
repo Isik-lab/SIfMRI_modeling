@@ -11,7 +11,7 @@ from deepjuice.extraction import FeatureExtractor
 from src.encoding import moving_grouped_average
 
 
-def slip_language_model(path_to_slip='../..', device='cuda'):
+def slip_language_model(path_to_slip='../../SLIP', device='cuda'):
     cur_dir = os.getcwd()
     os.chdir(path_to_slip)
     import models #SLIP models downloaded from https://github.com/facebookresearch/SLIP/blob/main/models.py

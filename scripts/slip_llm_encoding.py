@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 import torch
-from src import encoding
+from src import encoding, language_ops
 
 
 class SLIPEncoding:
@@ -47,7 +47,7 @@ class SLIPEncoding:
             captions, _ = encoding.captions_to_list(benchmark.stimulus_data.captions)
 
             print('loading model...')
-            feature_extractor = encoding.slip_extraction(captions, self.backbone, self.device)
+            feature_extractor = language_ops.slip_extraction(captions, self.device)
 
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_path)
