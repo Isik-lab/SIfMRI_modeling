@@ -19,7 +19,6 @@ def slip_language_model(path_to_slip='../../SLIP', device='cuda'):
     from tokenizer import SimpleTokenizer#custom tokenizer for SLIP https://github.com/facebookresearch/SLIP/blob/main/tokenizer.py
     import utils #https://github.com/facebookresearch/SLIP/blob/main/utils.py
     from collections import OrderedDict
-    os.chdir(cur_dir)
 
     model_filepath = os.path.join(path_to_slip, 'models', 'clip_base_25ep.pt')
 
@@ -41,6 +40,8 @@ def slip_language_model(path_to_slip='../../SLIP', device='cuda'):
     #put model in evaluation mode
     model.eval()
 
+    #change back to original directory
+    os.chdir(cur_dir)
     return utils.get_model(model), SimpleTokenizer()
 
 
