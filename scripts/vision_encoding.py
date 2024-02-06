@@ -20,8 +20,7 @@ class VisionEncoding:
         self.save_frames = args.save_frames
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
-        self.key_frames = list(np.arange(0, 90, 45))
-        self.video_batch = 20
+        self.keep_every = 15
         self.device = args.device
         print(vars(self))
 
@@ -42,7 +41,7 @@ class VisionEncoding:
         events = visual_events(stimulus_data=benchmark.stimulus_data, 
                                             video_dir=f'{self.data_dir}/raw/videos', 
                                             image_dir=f'{self.data_dir}/raw/frames',
-                                            key_frames=self.key_frames,
+                                            keep_every=self.keep_every,
                                             target_index=None)
         benchmark.update(events)
         return benchmark
@@ -89,6 +88,7 @@ class VisionEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
+    parser.add_argument('--keep_every', type=int, default=30)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--save_frames', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--device', type=str, default='cuda:0')

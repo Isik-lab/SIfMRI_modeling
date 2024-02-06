@@ -11,7 +11,7 @@ import torch
 
 
 def visual_events(stimulus_data, video_dir, image_dir, 
-                            key_frames=['F','L','M'],
+                            keep_every=2,
                             target_index=None, **kwargs):
 
     # event data is our annotations:
@@ -23,7 +23,7 @@ def visual_events(stimulus_data, video_dir, image_dir,
     stimulus_data = parse_video_data(stimulus_data)
 
     process_kwargs = get_fn_kwargs(process_event_videos, kwargs)
-    process_kwargs['key_frames'] = key_frames
+    process_kwargs['keep_every'] = keep_every
     process_event_videos(stimulus_data, image_dir, **process_kwargs)
 
     all_frame_paths = sorted(glob(f'{image_dir}/*.png'))
