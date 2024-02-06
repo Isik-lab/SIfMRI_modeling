@@ -16,7 +16,7 @@ class SLIPEncoding:
         self.perturbation = args.perturbation
         self.data_dir = args.data_dir
         self.top_dir = args.top_dir
-        self.model_filepath = os.path.join(self.top_dir, 'SLIP', 'slip', 'models', self.backbone+'pt')
+        self.model_filepath = os.path.join(self.top_dir, 'SLIP', 'slip', 'models', self.backbone+'.pt')
 
         if self.perturbation == 'none':
             self.stimulus_data_file = f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv'
