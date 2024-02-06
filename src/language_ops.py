@@ -130,10 +130,4 @@ def memory_saving_extraction(model_uid, captions, device):
 def slip_extraction(model_filepath, captions, device):
     model, tokenizer = slip_language_model(model_filepath)
     tokenized_captions = tokenizer(captions).view(-1, 77).contiguous()
-    dataloader = DataLoader(TensorDataset(tokenized_captions), batch_size=20)
-    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        tensor_fn=moving_grouped_average,
-                                        sample_size=5, reduce_size_by=5,
-                                        output_device=device, exclude_oversize=False)
-    feature_extractor.modify_settings(flatten=True)
-    return feature_extractor
+    return model.encode_text(tokenized_captions)

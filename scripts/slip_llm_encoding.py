@@ -49,10 +49,10 @@ class SLIPEncoding:
             captions, _ = language_ops.captions_to_list(benchmark.stimulus_data.captions)
 
             print('loading model...')
-            feature_extractor = language_ops.slip_extraction(self.model_filepath, captions, self.device)
+            features = language_ops.slip_extraction(self.model_filepath, captions, self.device)
 
             print('running regressions')
-            results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_path)
+            results = encoding.get_glove_training_benchmarking_results(benchmark, features)
 
             print('saving results')
             results.to_csv(self.out_file, index=False)
