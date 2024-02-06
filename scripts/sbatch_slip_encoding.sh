@@ -12,7 +12,6 @@
 #SBATCH --mail-user=emcmaho7@jh.edu
 
 perturbation=${1:-stripped_orig}
-backbone=${2:-RN50}
 
 echo "perturbation: $perturbation"
 echo "backbone: $backbone"
@@ -20,4 +19,4 @@ echo "backbone: $backbone"
 ml anaconda
 conda activate deepjuice
 
-python slip_llm_encoding.py --backbone $backbone --perturbation $perturbation --overwrite
+python slip_llm_encoding.py --perturbation $perturbation --overwrite
