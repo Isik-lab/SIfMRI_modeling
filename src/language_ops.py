@@ -117,7 +117,7 @@ def glove_feature_extraction(captions):
 def memory_saving_extraction(model_uid, captions, device):
     model, tokenizer = load_llm(model_uid)
     tokenized_captions = tokenize_captions(tokenizer, captions)
-    tensor_dataset = TensorDataset(['input_ids'], tokenized_captions['attention_mask'])
+    tensor_dataset = TensorDataset(tokenized_captions['input_ids'], tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size=20)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
                                         tensor_fn=moving_grouped_average,
@@ -129,9 +129,8 @@ def memory_saving_extraction(model_uid, captions, device):
 
 def slip_extraction(model_filepath, captions, device):
     model, tokenizer = slip_language_model(model_filepath)
-    tokenized_captions = tokenize_captions(tokenizer, captions)
-    tensor_dataset = TensorDataset(['input_ids'], tokenized_captions['attention_mask'])
-    dataloader = DataLoader(tensor_dataset, batch_size=20)
+    tokenized_captions = tokenizer(captions).view(-1, 77).contiguous()
+    dataloader = DataLoader(TensorDataset(tokenized_captions), batch_size=20)
     feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
                                         tensor_fn=moving_grouped_average,
                                         sample_size=5, reduce_size_by=5,
