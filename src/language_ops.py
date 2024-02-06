@@ -14,6 +14,7 @@ from src.encoding import moving_grouped_average
 def slip_language_model(path_to_slip='../../SLIP', device='cuda'):
     cur_dir = os.getcwd()
     os.chdir(path_to_slip)
+    print(os.listdir())
     import models #SLIP models downloaded from https://github.com/facebookresearch/SLIP/blob/main/models.py
     from tokenizer import SimpleTokenizer#custom tokenizer for SLIP https://github.com/facebookresearch/SLIP/blob/main/tokenizer.py
     import utils #https://github.com/facebookresearch/SLIP/blob/main/utils.py
