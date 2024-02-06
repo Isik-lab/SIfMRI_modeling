@@ -1,7 +1,7 @@
 #
 import torch
 import pandas as pd
-from deepjuice.procedural.datasets import CustomDataset
+from deepjuice.procedural.datasets import CustomData
 from pytorchvideo.data.encoded_video import EncodedVideo
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Lambda
@@ -10,7 +10,7 @@ from pytorchvideo.data.encoded_video import EncodedVideo
 from pytorchvideo.transforms import UniformTemporalSubsample
 
 
-class VideoData(CustomDataset):
+class VideoData(CustomData):
     def __init__(self, video_paths, clip_duration, transforms=None):
         self.videos = video_paths
         self.transforms = transforms
