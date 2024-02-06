@@ -10,7 +10,7 @@ from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
 from src.video_ops import visual_events
-from src.encoding import get_vision_benchmarking_results, moving_grouped_average
+from src.encoding import get_vision_benchmarking_results, moving_grouped_average, get_nearest_multiple
 
 
 class VisionEncoding:
@@ -57,22 +57,25 @@ class VisionEncoding:
             benchmark.filter_stimulus(stimulus_set='train')
             benchmark = self.get_frames(benchmark)
 
-            # print('loading model...')
-            model, preprocess = get_deepjuice_model(self.model_uid)
-            dataloader = get_data_loader(benchmark.image_paths, preprocess,
-                                         batch_size=len(self.key_frames)*self.video_batch)
-
             # define function to average over frames 
-            print(f'{benchmark.group_indices.values()=}')
             skip = len(list(benchmark.group_indices.values())[0])
+            print(f'{skip=}')
             def tensor_fn(tensor):
                 return moving_grouped_average(tensor, skip)
-            
+
+            model, preprocess = get_deepjuice_model(self.model_uid)
+            dataloader = get_data_loader(benchmark.image_paths, preprocess)
+            batch_size = get_nearest_multiple(dataloader.batch_size, skip)
+            print(f'{batch_size=}')
+            dataloader = get_data_loader(benchmark.image_paths, preprocess, batch_size=batch_size)
+
             #define the feature extractor
             extractor = FeatureExtractor(model, dataloader, 
                                         tensor_fn=tensor_fn,
+                                        input_modatlity='text',
                                         initial_report=True,
-                                        output_devce=self.device)
+                                        output_devce=self.device,
+                                        n_inputs=len(benchmark.stimulus_data))
             extractor.modify_settings(flatten=True, batch_progress=True)
             
             # print('running regressions')
