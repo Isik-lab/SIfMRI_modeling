@@ -15,6 +15,6 @@
 model=${1:-slowfast_r50}
 
 ml anaconda
-conda activate deepjuice
+conda activate deepjuice_video
 
 python video_encoding.py --model_name $model --model_input videos --overwrite
