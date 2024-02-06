@@ -11,13 +11,11 @@ from deepjuice.extraction import FeatureExtractor
 from src.encoding import moving_grouped_average
 
 
-def slip_language_model(path_to_slip='../../SLIP', device='cuda'):
+def slip_language_model(model_filepath, device='cuda'):
     from slip import models #SLIP models downloaded from https://github.com/facebookresearch/SLIP/blob/main/models.py
     from slip.tokenizer import SimpleTokenizer#custom tokenizer for SLIP https://github.com/facebookresearch/SLIP/blob/main/tokenizer.py
     from slip import utils #https://github.com/facebookresearch/SLIP/blob/main/utils.py
     from collections import OrderedDict
-
-    model_filepath = os.path.join(path_to_slip, 'models', 'clip_base_25ep.pt')
 
     ### following code is taken from https://github.com/facebookresearch/SLIP/blob/main/eval_zeroshot.py
     #load model information (weights + metadata)
@@ -129,8 +127,8 @@ def memory_saving_extraction(model_uid, captions, device):
     return feature_extractor
 
 
-def slip_extraction(captions, device):
-    model, tokenizer = slip_language_model()
+def slip_extraction(model_filepath, captions, device):
+    model, tokenizer = slip_language_model(model_filepath)
     tokenized_captions = tokenize_captions(tokenizer, captions)
     tensor_dataset = TensorDataset(['input_ids'], tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size=20)

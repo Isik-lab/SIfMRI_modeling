@@ -15,6 +15,8 @@ class SLIPEncoding:
         self.backbone = args.backbone
         self.perturbation = args.perturbation
         self.data_dir = args.data_dir
+        self.top_dir = args.top_dir
+        self.model_filepath = os.path.join(self.top_dir, 'SLIP', 'slip', 'models', self.backbone+'pt')
 
         if self.perturbation == 'none':
             self.stimulus_data_file = f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv'
@@ -47,7 +49,7 @@ class SLIPEncoding:
             captions, _ = language_ops.captions_to_list(benchmark.stimulus_data.captions)
 
             print('loading model...')
-            feature_extractor = language_ops.slip_extraction(captions, self.device)
+            feature_extractor = language_ops.slip_extraction(self.model_filepath, captions, self.device)
 
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_path)
@@ -59,9 +61,11 @@ class SLIPEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--backbone', type=str, default='RN50')
+    parser.add_argument('--backbone', type=str, default='clip_base_25ep')
     parser.add_argument('--perturbation', type=str, default='corrected_unmasked')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--top_dir', '-top', type=str,
+                        default='/home/emcmaho7/scratch4-lisik3/emcmaho7/')
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
