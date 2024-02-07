@@ -1,4 +1,4 @@
-#/Applications/anaconda3/envs/nibabel/bin/python
+#/home/emcmaho7/.conda/envs/deepjuice/bin/python
 from pathlib import Path
 import argparse
 import pandas as pd
@@ -52,10 +52,10 @@ class GLoVeEncoding:
 
             print('loading model...')
             features = get_features(captions, reshape_dim)
-            print(features.shape)
+            print(f'{features.shape=}')
 
             print('running regressions')
-            results = encoding.get_glove_training_benchmarking_results(benchmark, features)
+            results = encoding.get_lm_encoded_training_benchmarking_results(benchmark, features)
 
             print('saving results')
             results.to_csv(self.out_file, index=False)

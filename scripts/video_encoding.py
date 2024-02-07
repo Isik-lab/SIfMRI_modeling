@@ -1,4 +1,4 @@
-#/Applications/anaconda3/envs/nibabel/bin/python
+#/home/emcmaho7/.conda/envs/deepjuice_video/bin/python
 from pathlib import Path
 import argparse
 import pandas as pd
@@ -7,7 +7,7 @@ from src.mri import Benchmark
 from src import encoding
 import torch
 from deepjuice.extraction import FeatureExtractor
-from src.video import get_video_loader, get_transform
+from src import video_ops
 
 
 class VideoEncoding:
@@ -17,6 +17,7 @@ class VideoEncoding:
         self.model_name = args.model_name
         self.model_input = args.model_input
         self.data_dir = args.data_dir
+        self.clip_duration = 3
         if self.model_input == 'videos':
             self.extension = 'mp4'
         else:
@@ -49,10 +50,11 @@ class VideoEncoding:
             print('loading model...')
             model = torch.hub.load("facebookresearch/pytorchvideo",
                                    model=self.model_name, pretrained=True).to(self.device).eval()
-            preprocess, clip_duration = get_transform(self.model_name)
-            dataloader = get_video_loader(benchmark.stimulus_data['stimulus_path'], 
-                                          preprocess, clip_duration)
-            feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
+            preprocess = video_ops.get_transform(self.model_name)
+            print(f'{preprocess=}')
+            dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
+                                                    self.clip_duration, preprocess, batch_size=5)
+            feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
                                                      initial_report=False, 
                                                      flatten=True, progress=True)
             
@@ -67,7 +69,7 @@ class VideoEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str, default='slowfast_r50')
-    parser.add_argument('--model_input', type=str, default='images')
+    parser.add_argument('--model_input', type=str, default='videos')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        

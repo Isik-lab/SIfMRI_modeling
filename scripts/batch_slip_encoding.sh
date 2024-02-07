@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --job-name=model_encoding
+#SBATCH --job-name=slip
 #SBATCH --time=10:00
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
@@ -10,8 +10,10 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=end
 #SBATCH --mail-user=emcmaho7@jh.edu
+#SBATCH --output=slurm-%x-%j.out
 
-perturbation=${1:-stripped_orig}
+backbone=${1:-clip_small_25ep}
+perturbation=${2:-stripped_orig}
 
 echo "perturbation: $perturbation"
 echo "backbone: $backbone"
@@ -19,4 +21,4 @@ echo "backbone: $backbone"
 ml anaconda
 conda activate slip
 
-python slip_llm_encoding.py --perturbation $perturbation --overwrite
+python slip_llm_encoding.py --backbone $backbone --perturbation $perturbation --overwrite

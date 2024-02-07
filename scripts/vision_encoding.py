@@ -1,4 +1,4 @@
-#/Applications/anaconda3/envs/nibabel/bin/python
+#/home/emcmaho7/.conda/envs/deepjuice/bin/python
 from pathlib import Path
 import argparse
 import pandas as pd
@@ -9,8 +9,9 @@ from src.mri import Benchmark
 from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
-from src.video_ops import visual_events
-from src.encoding import get_vision_benchmarking_results, moving_grouped_average, get_nearest_multiple
+from src.frame_ops import visual_events
+from src.encoding import get_vision_benchmarking_results
+from src.tools import moving_grouped_average, get_nearest_multiple
 
 
 class VisionEncoding:

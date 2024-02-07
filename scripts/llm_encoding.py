@@ -1,11 +1,11 @@
-#/Applications/anaconda3/envs/nibabel/bin/python
+#/home/emcmaho7/.conda/envs/deepjuice/bin/python
 from pathlib import Path
 import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
 import torch
-from src import encoding
+from src import encoding, language_ops
 
 
 class LLMEncoding:
@@ -45,13 +45,13 @@ class LLMEncoding:
             print('loading data...')
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
-            captions, _ = encoding.captions_to_list(benchmark.stimulus_data.captions)
+            captions, _ = language_ops.captions_to_list(benchmark.stimulus_data.captions)
             
             print('loading model...')
             if 'gpt2' in self.model_uid:
-                feature_extractor = encoding.gpt_extraction(captions, self.device)
+                feature_extractor = language_ops.gpt_extraction(captions, self.device)
             else:
-                feature_extractor = encoding.memory_saving_extraction(self.model_uid, captions, self.device)
+                feature_extractor = language_ops.memory_saving_extraction(self.model_uid, captions, self.device)
 
             print('running regressions')
             results = encoding.get_training_benchmarking_results(benchmark, feature_extractor, self.out_path)
