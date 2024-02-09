@@ -18,24 +18,6 @@ from deepjuice.reduction import compute_srp
 from deepjuice.alignment import compute_score
 
 
-def moving_grouped_average(outputs, skip=5, input_dim=0):
-    from math import ceil as roundup # for rounding upwards
-    return torch.stack([outputs[i*skip:i*skip+skip].mean(dim=input_dim) 
-                        for i in range(roundup(outputs.shape[input_dim] / skip))])
-
-
-def get_nearest_multiple(a, b):
-    # Find the nearest multiple of b to a
-    nearest_multiple = round(a / b) * b
-    if nearest_multiple % 2 != 0:
-        if (nearest_multiple - a) < (a - (nearest_multiple - b)):
-            nearest_multiple += b
-        else:
-            nearest_multiple -= b
-            
-    return nearest_multiple # integer space
-
-
 def get_training_benchmarking_results(benchmark, feature_extractor,
                                       file_path,
                                       layer_index_offset=0,
@@ -109,13 +91,12 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
     return pd.DataFrame(results)
 
 
-def get_glove_training_benchmarking_results(benchmark, feature_map,
-                                      device='cuda',
+def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device='cuda',
                                       n_splits=4, random_seed=0, 
                                       alphas=[10.**power for power in np.arange(-5, 2)]):
     # use a CUDA-capable device, if available, else: CPU
-    print(f'device: {device}')
-    print(cuda_device_report())
+    print(f'{device=}')
+    print(f'{cuda_device_report()}')
 
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
@@ -123,14 +104,14 @@ def get_glove_training_benchmarking_results(benchmark, feature_map,
     pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
                             device=device, scale_X=True,)
             
-    # Avoiding "CUDA error: an illegal memory access was encountered"
+    # Get X
     feature_map = get_feature_map_srps(feature_map, device=device)
-    X = feature_map.detach().clone().squeeze().to(torch.float32)
-    del feature_map
-    torch.cuda.empty_cache()
+    X = feature_map.detach().clone().squeeze().to(torch.float32).to(device)
+    print(f'{X.shape=}')
 
     # Send the neural data to the GPU
     y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
+    print(f'{y.shape=}')
 
     y_pred, y_true = [], [] #Initialize lists
     cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)

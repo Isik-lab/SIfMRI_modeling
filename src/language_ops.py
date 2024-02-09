@@ -1,6 +1,7 @@
 #
 import os
 import torch
+from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
 from torch.utils.data import DataLoader, TensorDataset, Dataset
 from torch import tensor
@@ -8,7 +9,8 @@ from sentence_transformers import SentenceTransformer
 from deepjuice.structural import flatten_nested_list # utility for list flattening
 from transformers import GPT2TokenizerFast
 from deepjuice.extraction import FeatureExtractor
-from src.encoding import moving_grouped_average
+from src.tools import moving_grouped_average
+import numpy as np
 
 
 def slip_language_model(model_filepath, device='cuda'):
@@ -29,13 +31,14 @@ def slip_language_model(model_filepath, device='cuda'):
     print("=> creating model: {}".format(old_args.model))
     model = getattr(models, old_args.model)(rand_embed=False,
         ssl_mlp_dim=old_args.ssl_mlp_dim, ssl_emb_dim=old_args.ssl_emb_dim)
-    # model.cuda()
-    model.load_state_dict(state_dict, strict=True)
-
     #put model in evaluation mode
+    if 'cuda' in device:
+        model.cuda()    
+    model.load_state_dict(state_dict, strict=True)
+    print("=> loaded epoch {}".format(ckpt['epoch']))
+    
     model.eval()
-
-    return utils.get_model(model), SimpleTokenizer()
+    return model, SimpleTokenizer()
 
 
 def captions_to_list(input_captions):
@@ -83,11 +86,11 @@ def gpt_extraction(captions, device):
     tokenized_captions = tokenize_captions(tokenizer, captions)
     tensor_dataset = CustomDataset(tokenized_captions['input_ids'],
                                    tokenized_captions['attention_mask'])
-    dataloader = DataLoader(tensor_dataset, batch_size=20)
-    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
+    dataloader = DataLoader(tensor_dataset, batch_size=5)
+    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=True,
                                         tensor_fn=moving_grouped_average,
-                                        sample_size=5, reduce_size_by=5,
-                                        output_device=device, exclude_oversize=False)
+                                        memory_limit='10GB',
+                                        output_device=device, exclude_oversize=True)
     feature_extractor.modify_settings(flatten=True)
     return feature_extractor
 
@@ -119,15 +122,26 @@ def memory_saving_extraction(model_uid, captions, device):
     tokenized_captions = tokenize_captions(tokenizer, captions)
     tensor_dataset = TensorDataset(tokenized_captions['input_ids'], tokenized_captions['attention_mask'])
     dataloader = DataLoader(tensor_dataset, batch_size=20)
-    feature_extractor = FeatureExtractor(model, dataloader, remove_duplicates=False,
-                                        tensor_fn=moving_grouped_average,
-                                        sample_size=5, reduce_size_by=5,
-                                        output_device=device, exclude_oversize=False)
+    feature_extractor = FeatureExtractor(model, dataloader,
+                                        memory_limit='20GB', output_device=device)
     feature_extractor.modify_settings(flatten=True)
     return feature_extractor
 
 
-def slip_extraction(model_filepath, captions, device):
-    model, tokenizer = slip_language_model(model_filepath)
-    tokenized_captions = tokenizer(captions).view(-1, 77).contiguous()
-    return model.encode_text(tokenized_captions)
+def slip_feature_extraction(model_filepath, captions, device):
+    from slip import utils
+    model, tokenizer = slip_language_model(model_filepath, device=device)
+    print('encoding captions...')
+
+    features = []
+    caption_iterator = tqdm(captions, desc='Encoding captions', total=len(captions))
+    with torch.no_grad():
+        for caption in caption_iterator:
+            tokenized_caption = tokenizer(caption)
+            if 'cuda' in device:
+                tokenized_caption = tokenized_caption.cuda(non_blocking=True)
+            tokenized_caption = tokenized_caption.view(-1, 77).contiguous()
+            encoded_caption = utils.get_model(model).encode_text(tokenized_caption)
+            features.append(encoded_caption.detach().numpy().squeeze())
+  
+    return np.vstack(features)

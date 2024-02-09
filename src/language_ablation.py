@@ -14,7 +14,7 @@ def shuffle_sentence(sentence):
     return ' '.join(words)  # Join the words back into a sentence
 
 
-def mask_prep_phrases(text, filler='[MASK]', model_name='en_core_web_trf'):
+def mask_prep_phrases(text, filler='[MASK]', model_name='en_core_web_sm'):
     nlp = spacy.load(model_name)
     doc = nlp(text)
     
@@ -42,7 +42,7 @@ def mask_prep_phrases(text, filler='[MASK]', model_name='en_core_web_trf'):
         return strip_sentence(masked_text)
 
 
-def mask_direct_objects(text, filler='[MASK]', model_name='en_core_web_trf'):
+def mask_direct_objects(text, filler='[MASK]', model_name='en_core_web_sm'):
     nlp = spacy.load(model_name)
     doc = nlp(text)
 
@@ -57,7 +57,7 @@ def mask_direct_objects(text, filler='[MASK]', model_name='en_core_web_trf'):
     return strip_sentence(masked_text)
 
 
-def mask_main_subjects(text, filler='[MASK]', model_name='en_core_web_trf'):
+def mask_main_subjects(text, filler='[MASK]', model_name='en_core_web_sm'):
     nlp = spacy.load(model_name)
     doc = nlp(text)
 
@@ -76,7 +76,7 @@ def mask_main_subjects(text, filler='[MASK]', model_name='en_core_web_trf'):
     return strip_sentence(masked_text)
 
 
-def mask_main_verb_phrase(text, filler='[MASK]', model_name='en_core_web_trf'):
+def mask_main_verb_phrase(text, filler='[MASK]', model_name='en_core_web_sm'):
     nlp = spacy.load(model_name)
     doc = nlp(text)
 
@@ -100,7 +100,7 @@ def mask_main_verb_phrase(text, filler='[MASK]', model_name='en_core_web_trf'):
     return strip_sentence(masked_text)
 
 
-def mask_adverbial_clauses(text, filler='[MASK]', model_name='en_core_web_trf'):
+def mask_adverbial_clauses(text, filler='[MASK]', model_name='en_core_web_sm'):
     nlp = spacy.load(model_name)
     doc = nlp(text)
 
@@ -126,7 +126,7 @@ def mask_adverbial_clauses(text, filler='[MASK]', model_name='en_core_web_trf'):
     return strip_sentence(masked_text)
 
 
-def mask_all_nouns(text, filler='[MASK]', model_name='en_core_web_trf'):
+def mask_all_nouns(text, filler='[MASK]', model_name='en_core_web_sm'):
     nlp = spacy.load(model_name)
     doc = nlp(text)
 
@@ -146,7 +146,7 @@ def mask_all_nouns(text, filler='[MASK]', model_name='en_core_web_trf'):
     return strip_sentence(masked_text)
 
 
-def mask_all_verbs(text, filler='[MASK]', model_name='en_core_web_trf'):
+def mask_all_verbs(text, filler='[MASK]', model_name='en_core_web_sm'):
     nlp = spacy.load(model_name)
     doc = nlp(text)
 
@@ -186,3 +186,35 @@ def correct_grammar(prompt, text, tokenizer, model):
     input_ids = tokenizer(prompt + text, return_tensors="pt").input_ids
     outputs = model.generate(input_ids, max_length=256)
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+
+def get_nouns(text, model_name='en_core_web_sm'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+    # Extract nouns using list comprehension
+    ablated_text = [token.text for token in doc if token.pos_ == "NOUN"]
+    return strip_sentence(' '.join(ablated_text))
+
+
+def get_verbs(text, model_name='en_core_web_sm'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+    # Extract verbs using list comprehension
+    ablated_text = [token.text for token in doc if token.pos_ == "VERB"]
+    return strip_sentence(' '.join(ablated_text))
+
+
+def get_non_nouns(text, model_name='en_core_web_sm'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+    # Extract everything but nouns using list comprehension
+    ablated_text = [token.text for token in doc if token.pos_ != "NOUN"]   
+    return strip_sentence(' '.join(ablated_text))
+
+
+def get_non_verbs(text, model_name='en_core_web_sm'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+    # Extract everything but verbs using list comprehension
+    ablated_text = [token.text for token in doc if token.pos_ != "VERB"]
+    return strip_sentence(' '.join(ablated_text))
