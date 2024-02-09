@@ -4,12 +4,12 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-from src import encoding
+from src import encoding, language_ops
 import torch
     
 
 def get_features(captions, reshape_dim):
-    features = encoding.glove_feature_extraction(captions)
+    features = language_ops.glove_feature_extraction(captions)
     features = features.reshape(reshape_dim + (-1,))
     return features.mean(axis=1)
 
@@ -37,7 +37,7 @@ class GLoVeEncoding:
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
-        stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
+        stimulus_data_ = pd.read_csv(self.stimulus_data_file)
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
 
@@ -48,7 +48,7 @@ class GLoVeEncoding:
             print('loading data...')
             benchmark = self.load_fmri()
             benchmark.filter_stimulus(stimulus_set='train')
-            captions, reshape_dim = encoding.captions_to_list(benchmark.stimulus_data.captions)
+            captions, reshape_dim = language_ops.captions_to_list(benchmark.stimulus_data.captions)
 
             print('loading model...')
             features = get_features(captions, reshape_dim)
@@ -64,7 +64,7 @@ class GLoVeEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--perturbation', type=str, default='corrected_unmasked')
+    parser.add_argument('--perturbation', type=str, default='stripped_orig')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        

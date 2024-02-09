@@ -1,4 +1,4 @@
-#/home/emcmaho7/.conda/envs/deepjuice/bin/python
+#/home/emcmaho7/.conda/envs/deepjuice_stable/bin/python
 from pathlib import Path
 import argparse
 import pandas as pd
@@ -64,7 +64,7 @@ class LLMEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
-    parser.add_argument('--perturbation', type=str, default='corrected_unmasked')
+    parser.add_argument('--perturbation', type=str, default='stripped_orig')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        

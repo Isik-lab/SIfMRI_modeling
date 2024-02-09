@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from pathlib import Path
-from src import lang_permute
+from src import language_ablation
 from tqdm import tqdm
 import argparse
 import numpy as np
@@ -22,7 +22,6 @@ class SentenceDecomposition:
         self.data_dir = args.data_dir
         self.func_name = args.func_name
         self.grammar_correction = args.grammar_correction
-        self.overwrite = args.overwrite
         print(vars(self))
 
         #change the default cache location if defined
@@ -32,9 +31,9 @@ class SentenceDecomposition:
         # get the function from the string
         if self.func_name == 'corrected_unmasked' or self.func_name == 'stripped_orig':
             # Strip the punctution for the original caption or the grammar corrected caption
-            self.func = lang_permute.strip_sentence
+            self.func = language_ablation.strip_sentence
         else:
-            self.func = getattr(lang_permute, self.func_name)
+            self.func = getattr(language_ablation, self.func_name)
             
         #make the output path and set file names
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
@@ -70,13 +69,13 @@ class SentenceDecomposition:
             videos, columns, caption_arr, orig_shape = load_caption_file(original_caption_file)
 
             # Load the grammar correction model
-            tokenizer, gc_model = lang_permute.load_grammarcheck()
+            tokenizer, gc_model = language_ablation.load_grammarcheck()
 
             # Loop through the captions to do the correction
             out  = []
             for caption in tqdm(caption_arr, total=len(caption_arr), desc='Grammar correction'):
                 print(caption)
-                corrected_caption = lang_permute.correct_grammar(self.prompt, caption, tokenizer, gc_model)
+                corrected_caption = language_ablation.correct_grammar(self.prompt, caption, tokenizer, gc_model)
                 out.append(corrected_caption)
             
             # Temporary saving for testing as insurance
@@ -103,7 +102,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--func_name', type=str, default=None)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--grammar_correction', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--grammar_correction', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')        
     parser.add_argument('--cache', type=str, default='/home/emcmaho7/scratch4-lisik3/emcmaho7/cache')                
