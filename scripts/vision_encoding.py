@@ -21,7 +21,7 @@ class VisionEncoding:
         self.save_frames = args.save_frames
         self.model_uid = args.model_uid
         self.data_dir = args.data_dir
-        self.keep_every = 15
+        self.keep_every = args.keep_every
         self.device = args.device
         print(vars(self))
 
@@ -89,7 +89,7 @@ class VisionEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
-    parser.add_argument('--keep_every', type=int, default=30)
+    parser.add_argument('--keep_every', type=int, default=15)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--save_frames', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--device', type=str, default='cuda:0')
