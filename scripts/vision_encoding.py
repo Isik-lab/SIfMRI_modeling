@@ -1,30 +1,28 @@
-#/home/emcmaho7/.conda/envs/deepjuice/bin/python
+#/Applications/anaconda3/envs/deepjuice/bin/python
 from pathlib import Path
 import argparse
 import pandas as pd
-import numpy as np
 import os
-import shutil
 from src.mri import Benchmark
+from src import encoding
 from deepjuice.model_zoo.options import get_deepjuice_model
-from deepjuice.procedural.datasets import get_data_loader
+from deepjuice.procedural.datasets import get_image_loader
 from deepjuice.extraction import FeatureExtractor
-from src.frame_ops import visual_events
-from src.encoding import get_vision_benchmarking_results
-from src.tools import moving_grouped_average, get_nearest_multiple
 
 
 class VisionEncoding:
     def __init__(self, args):
         self.process = 'VisionEncoding'
+        print('working')
         self.overwrite = args.overwrite
-        self.save_frames = args.save_frames
         self.model_uid = args.model_uid
+        self.model_input = args.model_input
         self.data_dir = args.data_dir
-        self.keep_every = args.keep_every
-        self.device = args.device
+        if self.model_input == 'videos':
+            self.extension = 'mp4'
+        else:
+            self.extension = 'png'
         print(vars(self))
-
         model_name = self.model_uid.replace('/', '_')
         self.out_path = f'{self.data_dir}/interim/{self.process}/model-{model_name}'
         self.out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}.csv'
@@ -35,52 +33,26 @@ class VisionEncoding:
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
-
-    def get_frames(self, benchmark):
-        if self.save_frames:
-            shutil.rmtree(f'{self.data_dir}/raw/frames') # delete frames
-        events = visual_events(stimulus_data=benchmark.stimulus_data, 
-                                            video_dir=f'{self.data_dir}/raw/videos', 
-                                            image_dir=f'{self.data_dir}/raw/frames',
-                                            keep_every=self.keep_every,
-                                            target_index=None)
-        benchmark.update(events)
-        return benchmark
-    
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
             # results = pd.read_csv(self.out_file)
             print('Output file already exists. To run again pass --overwrite.')
         else:
+            print('loading data...')
             benchmark = self.load_fmri()
+            stimulus_path = f'{self.data_dir}/raw/{self.model_input}/',
+            benchmark.add_stimulus_path(data_dir=stimulus_path, extension=self.extension)
             benchmark.filter_stimulus(stimulus_set='train')
-            benchmark = self.get_frames(benchmark)
 
-            # define function to average over frames 
-            skip = len(list(benchmark.group_indices.values())[0])
-            print(f'{skip=}')
-            def tensor_fn(tensor):
-                return moving_grouped_average(tensor, skip)
-
+            print('loading model...')
             model, preprocess = get_deepjuice_model(self.model_uid)
-            dataloader = get_data_loader(benchmark.image_paths, preprocess)
-            batch_size = get_nearest_multiple(dataloader.batch_size, skip)
-            print(f'{batch_size=}')
-            dataloader = get_data_loader(benchmark.image_paths, preprocess, batch_size=batch_size)
+            dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
+            feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
+                                    flatten=True, progress=True)
 
-            #define the feature extractor
-            extractor = FeatureExtractor(model, dataloader, 
-                                        tensor_fn=tensor_fn,
-                                        input_modatlity='text',
-                                        initial_report=True,
-                                        output_devce=self.device,
-                                        n_inputs=len(benchmark.stimulus_data))
-            extractor.modify_settings(flatten=True, batch_progress=True)
-            
-            # print('running regressions')
-            results = get_vision_benchmarking_results(benchmark, extractor, self.out_path)
-
+            print('running regressions')
+            results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor, self.out_path)
             print('saving results')
             results.to_csv(self.out_file, index=False)
             print('Finished!')
@@ -88,15 +60,11 @@ class VisionEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
-    parser.add_argument('--keep_every', type=int, default=15)
-    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--save_frames', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--device', type=str, default='cuda:0')
+    parser.add_argument('--model_uid', type=str, default='slip_vit_s_yfcc15m')
+    parser.add_argument('--model_input', type=str, default='images')
+    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--data_dir', '-data', type=str,
-                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
-                        # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
-
+                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')  
     args = parser.parse_args()
     VisionEncoding(args).run()
 
