@@ -34,9 +34,10 @@ class Benchmark:
             self.response_data = response_data
 
     def add_stimulus_path(self, data_dir, extension='png'):
-        self.stimulus_data['stimulus_path'] = data_dir + self.stimulus_data.video_name
         if extension != 'mp4': 
-            self.stimulus_data['stimulus_path'] = self.stimulus_data.video_name.str.replace('mp4', 'png')
+            self.stimulus_data['stimulus_path'] = data_dir + self.stimulus_data.video_name.str.replace('mp4', 'png')
+        else:
+            self.stimulus_data['stimulus_path'] = data_dir + self.stimulus_data.video_name
         print(self.stimulus_data.head())
 
     def filter_rois(self, rois='none'):
