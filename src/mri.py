@@ -16,8 +16,41 @@ def gen_mask(files, rel_mask=None):
     return np.logical_or.reduce(roi)
 
 
+def generate_rdms(response_data, metadata):
+    subjects = [1, 2, 3, 4]
+    # Build Brain RDM's
+    custom_rdms = {}
+    custom_rdm_indices = {}
+    custom_roi_indices = {}
+    for roi in metadata.columns[1:]:
+        sub_dict = {}
+        custom_rdm_indices[roi] = {}
+        for sub in subjects:
+            # Applying ROI to Whole brain betas
+            betas = response_data.loc[
+                metadata[(metadata[roi] == 1) & (metadata['subj_id'] == sub)].index]
+
+            # Correlating pairwise across 200 videos
+            df_beta = pd.DataFrame(betas)
+            df_pearson = 1 - df_beta.corr(method='pearson')
+            sub_rdm = df_pearson.to_numpy()
+            sub_dict[sub] = sub_rdm
+            # sub_rdm = (convert_to_tensor(sub_rdm).to(torch.float64).to('cpu'))
+            sub_dict[sub] = sub_rdm
+
+            # Populate the Indices
+            custom_rdm_indices[roi][sub] = metadata.loc[
+                (metadata['roi_name'] == roi) & (metadata['subj_id'] == sub)].voxel_id.to_list()
+
+            # Populate the row Indices
+            custom_roi_indices[roi][sub] = (response_data.reset_index().query('voxel_id==@roi_index').index.to_numpy())
+
+        custom_rdms[roi] = sub_dict
+    return custom_rdms, custom_rdm_indices, custom_roi_indices
+
+
 class Benchmark:
-    def __init__(self, metadata, stimulus_data, response_data):
+    def __init__(self, metadata, stimulus_data, response_data, rdms=False):
         if type(metadata) is str:
             self.metadata = pd.read_csv(metadata)
         else:
@@ -32,6 +65,9 @@ class Benchmark:
             self.response_data = pd.read_csv(response_data)
         else:
             self.response_data = response_data
+
+        if rdms:
+            self.rdms, self.rdm_indices, self.row_indices = generate_rdms(response_data, metadata)
 
     def add_stimulus_path(self, data_dir, extension='png'):
         if extension != 'mp4': 
