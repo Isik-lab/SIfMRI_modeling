@@ -139,7 +139,7 @@ def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device=
 def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                       file_path,
                                       layer_index_offset=0,
-                                      device='cuda',
+                                      device='cuda:0',
                                       n_splits=5, random_seed=1,
                                       alphas=[10.**power for power in np.arange(-5, 2)],
                                       metrics = ['crsa', 'ersa'],
