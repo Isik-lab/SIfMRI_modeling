@@ -51,8 +51,12 @@ class RSABenchmark:
             model, preprocess = get_deepjuice_model(self.model_uid)
             model_name = model.name
             dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
-            feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
-                                                     flatten=True, progress=True)
+            feature_map_extractor = FeatureExtractor(model, dataloader,
+                                                     memory_limit='10GB',
+                                                     flatten=True,
+                                                     output_device='cuda:0',
+                                                     show_progress=True,
+                                                     exclude_oversize=True)
 
             print('running rsa')
             results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, self.out_path, model_name=model_name)
