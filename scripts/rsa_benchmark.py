@@ -16,7 +16,7 @@ from deepjuice.model_zoo import get_model_options
 class RSABenchmark:
     def __init__(self, args):
         self.process = 'RSABenchmark'
-        print('working')
+        print(f'Starting process {self.process} with args:')
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
         self.model_input = args.model_input
@@ -61,8 +61,6 @@ class RSABenchmark:
                                                      output_device='cuda:0',
                                                      show_progress=True,
                                                      exclude_oversize=True)
-            print('Extracting model layer metadata...')
-            feature_map_metadata = get_feature_map_metadata(model, dataloader, device='cuda:0', input_dim=0)
             print('Model loaded!')
 
             print('Running rsa...')
@@ -77,57 +75,66 @@ class RSABenchmark:
             ersa_results.to_csv(self.ersa_out_file, index=False)
             print('Finished interim results!')
 
-            print('Formatting results for plotting...')
-            for metric in ['crsa', 'ersa']:
-                columns = ['region', 'model_layer', 'model_layer_index', 'subj_id', 'score']
-                df_result = results_avg[results_avg['method'] == metric].copy()
-                df_result = df_result[df_result['cv_split'] == 'test']
-                df_result = df_result[columns]
-                df_result['Model UID'] = self.model_uid
-                df_all_models = get_model_options()
-                df_result['Model Name'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['display_name'].values[0]
-                df_result['Model Name Short'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['model_name'].values[0]
-                df_result['Architecture Type'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['architecture_type'].values[0]
-                df_result['Architecture'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['architecture'].values[0]
-                df_result['Train Task'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['train_task_display'].values[0]
-                df_result['Train Data'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['train_data_display'].values[0]
-                df_result['Task Cluster'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['task_cluster'].values[0]
-                aggregation = {
-                    'model_layer': 'first',
-                    'score': 'mean',
-                    'Model Name': 'first',
-                    'Model Name Short': 'first',
-                    'Architecture Type': 'first',
-                    'Architecture': 'first',
-                    'Train Task': 'first',
-                    'Train Data': 'first',
-                    'Task Cluster': 'first'
-                }
-                # average the subjects
-                df_result = df_result.groupby(['Model UID', 'region', 'model_layer_index']).agg(aggregation).reset_index()
-                # get the best score per region
-                idx = df_result.groupby(['Model UID', 'region'])['score'].idxmax()
-                df_result = df_result.loc[idx].reset_index(drop=True)
-                df_result = df_result[~df_result['region'].isin(['ffa', 'ppa', 'face'])]
-                custom_order = ['evc', 'mt', 'loc', 'eba', 'psts', 'asts']
-                df_result['region'] = pd.Categorical(df_result['region'], categories=custom_order, ordered=True)
-                df_result = df_result.sort_values(by='region')
-                df_result = df_result.reset_index(drop=True)
-                df_result['region'] = df_result['region'].str.upper()
+            try:
+                print('Formatting results for plotting...')
+                for metric in ['crsa', 'ersa']:
+                    columns = ['region', 'model_layer', 'model_layer_index', 'subj_id', 'score']
+                    df_result = results_avg[results_avg['method'] == metric].copy()
+                    df_result = df_result[df_result['cv_split'] == 'test']
+                    df_result = df_result[columns]
+                    df_result['Model UID'] = self.model_uid
+                    df_all_models = get_model_options()
+                    df_result['Model Name'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['display_name'].values[0]
+                    df_result['Model Name Short'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['model_name'].values[0]
+                    df_result['Architecture Type'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['architecture_type'].values[0]
+                    df_result['Architecture'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['architecture'].values[0]
+                    df_result['Train Task'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['train_task_display'].values[0]
+                    df_result['Train Data'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['train_data_display'].values[0]
+                    df_result['Task Cluster'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['task_cluster'].values[0]
+                    aggregation = {
+                        'model_layer': 'first',
+                        'score': 'mean',
+                        'Model Name': 'first',
+                        'Model Name Short': 'first',
+                        'Architecture Type': 'first',
+                        'Architecture': 'first',
+                        'Train Task': 'first',
+                        'Train Data': 'first',
+                        'Task Cluster': 'first'
+                    }
+                    # average the subjects
+                    df_result = df_result.groupby(['Model UID', 'region', 'model_layer_index']).agg(aggregation).reset_index()
+                    # get the best score per region
+                    idx = df_result.groupby(['Model UID', 'region'])['score'].idxmax()
+                    df_result = df_result.loc[idx].reset_index(drop=True)
+                    df_result = df_result[~df_result['region'].isin(['ffa', 'ppa', 'face'])]
+                    custom_order = ['evc', 'mt', 'loc', 'eba', 'psts', 'asts']
+                    df_result['region'] = pd.Categorical(df_result['region'], categories=custom_order, ordered=True)
+                    df_result = df_result.sort_values(by='region')
+                    df_result = df_result.reset_index(drop=True)
+                    df_result['region'] = df_result['region'].str.upper()
 
-                df_result = df_result.merge(
-                    feature_map_metadata[['output_uid', 'output_depth']].rename(
-                        columns={'output_uid': 'model_layer', 'output_depth': 'Layer Depth'}),
-                    on=['model_layer'],
-                    how='left')
-                del feature_map_metadata
-                print('Saving formatted results...')
-                if metric == 'crsa':
-                    df_result.to_csv(self.fmt_crsa_out_file, index=False)
-                elif metric == 'ersa':
-                    df_result.to_csv(self.fmt_ersa_out_file, index=False)
-            print('Finished formatted results!')
-            print('!Finished RSA Benchmark!')
+                    print('Extracting model layer metadata...')
+                    feature_map_metadata = get_feature_map_metadata(model, dataloader, device='cuda:0', input_dim=0)
+
+                    df_result = df_result.merge(
+                        feature_map_metadata[['output_uid', 'output_depth']].rename(
+                            columns={'output_uid': 'model_layer', 'output_depth': 'Layer Depth'}),
+                        on=['model_layer'],
+                        how='left')
+                    del feature_map_metadata
+                    print('Saving formatted results...')
+                    if metric == 'crsa':
+                        df_result.to_csv(self.fmt_crsa_out_file, index=False)
+                    elif metric == 'ersa':
+                        df_result.to_csv(self.fmt_ersa_out_file, index=False)
+                print('Finished formatted results!')
+                print('!Finished RSA Benchmark!')
+            except Exception as err:
+                print(f'Failed during formatting for plots with error msg: {err}')
+                print('Skippinf formatting for plots.')
+                print('!Finished RSA Benchmark!')
+
 
 def main():
     parser = argparse.ArgumentParser()
