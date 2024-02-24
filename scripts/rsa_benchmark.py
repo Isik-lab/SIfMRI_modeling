@@ -1,5 +1,9 @@
 import argparse
+import sys
 from pathlib import Path
+# Calculate the path to the root of the project
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
 import pandas as pd
 import os
 from src.mri import Benchmark
@@ -37,7 +41,7 @@ class RSABenchmark:
         return Benchmark(metadata_, stimulus_data_, response_data_, rdms=True)
 
     def run(self):
-        if os.path.exists(self.out_file) and not self.overwrite:
+        if os.path.exists(self.crsa_out_file) and os.path.exists(self.crsa_out_file) and not self.overwrite:
             # results = pd.read_csv(self.out_file)
             print('Output file already exists. To run again pass --overwrite.')
         else:

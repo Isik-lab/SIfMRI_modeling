@@ -16,19 +16,25 @@ def gen_mask(files, rel_mask=None):
     return np.logical_or.reduce(roi)
 
 
-def generate_rdms(response_data, metadata):
+def generate_rdms(response_data, metadata, video_set='train'):
     subjects = [1, 2, 3, 4]
     # Build Brain RDM's
     custom_rdms = {}
     custom_rdm_indices = {}
     custom_roi_indices = {}
-    for roi in metadata.columns[1:]:
+    response_data.index.name = 'voxel_id'
+    for roi in metadata['roi_name'].unique()[1:]:
         sub_dict = {}
         custom_rdm_indices[roi] = {}
         for sub in subjects:
             # Applying ROI to Whole brain betas
             betas = response_data.loc[
-                metadata[(metadata[roi] == 1) & (metadata['subj_id'] == sub)].index]
+                metadata[(metadata['roi_name'] == roi) & (metadata['subj_id'] == sub)].index]
+            # if training videos only, take first 200 columns
+            if video_set == 'train':
+                betas = betas[betas.columns[:200]]
+            elif video_set == 'test':
+                betas = betas[betas.columns[200:]]
 
             # Correlating pairwise across 200 videos
             df_beta = pd.DataFrame(betas)
@@ -42,8 +48,8 @@ def generate_rdms(response_data, metadata):
             custom_rdm_indices[roi][sub] = metadata.loc[
                 (metadata['roi_name'] == roi) & (metadata['subj_id'] == sub)].voxel_id.to_list()
 
-            # Populate the row Indices
-            custom_roi_indices[roi][sub] = (response_data.reset_index().query('voxel_id==@roi_index').index.to_numpy())
+        # Populate the row Indices
+        custom_roi_indices = custom_rdm_indices# (response_data.reset_index().query('voxel_id==@roi_index').index.to_numpy())
 
         custom_rdms[roi] = sub_dict
     return custom_rdms, custom_rdm_indices, custom_roi_indices
@@ -67,7 +73,7 @@ class Benchmark:
             self.response_data = response_data
 
         if rdms:
-            self.rdms, self.rdm_indices, self.row_indices = generate_rdms(response_data, metadata)
+            self.rdms, self.rdm_indices, self.row_indices = generate_rdms(response_data, metadata, video_set='train')
 
     def add_stimulus_path(self, data_dir, extension='png'):
         if extension != 'mp4': 
