@@ -45,31 +45,36 @@ class RSABenchmark:
             # results = pd.read_csv(self.out_file)
             print('Output file already exists. To run again pass --overwrite.')
         else:
-            print('loading data...')
+            print('Loading data...')
             benchmark = self.load_fmri()
             stimulus_path = f'{self.data_dir}/raw/{self.model_input}/',
             benchmark.add_stimulus_path(data_dir=stimulus_path, extension=self.extension)
             benchmark.filter_stimulus(stimulus_set='train')
 
-            print('loading model...')
+            print('Loading model...')
             model, preprocess = get_deepjuice_model(self.model_uid)
-            model_name = model.name
             dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
-            feature_map_extractor = FeatureExtractor(model, dataloader, max_memory_load='24GB',
-                                                     flatten=True, progress=True)
+            feature_map_extractor = FeatureExtractor(model, dataloader,
+                                                     memory_limit='10GB',
+                                                     flatten=True,
+                                                     output_device='cuda:0',
+                                                     show_progress=True,
+                                                     exclude_oversize=True)
+            feature_map_metadata = get_feature_map_metadata(model, dataloader, input_dim=0)
 
-            print('running rsa')
-            results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, self.out_path, model_name=model_name)
-            print('computing avg over folds')
+            print('Running rsa...')
+            results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, self.out_path, model_name=self.model_uid)
+            print('Finished RSA scoring!')
+            print('Computing avg over folds')
             results_avg = results.groupby(['method', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean().reset_index()
             crsa_results = results_avg[results_avg['method'] == 'crsa']
             ersa_results = results_avg[results_avg['method'] == 'ersa']
-            print('saving results')
+            print('Saving interim results...')
             crsa_results.to_csv(self.crsa_out_file, index=False)
             ersa_results.to_csv(self.ersa_out_file, index=False)
             print('Finished interim results!')
 
-            print('Formatting results for plotting')
+            print('Formatting results for plotting...')
             for metric in ['crsa', 'ersa']:
                 columns = ['region', 'model_layer', 'model_layer_index', 'subj_id', 'score']
                 df_result = results_avg[results_avg['method'] == metric].copy()
@@ -107,19 +112,19 @@ class RSABenchmark:
                 df_result = df_result.reset_index(drop=True)
                 df_result['region'] = df_result['region'].str.upper()
 
-                feature_map_metadata = get_feature_map_metadata(model, dataloader, input_dim=0)
                 df_result = df_result.merge(
                     feature_map_metadata[['output_uid', 'output_depth']].rename(
                         columns={'output_uid': 'model_layer', 'output_depth': 'Layer Depth'}),
                     on=['model_layer'],
                     how='left')
                 del feature_map_metadata
-                print('saving formatted results')
+                print('Saving formatted results...')
                 if metric == 'crsa':
                     df_result.to_csv(self.fmt_crsa_out_file, index=False)
                 elif metric == 'ersa':
                     df_result.to_csv(self.fmt_ersa_out_file, index=False)
             print('Finished formatted results!')
+            print('!Finished RSA Benchmark!')
 
 def main():
     parser = argparse.ArgumentParser()
