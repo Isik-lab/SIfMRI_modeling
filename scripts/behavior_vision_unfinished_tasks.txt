@@ -1,0 +1,11 @@
+bit_expert_abstraction
+bit_expert_animal
+bit_expert_arthropod
+bit_expert_bird
+bit_expert_flower
+bit_expert_food
+bit_expert_instrument
+bit_expert_mammal
+bit_expert_object
+bit_expert_relation
+bit_expert_vehicle

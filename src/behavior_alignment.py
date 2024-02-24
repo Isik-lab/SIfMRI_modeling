@@ -1,10 +1,11 @@
 #
-from deepjuice.alignment import TorchRidgeGCV, get_scoring_method
+from deepjuice.alignment import TorchRidgeGCV, get_scoring_method, compute_rdm, compare_rdms
 import torch
 import numpy as np
 from sklearn.model_selection import KFold
 from tqdm import tqdm
 import pandas as pd
+import gc
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
@@ -15,12 +16,16 @@ from deepjuice.extraction import FeatureExtractor
 from deepjuice.procedural.cv_ops import CVIndexer
 from deepjuice.alignment import TorchRidgeGCV
 from deepjuice.reduction import compute_srp
+from itertools import product
+
 
 def get_training_benchmarking_results(benchmark, feature_extractor,
-                                      file_path,
+                                      target_features,
                                       layer_index_offset=0,
-                                      device='cuda',
+                                      device='cuda:0',
+                                      metrics=['ersa', 'crsa', 'encoding'],
                                       n_splits=4, random_seed=0,
+                                      model_name=None,
                                       alphas=[10.**power for power in np.arange(-5, 2)]):
 
     # use a CUDA-capable device, if available, else: CPU
@@ -30,15 +35,15 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
     alphas = [10.**power for power in np.arange(-5, 2)]
-    score_func = get_scoring_method('pearsonr')
-    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
-                            device=device, scale_X=True,)
+    encoding_score_func = get_scoring_method('pearsonr')
 
     # Send the neural data to the GPU
-    y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
+    y = torch.from_numpy(benchmark.stimulus_data[target_features].to_numpy()).to(torch.float32).to(device)
+    print(f'{benchmark.stimulus_data[target_features].to_numpy().shape=}')
+    print(f'{y.shape=}')
 
     layer_index = 0 # keeps track of depth
-    scores_out = None
+    results = []
     for feature_maps in feature_extractor:
         feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
@@ -47,43 +52,50 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
             # reduce dimensionality of feature_maps by sparse random projection
             feature_map = get_feature_map_srps(feature_map, device=device)
             
-            # Avoiding "CUDA error: an illegal memory access was encountered"
             X = feature_map.detach().clone().squeeze().to(torch.float32)
             del feature_map
             torch.cuda.empty_cache()
 
-            y_pred, y_true = [], [] #Initialize lists
-            cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
-            for train_index, test_index in cv_iterator:
+            # Memory saving
+            pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True, 
+                                 device=device, scale_X=True)
+
+            for i, (train_index, test_index) in enumerate(cv.split(X)):
+                feature_map_info = {'model_uid': model_name,
+                                    'model_layer': feature_map_uid,
+                                    'model_layer_index': layer_index + layer_index_offset,
+                                    'k_fold': i+1}
+
                 X_train, X_test = X[train_index].detach().clone(), X[test_index].detach().clone()
                 y_train, y_test = y[train_index].detach().clone(), y[test_index].detach().clone()
                 pipe.fit(X_train, y_train)
-                y_pred.append(pipe.predict(X_test))
-                y_true.append(y_test)
-            
-            scores = score_func(torch.cat(y_pred), torch.cat(y_true))
+                y_pred = pipe.predict(X_test)
 
-            # save the current scores to disk
-            scores_arr = scores.cpu().detach().numpy()
-            np.save(f'{file_path}/layer-{feature_map_uid}.npy', scores_arr)
+                X_test_rdm = compute_rdm(X_test, 'pearson')
+                feature_zip = zip(target_features, y_pred.T, y_test.T)
+                iter_scores = tqdm(product(metrics, feature_zip), total=len(metrics)*len(target_features), desc='Scoring CV')
+                for metric, (target_feature, target_pred, target_true) in iter_scores: 
+                    if metric == 'encoding':
+                        score = encoding_score_func(target_pred, target_true)
+                    elif metric == 'ersa':
+                        target_pred = target_pred.unsqueeze(1)
+                        pred_rdm = compute_rdm(target_pred, 'euclidean')
+                        score = compare_rdms(X_test_rdm, pred_rdm, method='spearman')
+                    elif metric == 'crsa':
+                        target_true = target_true.unsqueeze(1)
+                        true_rdm = compute_rdm(target_true, 'euclidean')
+                        score = compare_rdms(X_test_rdm, true_rdm, method='spearman')
 
-            if scores_out is None:
-                scores_out = scores_arr.copy()
-                model_layer_index = np.ones_like(scores_out, dtype='int') + layer_index_offset
-                model_layer = np.zeros_like(scores_out, dtype='object')
-                model_layer.fill(feature_map_uid)
-            else:
-                # replace the value in the output if the previous value is less than the current value
-                scores_out[scores_out < scores_arr] = scores_arr[scores_out < scores_arr]
-                model_layer_index[scores_out < scores_arr] = layer_index + layer_index_offset
-                model_layer[scores_out < scores_arr] = feature_map_uid
+                    # add the scores to a "scoresheet"
+                    scoresheet = {**feature_map_info,
+                                    'feature': target_feature,
+                                    'score': score,
+                                    'metric': metric}
+                    results.append(scoresheet)
 
-    # Make scoresheet based on the benchmark metadata
-    results = []
-    for i, row in benchmark.metadata.iterrows():
-        row['layer_index'] = model_layer_index[i]
-        row['layer'] = model_layer[i]
-        row['score'] = scores_out[i]
-        results.append(row)
+            # Memory saving
+            del pipe, y_pred
+            gc.collect()
+            torch.cuda.empty_cache()
 
     return pd.DataFrame(results)

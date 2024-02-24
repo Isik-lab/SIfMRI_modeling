@@ -37,7 +37,10 @@ def calculate_p(r_null_, r_true_, n_perm_, H0_):
 #     return r_var
 
 
+
+
 def corr2d_gpu(x, y):
+    import torch
     x_m = x - torch.nanmean(x, dim=0)
     y_m = y - torch.nanmean(y, dim=0)
 
@@ -48,6 +51,7 @@ def corr2d_gpu(x, y):
 
 
 def perm_gpu(a, b, n_perm=int(5e3), verbose=False):
+    import torch
     g = torch.Generator()
     r = corr2d_gpu(a, b)
 
@@ -64,3 +68,20 @@ def perm_gpu(a, b, n_perm=int(5e3), verbose=False):
         r_null[i, :] = corr2d_gpu(a_shuffle, b)
     return r, r_null
 
+
+def bootstrap_gpu(a, b, n_perm=int(5e3), verbose=False):
+    import torch
+    g = torch.Generator()
+
+    if verbose:
+        iterator = tqdm(range(n_perm), total=n_perm, desc='Permutation testing')
+    else:
+        iterator = range(n_perm)
+
+    r_var = torch.zeros((n_perm, a.shape[-1]))
+    for i in iterator:
+        g.manual_seed(i)
+        inds = torch.squeeze(torch.randint(high=a.shape[0], size=(a.shape[0],1), generator=g))
+        a_sample, b_sample = a[inds], b[inds]
+        r_var[i, :] = corr2d_gpu(a_sample, b_sample)
+    return r_var
