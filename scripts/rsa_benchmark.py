@@ -54,13 +54,16 @@ class RSABenchmark:
             print('Loading model...')
             model, preprocess = get_deepjuice_model(self.model_uid)
             dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
+            print('Extracting model features...')
             feature_map_extractor = FeatureExtractor(model, dataloader,
                                                      memory_limit='10GB',
                                                      flatten=True,
                                                      output_device='cuda:0',
                                                      show_progress=True,
                                                      exclude_oversize=True)
-            feature_map_metadata = get_feature_map_metadata(model, dataloader, input_dim=0)
+            print('Extracting model layer metadata...')
+            feature_map_metadata = get_feature_map_metadata(model, dataloader, device='cuda:0', input_dim=0)
+            print('Model loaded!')
 
             print('Running rsa...')
             results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, self.out_path, model_name=self.model_uid)
