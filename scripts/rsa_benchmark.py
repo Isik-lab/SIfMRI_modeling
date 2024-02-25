@@ -103,7 +103,7 @@ class RSABenchmark:
             print('Model loaded!')
 
             print('Running rsa...')
-            results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, model_name=self.model_uid)
+            results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, model_uid=self.model_uid)
             print('Finished RSA scoring!')
             results.to_csv(self.raw_out_file, index=False)
             print(f'Raw results saved to {self.raw_out_file}')
@@ -124,7 +124,7 @@ class RSABenchmark:
                     df_result = results_avg[results_avg['metric'] == metric].copy()
                     df_result = df_result[df_result['cv_split'] == 'test']
                     df_result = df_result[columns]
-                    df_result['Model UID'] = self.model_uid
+                    df_result['Model UID'] = df_result['model_uid']
                     df_all_models = get_model_options()
                     df_result['Model Name'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['display_name'].values[0]
                     df_result['Model Name Short'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['model_name'].values[0]
@@ -185,12 +185,14 @@ class RSABenchmark:
 
 
 def main():
+    current_user = os.getenv('USER')
+    default_data_dir = f'/home/{current_user}/scratch4-lisik3/{current_user}/SIfMRI_modeling/data'
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='slip_vit_s_yfcc15m')
     parser.add_argument('--model_input', type=str, default='images')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--data_dir', '-data', type=str,
-                        default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
+                        default=default_data_dir)
     args = parser.parse_args()
     RSABenchmark(args).run()
 
