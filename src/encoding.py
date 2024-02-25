@@ -216,7 +216,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
     # if no feature_map_stats provided, make empty dict:
     if feature_map_stats is None: feature_map_stats = {}
     # get the voxel (neuroid) indices for each specified roi
-    roi_indices = benchmark.roi_indices
+    row_indices = benchmark.row_indices
 
     ind_splits = generate_fold_indices(k=5)
     rdm_splits = get_rdm_splits(benchmark.rdms, ind_splits)
@@ -269,7 +269,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                     # get the relevant train-test split of the brain RDM
                                     target_rdm = rdm_splits[i][region][subj_id][split]
                                     # get the response_indices for current ROI group
-                                    response_indices = roi_indices[region][subj_id]
+                                    response_indices = row_indices[region][subj_id]
                                     # get predicted values for each response_index...
                                     y_pred_i = y_pred[split][:, response_indices]
                                     # ... and use them to calculate the weighted RDM
