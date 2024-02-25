@@ -109,7 +109,7 @@ class RSABenchmark:
             print(f'Raw results saved to {self.raw_out_file}')
             results = pd.read_csv(self.raw_out_file)
             print('Computing avg over folds')
-            results_avg = results.groupby(['metric', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean().reset_index()
+            results_avg = results.groupby(['metric', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean(numeric_only=True).reset_index()
             crsa_results = results_avg[results_avg['metric'] == 'crsa']
             ersa_results = results_avg[results_avg['metric'] == 'ersa']
             print('Saving interim results...')
