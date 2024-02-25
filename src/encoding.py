@@ -326,8 +326,6 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                     # get the response_indices for current ROI group
                                     response_indices = row_indices[region][subj_id]
                                     # get predicted values for each response_index...
-                                    print(f'Current response_indices are: {response_indices} with length {len(response_indices)}')
-                                    print(f'Current y_pred[{split}] is: {y_pred[split]} with length {len(y_pred[split])}')
                                     y_pred_i = y_pred[split][:, response_indices]
                                     # ... and use them to calculate the weighted RDM
                                     model_rdm = compute_rdm(y_pred_i, 'pearson')
