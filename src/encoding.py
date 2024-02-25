@@ -282,7 +282,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
         feature_maps = get_feature_map_srps(feature_maps, device='cuda')
         # now, we loop over our batch of feature_maps from the extractor...
         # ...starting by defining an iterator that will track our progress
-        feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)')
+        feature_map_iterator = tqdm(feature_maps.items(), desc='Brain Mapping (Layer)')
 
         for feature_map_uid, feature_map in feature_map_iterator:
             # index the 5 fold splits for this layer

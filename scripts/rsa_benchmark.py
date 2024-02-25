@@ -112,7 +112,7 @@ class RSABenchmark:
             print(f'Raw results saved to {self.raw_out_file}')
             results = pd.read_csv(self.raw_out_file)
             print('Computing avg over folds')
-            results_avg = results.groupby(['model_name', 'metric', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean(numeric_only=True).reset_index()
+            results_avg = results.groupby(['model_uid', 'metric', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean(numeric_only=True).reset_index()
             crsa_results = results_avg[results_avg['metric'] == 'crsa']
             ersa_results = results_avg[results_avg['metric'] == 'ersa']
             print('Saving interim results...')
@@ -123,7 +123,7 @@ class RSABenchmark:
             try:
                 print('Formatting results for plotting...')
                 for metric in ['crsa', 'ersa']:
-                    columns = ['model_name', 'region', 'model_layer', 'model_layer_index', 'subj_id', 'score']
+                    columns = ['model_uid', 'region', 'model_layer', 'model_layer_index', 'subj_id', 'score']
                     df_result = results_avg[results_avg['metric'] == metric].copy()
                     df_result = df_result[df_result['cv_split'] == 'test']
                     df_result = df_result[columns]
