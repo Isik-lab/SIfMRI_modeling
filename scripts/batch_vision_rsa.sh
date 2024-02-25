@@ -16,4 +16,4 @@ model=${1:-slip_vit_s_yfcc15m}
 ml anaconda
 conda activate /home/kgarci18/miniconda3/envs/deepjuice
 
-~/miniconda3/envs/deepjuice/bin/python rsa_benchmark.py --model_uid $model --data_dir "/home/kgarci18/scratch4-lisik3/kgarci18/SIfMRI_modeling/data" --overwrite
+~/miniconda3/envs/deepjuice/bin/python rsa_benchmark.py --model_uid $model --data_dir "/home/kgarci18/scratch4-lisik3/SIfMRI_modeling/data" --overwrite
