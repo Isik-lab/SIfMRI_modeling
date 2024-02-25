@@ -113,6 +113,7 @@ class RSABenchmark:
                 stimulus_path = f'{self.data_dir}/raw/{self.model_input}/',
                 benchmark.add_stimulus_path(data_dir=stimulus_path, extension=self.extension)
                 benchmark.filter_stimulus(stimulus_set='train')
+                benchmark.generate_rdms()
 
                 print('Loading model...')
                 model, preprocess = get_deepjuice_model(self.model_uid)
