@@ -7,7 +7,7 @@
 #SBATCH --nodes=1
 #SBATCH --mem-per-cpu=10G
 #SBATCH --cpus-per-task=8
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:4
 #SBATCH --output=slurm-%x-%j.out
 
 model=${1:-slip_vit_s_yfcc15m}

@@ -1,5 +1,4 @@
 import gc
-
 from deepjuice.alignment import TorchRidgeGCV, get_scoring_method, compute_rdm, compare_rdms
 import torch
 import numpy as np
@@ -138,7 +137,7 @@ def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device=
 
 def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                       layer_index_offset=0,
-                                      device='cuda:0',
+                                      device='cuda',
                                       n_splits=5, random_seed=1,
                                       alphas=np.logspace(-1, 5, 7).tolist(),
                                       metrics = ['crsa', 'ersa'],
@@ -280,7 +279,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
     layer_index = 0  # keeps track of depth
     for feature_maps in feature_extractor:
         # dimensionality reduction of feature maps
-        feature_maps = get_feature_map_srps(feature_maps, device='cuda:0')
+        feature_maps = get_feature_map_srps(feature_maps, device='cuda')
         # now, we loop over our batch of feature_maps from the extractor...
         # ...starting by defining an iterator that will track our progress
         feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)')
@@ -301,14 +300,14 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                     'k_fold': i+1}
 
                 # now, our X Variable that we push onto the gpu:
-                X = {'train': convert_to_tensor(fold['train']['X']).to(dtype=torch.float32, device='cuda:0'),
-                     'test': convert_to_tensor(fold['test']['X']).to(dtype=torch.float32, device='cuda:0')}
+                X = {'train': convert_to_tensor(fold['train']['X']).to(dtype=torch.float32, device='cuda'),
+                     'test': convert_to_tensor(fold['test']['X']).to(dtype=torch.float32, device='cuda')}
 
                 y = {'train': fold['train']['y'],
                       'test': fold['test']['y']}
 
                 # initialize the regression, in this case ridge regression with LOOCV over alphas
-                regression = TorchRidgeGCV(alphas=alphas, device='cuda:0', scale_X=True)
+                regression = TorchRidgeGCV(alphas=alphas, device='cuda', scale_X=True)
                 regression.fit(X['train'], y['train']) # fit the regression on the train split
                 # RidgeGCV gives us both internally generated LOOCV values for the train dataset
                 # as well as the ability to predict our test set in the same way as any regressor
@@ -327,6 +326,8 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                     # get the response_indices for current ROI group
                                     response_indices = row_indices[region][subj_id]
                                     # get predicted values for each response_index...
+                                    print(f'Current response_indices are: {response_indices} with length {len(response_indices)}')
+                                    print(f'Current y_pred[{split}] is: {y_pred[split]} with length {len(y_pred[split])}')
                                     y_pred_i = y_pred[split][:, response_indices]
                                     # ... and use them to calculate the weighted RDM
                                     model_rdm = compute_rdm(y_pred_i, 'pearson')

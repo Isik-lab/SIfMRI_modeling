@@ -97,7 +97,7 @@ class RSABenchmark:
             feature_map_extractor = FeatureExtractor(model, dataloader,
                                                      memory_limit='10GB',
                                                      flatten=True,
-                                                     output_device='cuda:0',
+                                                     output_device='cuda',
                                                      show_progress=True,
                                                      exclude_oversize=True)
             print('Model loaded!')
@@ -157,7 +157,7 @@ class RSABenchmark:
                     df_result['region'] = df_result['region'].str.upper()
 
                     print('Extracting model layer metadata...')
-                    feature_map_metadata = get_feature_map_metadata(model, dataloader, device='cuda:0', input_dim=0)
+                    feature_map_metadata = get_feature_map_metadata(model, dataloader, device='cuda', input_dim=0)
 
                     df_result = df_result.merge(
                         feature_map_metadata[['output_uid', 'output_depth']].rename(
