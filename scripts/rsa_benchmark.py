@@ -101,6 +101,9 @@ class RSABenchmark:
                                                      show_progress=True,
                                                      exclude_oversize=True)
             print('Model loaded!')
+            print('Extracting model layer metadata...')
+            feature_map_metadata = get_feature_map_metadata(model, dataloader, device='cuda', input_dim=0)
+            print('Model layers metadata loaded!')
 
             print('Running rsa...')
             results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, model_uid=self.model_uid)
@@ -109,7 +112,7 @@ class RSABenchmark:
             print(f'Raw results saved to {self.raw_out_file}')
             results = pd.read_csv(self.raw_out_file)
             print('Computing avg over folds')
-            results_avg = results.groupby(['metric', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean(numeric_only=True).reset_index()
+            results_avg = results.groupby(['model_name', 'metric', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean(numeric_only=True).reset_index()
             crsa_results = results_avg[results_avg['metric'] == 'crsa']
             ersa_results = results_avg[results_avg['metric'] == 'ersa']
             print('Saving interim results...')
@@ -120,7 +123,7 @@ class RSABenchmark:
             try:
                 print('Formatting results for plotting...')
                 for metric in ['crsa', 'ersa']:
-                    columns = ['region', 'model_layer', 'model_layer_index', 'subj_id', 'score']
+                    columns = ['model_name', 'region', 'model_layer', 'model_layer_index', 'subj_id', 'score']
                     df_result = results_avg[results_avg['metric'] == metric].copy()
                     df_result = df_result[df_result['cv_split'] == 'test']
                     df_result = df_result[columns]
@@ -149,16 +152,14 @@ class RSABenchmark:
                     # get the best score per region
                     idx = df_result.groupby(['Model UID', 'region'])['score'].idxmax()
                     df_result = df_result.loc[idx].reset_index(drop=True)
-                    df_result = df_result[~df_result['region'].isin(['ffa', 'ppa', 'face'])]
-                    custom_order = ['evc', 'mt', 'loc', 'eba', 'psts', 'asts']
+                    df_result['region'] = df_result['region'].str.lower()
+                    # df_result = df_result[~df_result['region'].isin(['ffa', 'ppa', 'face'])]
+                    custom_order = ['evc', 'mt', 'loc', 'eba', 'psts', 'face-psts', 'asts', 'ffa', 'ppa']
                     df_result['region'] = pd.Categorical(df_result['region'], categories=custom_order, ordered=True)
                     df_result = df_result.sort_values(by='region')
                     df_result = df_result.reset_index(drop=True)
                     df_result['region'] = df_result['region'].str.upper()
-
-                    print('Extracting model layer metadata...')
-                    feature_map_metadata = get_feature_map_metadata(model, dataloader, device='cuda', input_dim=0)
-
+                    # Add feature map metadata
                     df_result = df_result.merge(
                         feature_map_metadata[['output_uid', 'output_depth']].rename(
                             columns={'output_uid': 'model_layer', 'output_depth': 'Layer Depth'}),
