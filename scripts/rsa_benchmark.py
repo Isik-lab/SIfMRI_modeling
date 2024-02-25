@@ -58,8 +58,8 @@ class RSABenchmark:
         model_name = self.model_uid.replace('/', '_')
         self.crsa_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_crsa.csv'
         self.ersa_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_ersa.csv'
-        self.fmt_crsa_out_file = f'{self.data_dir}/formatted/{self.process}/model-{model_name}_crsa_fmt.csv'
-        self.fmt_ersa_out_file = f'{self.data_dir}/formatted/{self.process}/model-{model_name}_ersa_fmt.csv'
+        self.fmt_crsa_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_crsa_fmt.csv'
+        self.fmt_ersa_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_ersa_fmt.csv'
         self.raw_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_raw.csv'
 
     def load_fmri(self) -> Benchmark:
