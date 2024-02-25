@@ -6,6 +6,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 import pandas as pd
 import os
+import time
 from src.mri import Benchmark
 from src import encoding
 from deepjuice.model_zoo.options import get_deepjuice_model
@@ -27,12 +28,11 @@ class RSABenchmark:
             self.extension = 'png'
         print(vars(self))
         model_name = self.model_uid.replace('/', '_')
-        self.out_path = f'{self.data_dir}/interim/{self.process}/model-{model_name}'
         self.crsa_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_crsa.csv'
         self.ersa_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_ersa.csv'
         self.fmt_crsa_out_file = f'{self.data_dir}/formatted/{self.process}/model-{model_name}_crsa_fmt.csv'
         self.fmt_ersa_out_file = f'{self.data_dir}/formatted/{self.process}/model-{model_name}_ersa_fmt.csv'
-        Path(self.out_path).mkdir(parents=True, exist_ok=True)
+        self.raw_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_raw.csv'
 
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
@@ -41,9 +41,10 @@ class RSABenchmark:
         return Benchmark(metadata_, stimulus_data_, response_data_, rdms=True)
 
     def run(self):
-        if os.path.exists(self.crsa_out_file) and os.path.exists(self.crsa_out_file) and not self.overwrite:
-            # results = pd.read_csv(self.out_file)
+        start_time = time.time()
+        if os.path.exists(self.crsa_out_file) and os.path.exists(self.ersa_out_file) and not self.overwrite:
             print('Output file already exists. To run again pass --overwrite.')
+            return
         else:
             print('Loading data...')
             benchmark = self.load_fmri()
@@ -64,12 +65,14 @@ class RSABenchmark:
             print('Model loaded!')
 
             print('Running rsa...')
-            results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, self.out_path, model_name=self.model_uid)
+            results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, model_name=self.model_uid)
             print('Finished RSA scoring!')
+            results.to_csv(self.raw_out_file, index=False)
+            print(f'Raw results saved to {self.raw_out_file}')
             print('Computing avg over folds')
-            results_avg = results.groupby(['method', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean().reset_index()
-            crsa_results = results_avg[results_avg['method'] == 'crsa']
-            ersa_results = results_avg[results_avg['method'] == 'ersa']
+            results_avg = results.groupby(['metric', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean().reset_index()
+            crsa_results = results_avg[results_avg['metric'] == 'crsa']
+            ersa_results = results_avg[results_avg['metric'] == 'ersa']
             print('Saving interim results...')
             crsa_results.to_csv(self.crsa_out_file, index=False)
             ersa_results.to_csv(self.ersa_out_file, index=False)
@@ -79,7 +82,7 @@ class RSABenchmark:
                 print('Formatting results for plotting...')
                 for metric in ['crsa', 'ersa']:
                     columns = ['region', 'model_layer', 'model_layer_index', 'subj_id', 'score']
-                    df_result = results_avg[results_avg['method'] == metric].copy()
+                    df_result = results_avg[results_avg['metric'] == metric].copy()
                     df_result = df_result[df_result['cv_split'] == 'test']
                     df_result = df_result[columns]
                     df_result['Model UID'] = self.model_uid
@@ -129,11 +132,17 @@ class RSABenchmark:
                     elif metric == 'ersa':
                         df_result.to_csv(self.fmt_ersa_out_file, index=False)
                 print('Finished formatted results!')
-                print('!Finished RSA Benchmark!')
+                print('! Finished RSA Benchmark !')
+                end_time = time.time()
+                elapsed = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
+                print(f'Elapsed time: {elapsed}')
             except Exception as err:
                 print(f'Failed during formatting for plots with error msg: {err}')
-                print('Skippinf formatting for plots.')
-                print('!Finished RSA Benchmark!')
+                print('Skipping formatting for plots.')
+                print('! Finished RSA Benchmark !')
+                end_time = time.time()
+                elapsed = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
+                print(f'Elapsed time: {elapsed}')
 
 
 def main():

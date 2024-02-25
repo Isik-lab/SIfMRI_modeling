@@ -1,6 +1,8 @@
 import nibabel as nib
 import numpy as np
 import pandas as pd
+from deepjuice.tensorops import convert_to_tensor
+import torch
 
 
 def gen_mask(files, rel_mask=None):
@@ -41,7 +43,7 @@ def generate_rdms(response_data, metadata, video_set='train'):
             df_pearson = 1 - df_beta.corr(method='pearson')
             sub_rdm = df_pearson.to_numpy()
             sub_dict[sub] = sub_rdm
-            # sub_rdm = (convert_to_tensor(sub_rdm).to(torch.float64).to('cpu'))
+            sub_rdm = (convert_to_tensor(sub_rdm).to(torch.float64).to('cpu'))
             sub_dict[sub] = sub_rdm
 
             # Populate the Indices

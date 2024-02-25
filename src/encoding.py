@@ -137,7 +137,6 @@ def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device=
     return pd.DataFrame(results)
 
 def get_training_rsa_benchmark_results(benchmark, feature_extractor,
-                                      file_path,
                                       layer_index_offset=0,
                                       device='cuda:0',
                                       n_splits=5, random_seed=1,
@@ -209,7 +208,8 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                             device=device, scale_X=True,)
 
     # Send the neural data to the GPU
-    y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
+    # y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
+    Y = (convert_to_tensor(benchmark.response_data.to_numpy()).to(dtype=torch.float32, device=device))
 
     # initialize an empty list to record scores over layers
     scoresheet_lists = {metric: [] for metric in metrics}
@@ -231,7 +231,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
 
         for feature_map_uid, feature_map in feature_map_iterator:
             # index the 5 fold splits for this layer
-            xy_folds = get_kfold_xy_rdms(feature_map, y, ind_splits)
+            xy_folds = get_kfold_xy_rdms(feature_map, Y, ind_splits)
 
             layer_index += 1 # one layer deeper in feature_maps
 
@@ -283,8 +283,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                                   'region': region,
                                                   'subj_id': subj_id,
                                                   'cv_split': split,
-                                                  'score': score,
-                                                  'method': 'ersa'}
+                                                  'score': score}
 
                                     # append the scoresheet to our running list
                                     scoresheet_lists['ersa'].append(scoresheet)
@@ -306,8 +305,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                                   'region': region,
                                                   'subj_id': subj_id,
                                                   'cv_split': split,
-                                                  'score': score,
-                                                  'method': 'crsa'}
+                                                  'score': score}
 
                                     # append the scoresheet to our running list
                                     scoresheet_lists['crsa'].append(scoresheet)
