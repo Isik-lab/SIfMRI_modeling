@@ -74,9 +74,9 @@ class RSABenchmark:
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
-        return Benchmark(metadata_, stimulus_data_, response_data_, rdms=True)
+        return Benchmark(metadata_, stimulus_data_, response_data_)
 
-    def send_slack(self, msg=None, filepath=None):
+    def send_slack(self, msg='', filepath=None):
         """
          Helper function to send slack message to a webhook
          Arguments:
@@ -91,7 +91,7 @@ class RSABenchmark:
         token = 'xoxp-508184378419-2331084514512-6070633594310-1c3ba2835c4bde49662d705517442b09'
         client = WebClient(token)
         response = None
-        if msg & filepath:
+        if filepath:
             response = client.files_upload(channels='file_automation', title=filepath, file=filepath, initial_comment=msg)
         elif msg:
             response = webhook.send(text=msg)
