@@ -19,6 +19,32 @@ def gen_mask(files, rel_mask=None):
 
 
 def generate_rdms(response_data, metadata, video_set='train'):
+    """
+    Generates representational dissimilarity matrices (RDMs) for a set of subjects and regions
+    of interest (ROIs) based on brain imaging response data and associated metadata.
+
+    This function iterates over each ROI in the metadata, applies the ROI mask to the response data,
+    computes pairwise dissimilarities (using Pearson correlation) among the responses for different
+    stimuli, and organizes the results into a structured format suitable for further analysis.
+
+    Parameters:
+        response_data (pandas.DataFrame): A DataFrame containing the brain imaging response data,
+            with rows corresponding to stimuli and columns to neural measurements (e.g., voxel activations).
+        metadata (pandas.DataFrame): A DataFrame containing metadata about the response data,
+            including information on ROIs and subject IDs.
+        video_set (str): Defaults to 'train'. Depending on if train or test is passed it will subset either the
+            200 training video responses or 50 test video responses. If anything else is passed all 250 video
+            responses will be used.
+
+    Returns:
+        custom_rdms (dict): A dictionary where keys are ROI names and values are dictionaries
+            mapping subject IDs to their respective RDM numpy arrays.
+        custom_rdm_indices (dict): A dictionary mapping each ROI to another dictionary,
+            which maps subject IDs to the indices of the RDMs based on voxel IDs.
+        custom_row_indices (dict): A dictionary mapping each ROI to another dictionary,
+            which maps subject IDs to the indices in the response data corresponding to each ROI,
+             facilitating direct access to ROI-specific response data.
+    """
     subjects = [1, 2, 3, 4]
     # Build Brain RDM's
     custom_rdms = {}
@@ -51,14 +77,14 @@ def generate_rdms(response_data, metadata, video_set='train'):
                 (metadata['roi_name'] == roi) & (metadata['subj_id'] == sub)].voxel_id.to_list()
 
         # Populate the row Indices
-        custom_roi_indices = custom_rdm_indices# (response_data.reset_index().query('voxel_id==@roi_index').index.to_numpy())
+        custom_row_indices = custom_rdm_indices # these are a direct match as the index in response data is numeric starting at 0, old code used - (response_data.reset_index().query('voxel_id==@roi_index').index.to_numpy())
 
         custom_rdms[roi] = sub_dict
-    return custom_rdms, custom_rdm_indices, custom_roi_indices
+    return custom_rdms, custom_rdm_indices, custom_row_indices
 
 
 class Benchmark:
-    def __init__(self, metadata, stimulus_data, response_data, rdms=False):
+    def __init__(self, metadata, stimulus_data, response_data, rdms=False, video_set='train'):
         if type(metadata) is str:
             self.metadata = pd.read_csv(metadata)
         else:
@@ -75,7 +101,8 @@ class Benchmark:
             self.response_data = response_data
 
         if rdms:
-            self.rdms, self.rdm_indices, self.row_indices = generate_rdms(response_data, metadata, video_set='train')
+            self.rdms, self.rdm_indices, self.row_indices = generate_rdms(response_data, metadata, video_set)
+            self.video_set = video_set
 
     def add_stimulus_path(self, data_dir, extension='png'):
         if extension != 'mp4': 

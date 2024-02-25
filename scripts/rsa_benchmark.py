@@ -15,7 +15,35 @@ from deepjuice.extraction import FeatureExtractor, get_feature_map_metadata
 from deepjuice.model_zoo import get_model_options
 
 class RSABenchmark:
+    """
+    A class for conducting Representational Similarity Analysis (RSA) benchmarking
+    of neural network models against fMRI data.
+
+    Attributes:
+        process (str): Name of the process, set to 'RSABenchmark'.
+        overwrite (bool): Flag to overwrite existing results.
+        model_uid (str): Unique identifier for the model being benchmarked.
+        model_input (str): Type of input data for the model ('images' or 'videos').
+        data_dir (str): Directory path where the data is stored.
+        extension (str): File extension of the stimulus data.
+        crsa_out_file (str): Path for saving CRSA results.
+        ersa_out_file (str): Path for saving ERSA results.
+        fmt_crsa_out_file (str): Path for saving formatted CRSA results.
+        fmt_ersa_out_file (str): Path for saving formatted ERSA results.
+        raw_out_file (str): Path for saving the raw un-aggregated kfold results.
+
+    Methods:
+        __init__(self, args): Initializes the benchmarking process.
+        load_fmri(self): Loads fMRI data required for RSA.
+        run(self): Conducts the RSA benchmarking and saves the results.
+    """
     def __init__(self, args):
+        """
+         Initializes the RSABenchmark class with necessary parameters for the RSA benchmarking process.
+
+         Parameters:
+             args: Argument parser outputs containing model UID, data directory, overwrite flag, and model input type.
+        """
         self.process = 'RSABenchmark'
         print(f'Starting process {self.process} with args:')
         self.overwrite = args.overwrite
@@ -34,13 +62,23 @@ class RSABenchmark:
         self.fmt_ersa_out_file = f'{self.data_dir}/formatted/{self.process}/model-{model_name}_ersa_fmt.csv'
         self.raw_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_raw.csv'
 
-    def load_fmri(self):
+    def load_fmri(self) -> Benchmark:
+        """
+         Loads the fMRI data including metadata, response data, and stimulus data from the specified directory.
+
+         Returns:
+             Benchmark: An instance of the Benchmark class initialized with loaded fMRI data and ready for RSA analysis.
+        """
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_, rdms=True)
 
     def run(self):
+        """
+        Executes the RSA benchmarking process. This includes loading fMRI data, preparing stimulus data,
+        loading and preparing the model for feature extraction, running RSA metrics, and saving the results.
+        """
         start_time = time.time()
         if os.path.exists(self.crsa_out_file) and os.path.exists(self.ersa_out_file) and not self.overwrite:
             print('Output file already exists. To run again pass --overwrite.')
@@ -69,6 +107,7 @@ class RSABenchmark:
             print('Finished RSA scoring!')
             results.to_csv(self.raw_out_file, index=False)
             print(f'Raw results saved to {self.raw_out_file}')
+            results = pd.read_csv(self.raw_out_file)
             print('Computing avg over folds')
             results_avg = results.groupby(['metric', 'cv_split', 'region', 'subj_id', 'model_layer', 'model_layer_index']).mean().reset_index()
             crsa_results = results_avg[results_avg['metric'] == 'crsa']

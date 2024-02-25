@@ -140,23 +140,68 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                       layer_index_offset=0,
                                       device='cuda:0',
                                       n_splits=5, random_seed=1,
-                                      alphas=[10.**power for power in np.arange(-5, 2)],
+                                      alphas=np.logspace(-1, 5, 7).tolist(),
                                       metrics = ['crsa', 'ersa'],
                                       feature_map_stats=None,
-                                      model_name = None,
+                                      model_uid = None,
                                       stack_final_results=True):
+    """
+    Benchmarks the performance of neural network feature extractors against brain response data,
+    using Representational Similarity Analysis (RSA) metrics. This involves cross-validated comparison
+    of neural network activations to human brain activity patterns recorded during similar tasks.
+
+    Parameters:
+        benchmark (Benchmark): An object containing brain response data and metadata necessary for RSA.
+        feature_extractor: An iterable or generator that yields feature maps from a neural network model.
+        layer_index_offset (int, optional): Offset for layer indexing, useful for models with skipped layers. Defaults to 0.
+        device (str, optional): Computation device ('cuda' or 'cpu'). Defaults to 'cuda'.
+        n_splits (int, optional): Number of splits for k-fold cross-validation. Defaults to 5.
+        random_seed (int, optional): Seed for random number generation for reproducible splits. Defaults to 1.
+        alphas (list, optional): List of alpha values for Ridge regression cross-validation.
+        metrics (list of str, optional): List of RSA metrics to compute, such as 'crsa' and 'ersa'. Defaults to ['crsa', 'ersa'].
+        feature_map_stats (dict, optional): Precomputed statistics of feature maps for normalization. Defaults to None.
+        model_uid (str, optional): UID of the neural network model being benchmarked. Defaults to None.
+        stack_final_results (bool, optional): Whether to stack results into a single DataFrame. Defaults to True.
+
+    Returns:
+        pandas.DataFrame or dict: The RSA benchmarking results. If `stack_final_results` is True, returns a single DataFrame
+        containing the results; otherwise, returns a dictionary of DataFrames, one for each RSA metric.
+    """
 
     # HELPER FUNCTIONS #
-    def generate_fold_indices(k=5):
-        blank_map = np.ones((200, 5000))
+    def generate_fold_indices(n_splits=5, random_seed=1, n_stimuli=200) -> list:
+        """
+        Generates indices for training and testing splits based on k-fold cross-validation.
+
+        Parameters:
+            n_splits (int, optional): Number of folds for the cross-validation. Defaults to 5.
+            random_seed (int, optional): Seed for the random number generator to ensure reproducibility. Defaults to 1.
+            n_stimuli (int, optional): Number of stimuli to create a dummy map for splitting. Defaults to 200.
+
+        Returns:
+            list: A list of dictionaries, each containing 'train' and 'test' keys with arrays of indices for training and testing splits.
+        """
+        blank_map = np.ones((n_stimuli, 5000))
         ind_splits = []
-        kf = KFold(n_splits=k, shuffle=True, random_state=1)
+        kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
         for i, (train_index, test_index) in enumerate(kf.split(blank_map)):
             ind_split = {'train': train_index, 'test': test_index}
             ind_splits.append(ind_split)
         return ind_splits
 
-    def get_kfold_xy_rdms(feature_map, responses, ind_splits):
+    def get_kfold_xy_rdms(feature_map: np.array, responses: np.array, ind_splits: list) -> list:
+        """
+        Splits feature maps and responses into k-fold training and testing sets, applying standard scaling.
+
+        Parameters:
+            feature_map (np.array)(tensor): The feature map array to be split, it is expected it comes as a tensor from gpu.
+            responses (np.array): The response array corresponding to the feature map.
+            ind_splits (list): A list of dictionaries with 'train' and 'test' keys containing indices for training and testing splits.
+
+        Returns:
+            list: A list of dictionaries, each representing a data split with 'train' and 'test' keys. Each key maps to a dictionary
+            containing 'X' (features) and 'y' (responses), which are scaled and split according to the provided indices.
+        """
         scaling = StandardScaler()
         data_splits = []
 
@@ -174,7 +219,18 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
             data_splits.append(data_split)
         return data_splits
 
-    def get_rdm_splits(rdms, ind_splits):
+    def get_rdm_splits(rdms: dict, ind_splits: list) -> list:
+        """
+        Splits representational dissimilarity matrices (RDMs) according to the provided k-fold cross-validation indices.
+
+        Parameters:
+            rdms (dict): A dictionary where keys are ROI names and values are subject-specific RDMs.
+            ind_splits (list): A list of dictionaries with 'train' and 'test' keys containing indices for training and testing splits.
+
+        Returns:
+            list: A list of dictionaries, each representing the split RDMs for training and testing in each fold. The structure
+            mirrors that of the input rdms, with an added layer for 'train' and 'test' splits.
+        """
         rdm_splits = []
         for i, indices in enumerate(ind_splits):
             # rdm splits
@@ -196,19 +252,10 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
         return rdm_splits
 
     # use a CUDA-capable device, if available, else: CPU
-    print(f'device: {device}')
+    print(f'Running on device: {device}')
     print(cuda_device_report())
 
-    # initialize pipe and kfold splitter
-    cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
-    alphas = [10.**power for power in np.arange(-5, 2)]
-    score_func = get_scoring_method('spearmanr')
-    layer_index = 0  # keeps track of depth
-    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
-                            device=device, scale_X=True,)
-
     # Send the neural data to the GPU
-    # y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
     Y = (convert_to_tensor(benchmark.response_data.to_numpy()).to(dtype=torch.float32, device=device))
 
     # initialize an empty list to record scores over layers
@@ -218,10 +265,19 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
     # get the voxel (neuroid) indices for each specified roi
     row_indices = benchmark.row_indices
 
-    ind_splits = generate_fold_indices(k=5)
+    # get the kfold indices
+    if benchmark.video_set == 'train':
+        n_stimuli = 200
+    elif benchmark.video_set == 'test':
+        n_stimuli = 50
+    else:
+        n_stimuli = 250
+    ind_splits = generate_fold_indices(n_splits, random_seed, n_stimuli)
+    # use ind_splits to split the rdms
     rdm_splits = get_rdm_splits(benchmark.rdms, ind_splits)
 
     # now, we iterate over our extractor
+    layer_index = 0  # keeps track of depth
     for feature_maps in feature_extractor:
         # dimensionality reduction of feature maps
         feature_maps = get_feature_map_srps(feature_maps, device='cuda:0')
@@ -238,7 +294,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
             # loop over each fold in the kfold
             for i, fold in enumerate(xy_folds):
                 # main data to add to our scoresheet per feature_map
-                feature_map_info = {'model_name': model_name,
+                feature_map_info = {'model_uid': model_uid,
                                     'model_layer': feature_map_uid,
                                     # layer_index_offset is used here in case of subsetting
                                     'model_layer_index': layer_index + layer_index_offset,
