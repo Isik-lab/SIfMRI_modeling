@@ -5,10 +5,10 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 from src import behavior_alignment as align
+import torch
 from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_image_loader
 from deepjuice.extraction import FeatureExtractor
-from torch import hub
 
 
 class BehaviorEncoding:
@@ -20,9 +20,12 @@ class BehaviorEncoding:
         self.model_input = args.model_input
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
-        # set cache location
-        hub.set_dir(self.cache)
-        os.environ['HF_HOME'] = self.cache
+        torch.hub.set_dir(self.cache)
+
+        # check hugging face cache location
+        print("HF_HOME is set to:", os.environ['HF_HOME'])
+        print("HUGGINGFACE_HUB_CACHE is set to:", os.environ['HUGGINGFACE_HUB_CACHE'])
+        print("HF_DATASETS_CACHE is set to:", os.environ['HF_DATASETS_CACHE'])
 
         if self.model_input == 'videos':
             self.extension = 'mp4'

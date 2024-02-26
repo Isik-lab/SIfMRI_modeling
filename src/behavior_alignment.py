@@ -76,7 +76,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                 iter_scores = tqdm(product(metrics, feature_zip), total=len(metrics)*len(target_features), desc='Scoring CV')
                 for metric, (target_feature, target_pred, target_true) in iter_scores: 
                     if metric == 'encoding':
-                        score = encoding_score_func(target_pred, target_true)
+                        score = encoding_score_func(target_pred, target_true).detach().cpu().numpy()
                     elif metric == 'ersa':
                         target_pred = target_pred.unsqueeze(1)
                         pred_rdm = compute_rdm(target_pred, 'euclidean')
