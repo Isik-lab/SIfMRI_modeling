@@ -1,6 +1,9 @@
 import argparse
 import sys
 from pathlib import Path
+
+from torch import hub
+
 # Calculate the path to the root of the project
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
@@ -56,6 +59,10 @@ class RSABenchmark:
             self.extension = 'mp4'
         else:
             self.extension = 'png'
+        self.cache = f'{args.top_dir}/.cache'
+        # set cache location
+        hub.set_dir(self.cache)
+        os.environ['HF_HOME'] = self.cache
         print(vars(self))
         model_name = self.model_uid.replace('/', '_')
         self.crsa_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_crsa.csv'
@@ -217,6 +224,7 @@ def main():
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--data_dir', '-data', type=str,
                         default=default_data_dir)
+    parser.add_argument('--top_dir', type=str, default=f'/home/kgarci18/scratch4-lisik3/SIfMRI_modeling/cache')
     args = parser.parse_args()
     RSABenchmark(args).run()
 
