@@ -123,7 +123,7 @@ class RSABenchmark:
                                                          memory_limit='10GB',
                                                          flatten=True,
                                                          output_device='cuda',
-                                                         show_progress=True,
+                                                         show_progress=False,
                                                          exclude_oversize=True)
                 print('Model loaded!')
                 print('Running rsa...')
