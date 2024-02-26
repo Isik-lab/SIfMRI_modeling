@@ -221,7 +221,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='slip_vit_s_yfcc15m')
     parser.add_argument('--model_input', type=str, default='images')
-    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default=default_data_dir)
     parser.add_argument('--top_dir', type=str, default=f'/home/kgarci18/scratch4-lisik3/SIfMRI_modeling/cache')
