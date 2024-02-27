@@ -46,16 +46,17 @@ class BehaviorEncoding:
             benchmark = self.load_data()
             stimulus_path = f'{self.data_dir}/raw/{self.model_input}/',
             benchmark.add_stimulus_path(data_dir=stimulus_path, extension=self.extension)
-            benchmark.filter_stimulus(stimulus_set='train')
             target_features = [f for f in benchmark.stimulus_data.columns if 'rating-' in f]
 
-            model, preprocess = get_deepjuice_model(self.model_uid)
-            dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
+            model, preprocess = get_deepjuice_model(model_name)
+            images = pd.concat([benchmark.filter_stimulus('train').stimulus_data['stimulus_path'], 
+                                benchmark.filter_stimulus('test').stimulus_data['stimulus_path']])
+            dataloader = get_image_loader(images, preprocess)
             feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
                                     flatten=True, progress=True, output_device='cuda:0')
 
             print('running regressions')
-            results = align.get_training_benchmarking_results(benchmark, feature_map_extractor,
+            results = align.get_training_benchmarking_results(benchmark, feature_map_extractor, 
                                                               target_features, model_name=self.model_name)
             print('saving results')
             results.to_csv(self.out_file, index=False, compression='gzip')

@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=50:00
+#SBATCH --time=10:00
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
@@ -13,7 +13,7 @@
 ####file=../data/raw/model_list/vision_models.csv; tail -n +2 "$file" | while IFS=',' read -r model cols; do sbatch -J $model batch_behavior_encoding.sh $model; done
 ####unfinished_output_file="unfinished_tasks.txt"; while IFS= read -r model; do sbatch -J $model batch_behavior_encoding.sh $model; done < "$unfinished_output_file"
 
-model=${1:-slip_vit_s_yfcc15m}
+model=${1:-torchvision_alexnet_imagenet1k_v1}
 echo $model
 
 export HF_HOME='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/.cache/huggingface/hub'
