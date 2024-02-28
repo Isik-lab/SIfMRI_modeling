@@ -11,9 +11,9 @@ from deepjuice.procedural.datasets import get_image_loader
 from deepjuice.extraction import FeatureExtractor
 
 
-class BehaviorEncoding:
+class VisionBehaviorEncoding:
     def __init__(self, args):
-        self.process = 'BehaviorEncoding'
+        self.process = 'VisionBehaviorEncoding'
         print('working')
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
@@ -46,7 +46,7 @@ class BehaviorEncoding:
         else:
             benchmark = self.load_fmri()
             benchmark.add_stimulus_path(data_dir=self.stimulus_path, extension=self.extension)
-            benchmark.sort_stimulus_values(col='stimulus_set', inplace=True)
+            benchmark.sort_stimulus_values(col='stimulus_set')
 
             model, preprocess = get_deepjuice_model(self.model_name)
             dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
@@ -69,7 +69,7 @@ def main():
     parser.add_argument('--top_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
     args = parser.parse_args()
-    BehaviorEncoding(args).run()
+    VisionBehaviorEncoding(args).run()
 
 
 if __name__ == '__main__':

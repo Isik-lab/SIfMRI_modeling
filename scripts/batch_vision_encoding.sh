@@ -12,6 +12,6 @@ export HF_DATASETS_CACHE="${project_folder}/.cache/huggingface/hub"
 ml anaconda
 conda activate deepjuice
 
-python vision_encoding.py --model_uid $model \
+python vision_neural_encoding.py --model_uid $model \
     --overwrite --test_set_evaluation \
     --top_dir $project_folder

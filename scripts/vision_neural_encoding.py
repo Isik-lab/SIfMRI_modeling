@@ -11,9 +11,9 @@ from deepjuice.procedural.datasets import get_image_loader
 from deepjuice.extraction import FeatureExtractor
 
 
-class VisionEncoding:
+class VisionNeuralEncoding:
     def __init__(self, args):
-        self.process = 'VisionEncoding'
+        self.process = 'VisionNeuralEncoding'
         print('working')
         self.overwrite = args.overwrite
         self.test_set_evaluation = args.test_set_evaluation
@@ -75,7 +75,7 @@ def main():
     parser.add_argument('--top_dir', '-top', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
     args = parser.parse_args()
-    VisionEncoding(args).run()
+    VisionNeuralEncoding(args).run()
 
 
 if __name__ == '__main__':
