@@ -46,6 +46,7 @@ def get_benchmarking_results(benchmark, feature_extractor,
     y = {'train': torch.from_numpy(benchmark.response_data.to_numpy().T[50:]).to(torch.float32).to(device)} 
     y['test'] = torch.from_numpy(benchmark.response_data.to_numpy().T[:50]).to(torch.float32).to(device)
 
+    print('Starting CV in the training set')
     layer_index = 0 # keeps track of depth
     scores_train_max = None
     for feature_maps in feature_extractor:
@@ -103,17 +104,14 @@ def get_benchmarking_results(benchmark, feature_extractor,
             torch.cuda.empty_cache()
     
     # Add training data to a dataframe
-    results = []
-    voxel_iterator = tqdm(benchmark.metadata.iterrows(), total=len(benchmark.metadata), desc='Generating training score sheet')
-    for i, row in voxel_iterator:
-        row['layer_index'] = model_layer_index_max[i]
-        row['layer_relative_depth'] = model_layer_index_max[i]/ (layer_index + layer_index_offset)
-        row['layer'] = model_layer_max[i]
-        row['train_score'] = scores_train_max[i]
-        results.append(row)
-    results = pd.DataFrame(results)
+    results = benchmark.metadata.copy()
+    results['layer_index'] = model_layer_index_max
+    results['layer_relative_depth'] = model_layer_index_max/ (layer_index + layer_index_offset)
+    results['layer'] = model_layer_max
+    results['train_score'] = scores_train_max
 
     if test_set_evaluation:
+        print('Running evaluation in the test set')
         scores_test_max = np.zeros_like(scores_train_max)
         layer_index = 0
         for feature_maps in feature_extractor:
@@ -154,12 +152,7 @@ def get_benchmarking_results(benchmark, feature_extractor,
                 torch.cuda.empty_cache()
 
         # Add test set results to the dataframe
-        test_results = []
-        voxel_iterator = tqdm(results.iterrows(), total=len(results), desc='Generating test score sheet')
-        for i, row in voxel_iterator:
-            row['test_score'] = scores_test_max[i]
-            test_results.append(row)
-        results = pd.DataFrame(test_results)
+        results['test_score'] = scores_test_max
         print(f'{results.head()=}')
     return results
 

@@ -51,7 +51,7 @@ class VisionNeuralEncoding:
         else:
             benchmark = self.load_fmri()
             benchmark.add_stimulus_path(data_dir=self.stimulus_path, extension=self.extension)
-            benchmark.sort_stimulus_values(col='stimulus_set', inplace=True)
+            benchmark.sort_stimulus_values(col='stimulus_set')
 
             model, preprocess = get_deepjuice_model(self.model_name)
             dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
