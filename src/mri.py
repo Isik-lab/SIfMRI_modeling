@@ -69,19 +69,20 @@ class Benchmark:
         self.stimulus_data.drop(columns='index', inplace=True)
         self.response_data = self.response_data.iloc[voxel_id]
 
-    def filter_stimulus(self, stimulus_set='train', inplace=False):
-        stimulus_data_out = self.stimulus_data[self.stimulus_data['stimulus_set'] == stimulus_set].reset_index()
-        stim_idx = list(stimulus_data_out['index'].to_numpy().astype('str'))
-        stimulus_data_out.drop(columns='index', inplace=True)
-        if inplace: 
-            self.stimulus_data = stimulus_data_out.copy()
-            if self.response_data is not None:
-                self.response_data = self.response_data[stim_idx]
-        else:
-            if self.response_data is not None:
-                return stimulus_data_out, self.response_data[stim_idx]
-            else:
-                return stimulus_data_out
+    def filter_stimulus(self, stimulus_set='train'):
+        self.stimulus_data = self.stimulus_data[self.stimulus_data['stimulus_set'] == stimulus_set].reset_index()
+        stim_idx = list(self.stimulus_data['index'].to_numpy().astype('str'))
+        self.stimulus_data.drop(columns='index', inplace=True)
+        if self.response_data is not None:
+            self.response_data = self.response_data[stim_idx]
+
+    def sort_stimulus_values(self, col='stimulus_set'):
+        self.stimulus_data = self.stimulus_data.sort_values(by=col).reset_index()
+        stim_idx = list(self.stimulus_data['index'].to_numpy().astype('str'))
+        self.stimulus_data.drop(columns='index', inplace=True)
+        if self.response_data is not None: 
+            self.response_data = self.response_data[stim_idx].reset_index(drop=True)
+
 
     def update(self, iterable):
         """

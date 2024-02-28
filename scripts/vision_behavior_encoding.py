@@ -33,6 +33,7 @@ class BehaviorEncoding:
             self.extension = 'png'
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
+        Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
         self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.csv.gz'
     
     def load_data(self):
@@ -43,17 +44,14 @@ class BehaviorEncoding:
             # results = pd.read_csv(self.out_file)
             print('Output file already exists. To run again pass --overwrite.')
         else:
-            benchmark = self.load_data()
-            stimulus_path = f'{self.data_dir}/raw/{self.model_input}/',
-            benchmark.add_stimulus_path(data_dir=stimulus_path, extension=self.extension)
-            target_features = [f for f in benchmark.stimulus_data.columns if 'rating-' in f]
+            benchmark = self.load_fmri()
+            benchmark.add_stimulus_path(data_dir=self.stimulus_path, extension=self.extension)
+            benchmark.sort_stimulus_values(col='stimulus_set', inplace=True)
 
-            model, preprocess = get_deepjuice_model(model_name)
-            images = pd.concat([benchmark.filter_stimulus('train').stimulus_data['stimulus_path'], 
-                                benchmark.filter_stimulus('test').stimulus_data['stimulus_path']])
-            dataloader = get_image_loader(images, preprocess)
-            feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
-                                    flatten=True, progress=True, output_device='cuda:0')
+            model, preprocess = get_deepjuice_model(self.model_name)
+            dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
+            feature_extractor = FeatureExtractor(model, dataloader, max_memory_load='10GB',
+                                                flatten=True, progress=True, output_device='cuda:0')
 
             print('running regressions')
             results = align.get_training_benchmarking_results(benchmark, feature_map_extractor, 
