@@ -25,14 +25,14 @@ def feature_scaler(train, test):
     return (train-mean_)/std_, (test-mean_)/std_
 
 
-def get_training_benchmarking_results(benchmark, feature_extractor,
-                                      target_features,
-                                      layer_index_offset=0,
-                                      device='cuda:0',
-                                      n_splits=4, random_seed=0,
-                                      model_name=None,
-                                      scale_y=True, 
-                                      alphas=[10.**power for power in np.arange(-5, 2)]):
+def get_benchmarking_results(benchmark, feature_extractor,
+                            target_features,
+                            layer_index_offset=0,
+                            device='cuda:0',
+                            n_splits=4, random_seed=0,
+                            model_name=None,
+                            scale_y=True, 
+                            alphas=[10.**power for power in np.arange(-5, 2)]):
 
     # use a CUDA-capable device, if available, else: CPU
     print(f'device: {device}')
