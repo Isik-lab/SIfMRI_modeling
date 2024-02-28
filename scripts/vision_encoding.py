@@ -4,7 +4,7 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-from src import encoding
+from src.neural_alignment import get_benchmarking_results
 import torch
 from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_image_loader
@@ -59,8 +59,8 @@ class VisionEncoding:
                                                 flatten=True, progress=True, output_device='cuda:0')
 
             print('running regressions')
-            results = encoding.get_benchmarking_results(benchmark, feature_extractor, 
-                                                        test_set_evaluation=self.test_set_evaluation)
+            results = get_benchmarking_results(benchmark, feature_extractor, 
+                                               test_set_evaluation=self.test_set_evaluation)
             print('saving results')
             results.to_csv(self.out_file, index=False)
             print('Finished!')
