@@ -9,6 +9,8 @@ import torch
 from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_image_loader
 from deepjuice.extraction import FeatureExtractor
+from slack_sdk.webhook import WebhookClient
+from slack_sdk import WebClient
 
 
 class VisionNeuralEncoding:
@@ -38,6 +40,28 @@ class VisionNeuralEncoding:
         self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.csv.gz'
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
 
+    def send_slack(self, msg='', filepath=None):
+        """
+         Helper function to send slack message to a webhook
+         Arguments:
+             msg: (str) The message to send. Defaults to None
+             filepath (str) Optionally included filepath to an attachment that you want to include. Defaults to None
+         Returns:
+             slack-sdk response
+        """
+        # Slack API functions
+        url = 'https://hooks.slack.com/services/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'
+        webhook = WebhookClient(url)
+        token = 'xoxp-508184378419-2331084514512-6070633594310-1c3ba2835c4bde49662d705517442b09'
+        client = WebClient(token)
+        response = None
+        if filepath:
+            response = client.files_upload(channels='file_automation', title=filepath, file=filepath, initial_comment=msg)
+        elif msg:
+            response = webhook.send(text=msg)
+        return response
+
+
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
@@ -45,25 +69,29 @@ class VisionNeuralEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
     
     def run(self):
-        if os.path.exists(self.out_file) and not self.overwrite: 
-            # results = pd.read_csv(self.out_file)
-            print('Output file already exists. To run again pass --overwrite.')
-        else:
-            benchmark = self.load_fmri()
-            benchmark.add_stimulus_path(data_dir=self.stimulus_path, extension=self.extension)
-            benchmark.sort_stimulus_values(col='stimulus_set')
+        try:
+            if os.path.exists(self.out_file) and not self.overwrite:
+                # results = pd.read_csv(self.out_file)
+                print('Output file already exists. To run again pass --overwrite.')
+            else:
+                benchmark = self.load_fmri()
+                benchmark.add_stimulus_path(data_dir=self.stimulus_path, extension=self.extension)
+                benchmark.sort_stimulus_values(col='stimulus_set')
 
-            model, preprocess = get_deepjuice_model(self.model_name)
-            dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
-            feature_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
-                                                flatten=True, progress=True, output_device='cuda:0')
+                model, preprocess = get_deepjuice_model(self.model_name)
+                dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
+                feature_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
+                                                    flatten=True, progress=True, output_device='cuda:0')
 
-            print('running regressions')
-            results = get_benchmarking_results(benchmark, feature_extractor, 
-                                               test_set_evaluation=self.test_set_evaluation)
-            print('saving results')
-            results.to_csv(self.out_file, index=False)
-            print('Finished!')
+                print('running regressions')
+                results = get_benchmarking_results(benchmark, feature_extractor,
+                                                   test_set_evaluation=self.test_set_evaluation)
+                print('saving results')
+                results.to_csv(self.out_file, index=False)
+                print('Finished!')
+        except Exception as err:
+            print(f'Error during encoding with model - {self.model_name}, error message = {err}')
+            self.send_slack(msg=f'Error during encoding with model - {self.model_name}, error message = {err}')
 
 
 def main():
@@ -73,7 +101,7 @@ def main():
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('--test_set_evaluation', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--top_dir', '-top', type=str,
-                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
+                         default='/home/kgarci18/scratch4-lisik3/SIfMRI_modeling')
     args = parser.parse_args()
     VisionNeuralEncoding(args).run()
 
