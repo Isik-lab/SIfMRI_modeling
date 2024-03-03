@@ -88,6 +88,7 @@ class VisionNeuralEncoding:
                                                    test_set_evaluation=self.test_set_evaluation)
                 print('saving results')
                 results.to_csv(self.out_file, index=False)
+                print(f'Saved to {self.out_file}')
                 print('Finished!')
         except Exception as err:
             print(f'Error during encoding with model - {self.model_name}, error message = {err}')

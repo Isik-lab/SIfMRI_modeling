@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=10:00
+#SBATCH --time=30:00
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
@@ -17,7 +17,7 @@
 #  for f in slurm*out; do if ! grep -q "Finished" "$f"; then echo "$(echo $f | sed -n 's/slurm-\([0-9]*\).out/\1/p'),$(grep "model name=" "$f" | sed -n 's/.*model name= \(.*\)/\1/p'),$(tail -n 1 "$f")" >> unfinished_tasks.txt; fi; done
 
 # Path to your CSV file
-file="/home/kgarci18/scratch4-lisik3/SIfMRI_modeling/data/raw/model_list/vision_models.csv"
+file="/home/kgarci18/scratch4-lisik3/SIfMRI_modeling/data/raw/model_list/remaining_models.csv"
 
 # SLURM_ARRAY_TASK_ID corresponds to the line number starting from 1
 # Adjust by adding 1 to skip the header line
