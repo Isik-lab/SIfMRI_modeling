@@ -27,7 +27,7 @@ def feature_scaler(train, test):
 
 def get_benchmarking_results(benchmark, feature_extractor,
                              layer_index_offset=0,
-                             device='cuda:0',
+                             device='cuda',
                              n_splits=4, random_seed=0,
                              model_name=None,
                              scale_y=True, 

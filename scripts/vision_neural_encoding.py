@@ -81,7 +81,7 @@ class VisionNeuralEncoding:
                 model, preprocess = get_deepjuice_model(self.model_name)
                 dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
                 feature_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
-                                                    flatten=True, progress=True, output_device='cuda:0')
+                                                    flatten=True, progress=True, output_device='cuda')
 
                 print('running regressions')
                 results = get_benchmarking_results(benchmark, feature_extractor,
