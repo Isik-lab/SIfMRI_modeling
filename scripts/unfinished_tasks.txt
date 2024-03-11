@@ -1,0 +1,19 @@
+10030313,timm_cait_s36_384,Constructing SRP Matrix (Index):   0%|          | 0/19 [00:00<?, ?it/s][Aslurmstepd: error: *** JOB 10030313 ON gpu17 CANCELLED AT 2024-02-28T18:29:20 DUE TO TIME LIMIT ***
+10031391,timm_deit3_large_patch16_384,huggingface_hub.utils._errors.LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub and we cannot find the requested files in the local cache. Please check your connection and try again or make sure your Internet connection is on.
+10031880,timm_dm_nfnet_f4,slurmstepd: error: *** JOB 10031880 ON gpu15 CANCELLED AT 2024-02-28T19:29:30 DUE TO TIME LIMIT ***
+10032109,timm_ecaresnet269d,Constructing SRP Matrix (Index):   0%|          | 0/19 [00:00<?, ?it/s][Aslurmstepd: error: *** JOB 10032109 ON gpu17 CANCELLED AT 2024-02-28T19:38:03 DUE TO TIME LIMIT ***
+10032382,timm_gluon_senet154,slurmstepd: error: *** JOB 10032382 ON gpu02 CANCELLED AT 2024-02-28T19:54:37 DUE TO TIME LIMIT ***
+10032490,timm_mobilenetv3_rw,torch._C._LinAlgError: linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 151).
+10032555,bit_expert_food,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032556,bit_expert_vehicle,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032557,bit_expert_instrument,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032558,bit_expert_flower,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032559,bit_expert_animal,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032560,bit_expert_object,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032561,bit_expert_bird,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032562,bit_expert_mammal,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032563,bit_expert_arthropod,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032564,bit_expert_relation,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032565,bit_expert_abstraction,AttributeError: module 'tensorflow._api.v2.compat.v2.__internal__' has no attribute 'register_load_context_function'. Did you mean: 'register_call_context_function'?
+10032608,torchvision_mobilenet_v3_large_imagenet1k_v2,torch._C._LinAlgError: linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 151).
+10032609,torchvision_mobilenet_v3_small_imagenet1k_v1,torch._C._LinAlgError: linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 151).
