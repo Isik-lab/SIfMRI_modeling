@@ -1,22 +1,15 @@
 #!/bin/bash -l
 
-#SBATCH
-#SBATCH --time=10:00
-#SBATCH --partition=a100
-#SBATCH --account=lisik3_gpu
-#SBATCH --nodes=1
-#SBATCH --mem-per-cpu=10G
-#SBATCH --cpus-per-task=8
-#SBATCH --gres=gpu:1
-#SBATCH --output=slurm-bert-%x-%j.out
+model=${1:-sentence-transformers/all-MiniLM-L6-v2}
+echo "model name= $model"
 
-perturbation=${1:-stripped_orig}
-model=${2:-sentence-transformers/all-MiniLM-L6-v2}
+project_folder="/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling"
 
-echo "perturbation: $perturbation"
-echo "model: $model"
+export HF_HOME="${project_folder}/.cache/huggingface/hub"
+export HUGGINGFACE_HUB_CACHE="${project_folder}/.cache/huggingface/hub"
+export HF_DATASETS_CACHE="${project_folder}/.cache/huggingface/hub"
 
 ml anaconda
-conda activate deepjuice_stable
+conda activate deepjuice
 
-python llm_encoding.py --model_uid $model --perturbation $perturbation --overwrite
+python language_behavior_encoding.py --model_uid $model --overwrite
