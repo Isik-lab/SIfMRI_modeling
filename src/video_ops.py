@@ -145,7 +145,21 @@ def x3d_transform(model_name):
 # Xclip transform
 ####################
 def xclip_transform(model_name):
-    pass
+    mean = [0.45, 0.45, 0.45]
+    std = [0.225, 0.225, 0.225]
+    crop_size = 256
+    num_frames = 32
+    return ApplyTransformToKey(
+              key="video",
+              transform=Compose(
+                    [
+                        UniformTemporalSubsample(num_frames),
+                        Lambda(lambda x: x/255.0),
+                        Normalize(mean, std),
+                        ShortSideScale(crop_size),
+                    ]
+                   )
+    )
 
 ####################
 # allpro transform
