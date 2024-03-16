@@ -17,8 +17,8 @@ from deepjuice.alignment import TorchRidgeGCV
 from deepjuice.reduction import compute_srp
 from deepjuice.alignment import compute_score
 from sklearn.preprocessing import StandardScaler
-from deepjuice import apply_to_tensors
-from deepjuice import convert_to_tensor
+from deepjuice.tensorops import apply_tensor_op
+from deepjuice.tensorops import convert_to_tensor
 
 
 def get_training_benchmarking_results(benchmark, feature_extractor,
@@ -207,7 +207,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
         for i, indices in enumerate(ind_splits):
             data_split = {'train': {}, 'test': {}}
             # model splits
-            feature_map = apply_to_tensors(feature_map, lambda x: x.to('cpu'))
+            feature_map = apply_tensor_op(feature_map, lambda x: x.to('cpu'))
             xtrain_scaled = scaling.fit_transform(feature_map[indices['train']])
             xtest_scaled = scaling.transform(feature_map[indices['test']])
             data_split['train']['X'] = xtrain_scaled
