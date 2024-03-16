@@ -11,8 +11,8 @@ import torch
 
 
 def visual_events(stimulus_data, video_dir, image_dir, 
-                            keep_every=2,
-                            target_index=None, **kwargs):
+                  frame_idx=None,
+                  target_index=None, **kwargs):
 
     # event data is our annotations:
     if isinstance(stimulus_data, str):
@@ -22,15 +22,11 @@ def visual_events(stimulus_data, video_dir, image_dir,
                                                                      os.path.join(video_dir, x))
     stimulus_data = parse_video_data(stimulus_data)
 
-    process_kwargs = get_fn_kwargs(process_event_videos, kwargs)
-    process_kwargs['keep_every'] = keep_every
-    process_event_videos(stimulus_data, image_dir, **process_kwargs)
+    process_event_videos(stimulus_data, image_dir,
+                         frame_idx=frame_idx)
 
     all_frame_paths = sorted(glob(f'{image_dir}/*.png'))
     
-    event_index = {}
-    image_paths = []
-
     def get_frame_index(frame_path):
         return int(frame_path.split('frame_')[-1].split('.')[0])
 
@@ -49,23 +45,18 @@ def visual_events(stimulus_data, video_dir, image_dir,
         else: # interpretable error
             raise ValueError("target_index should be None or one of {int, 'middle'}")
             
+    image_paths = []
     for video_id in stimulus_data.video_id:
         for frame_id in frame_indices:
-            image_paths += sorted([path for path in all_frame_paths 
-                                   if f'video_{video_id}' in path
-                                   and f'frame_{frame_id}' in path])
-                                  
-            index_offset = (int(video_id)-1) * len(frame_indices)
-            index_range = range(index_offset, index_offset + len(frame_indices))
-            
-            event_index[video_id] = torch.Tensor(index_range).long()
-
-    return {'stimulus_data': stimulus_data, 
-            'image_paths': image_paths,
-            'group_indices': event_index}
+            paths = sorted([path for path in all_frame_paths
+                            if f'video_{video_id}' in path
+                            and f'frame_{frame_id}' in path])
+            image_paths.append({'video_id': video_id, 'frame_id': frame_id, 'images': paths[0]})
+    image_paths = pd.DataFrame(image_paths)
+    return stimulus_data.merge(image_paths, on='video_id', how='outer')
 
 
-def process_video(video_path, target_frames=None, verbose=False):
+def process_video(video_path, target_frames, verbose=False):
     # Load the video
     video = cv2.VideoCapture(video_path)
 
@@ -114,49 +105,8 @@ def count_total_frames(video_path):
     return total_frames
     
 
-def get_sequence_idx(sequence_length=None, every_nth=1, *keys, 
-                     first=False, last=False, middle=False):
-    
-    sequence = list(range(sequence_length))
-
-    output_idx = [] # fill conditionally
-
-    # Filter every nth element
-    if every_nth is not None:
-        output_idx += sequence[::every_nth]
-
-    key_frames = [key[0].upper() for key in keys
-                  if isinstance(key, str)]
-
-    key_indices = [key for key in keys
-                   if isinstance(key, int)]
-
-    # Check first, last, middle, frames
-    if first or 'F' in key_frames: 
-        output_idx += [0]
-
-    if last or 'L' in key_frames:
-        output_idx += [sequence_length]
-
-    if middle or 'M' in key_frames:
-        output_idx += [sequence_length // 2]
-
-    output_idx += [index for index in key_indices
-                   if index not in output_idx]
-    
-    return list(sorted(set(output_idx)))
-
-
-def extract_frames(video_path, video_id, output_dir=None, 
-                   *key_frames, keep_every=30, **kwargs):
-
-    if all(isinstance(index, int) for index in key_frames):
-        frame_idx = list(key_frames)
-
-    else: # parse  sequence indicators
-        total_frames = count_total_frames(video_path)
-        sequence_args = (total_frames, keep_every)
-        frame_idx = get_sequence_idx(*sequence_args, *key_frames)
+def extract_frames(video_path, video_id, frame_idx=None,
+                   output_dir=None, **kwargs):
 
     if output_dir is None: # process directly
         return process_video(video_path, frame_idx)
@@ -195,20 +145,18 @@ def extract_frames(video_path, video_id, output_dir=None,
 
 
 def parse_video_data(video_data, group=['video_name']):
-    
-    video_data = (video_data
-                  .sort_values(by=group)
-                  .reset_index(drop=True))
-    
-    video_ids = video_data.groupby(group).ngroup().values
-    video_data.insert(2, 'video_id', [str(i+1).zfill(3) for i in video_ids])
-
-    return video_data 
+    video_data_out = video_data.copy()
+    video_data_out.set_index(group, inplace=True)
+    video_data_out = video_data_out.reset_index(drop=False).reset_index(drop=False)
+    video_ids = [str(index+1).zfill(3) for index in video_data_out['index']]
+    video_data_out = video_data_out.drop(columns=['index'])
+    video_data_out['video_id'] = video_ids
+    return video_data_out 
 
 
-def process_event_videos(video_data, output_dir, key_frames=['F','L'], keep_every=30):
-    for _, row in tqdm(video_data.iterrows(), total = video_data.shape[0],
+def process_event_videos(video_data, output_dir, frame_idx=None):
+    for _, row in tqdm(video_data.iterrows(), total=video_data.shape[0],
                        desc = 'Processing Event Videos'):
         
         extract_frames(row['video_path'], row['video_id'], 
-                       output_dir, *key_frames, keep_every=keep_every)
+                       output_dir=output_dir, frame_idx=frame_idx)
