@@ -45,12 +45,16 @@ def get_video_loader(video_set, clip_duration, transforms, batch_size=64, **kwar
 def get_transform(model_name):
     if 'slowfast' in model_name:
         return slowfast_transform()
-
     elif 'x3d' in model_name:
         return x3d_transform(model_name)
-
+    elif 'xclip' in model_name:
+        return xclip_transform(model_name)
+    elif 'allpro' in model_name:
+        return allpro_transform(model_name)
+    elif 'visionvit' in model_name:
+        return visionvit_transform(model_name)
     else:
-        print('model not yet implemented')
+        print(f'{model_name} model not yet implemented!')
 
 
 ####################
@@ -105,7 +109,7 @@ def x3d_transform(model_name):
     mean = [0.45, 0.45, 0.45]
     std = [0.225, 0.225, 0.225]
     frames_per_second = 30
-    model_transform_params  = {
+    model_transform_params = {
         "x3d_xs": {
             "crop_size": 182,
             "num_frames": 4,
@@ -136,3 +140,21 @@ def x3d_transform(model_name):
                     ]
                    )
     )
+
+####################
+# Xclip transform
+####################
+def xclip_transform(model_name):
+    pass
+
+####################
+# allpro transform
+####################
+def allpro_transform(model_name):
+    pass
+
+####################
+# visionvit transform
+####################
+def visionvit_transform(model_name):
+    pass

@@ -9,7 +9,6 @@ import torch
 from deepjuice.extraction import FeatureExtractor
 from src import video_ops
 
-
 class VideoEncoding:
     def __init__(self, args):
         self.process = 'VideoEncoding'
@@ -68,11 +67,12 @@ class VideoEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', type=str, default='slowfast_r50')
+    parser.add_argument('--model_name', type=str, default='No_Model')
     parser.add_argument('--model_input', type=str, default='videos')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
-                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')                        
+                        default='/home/kgarci18/scratch4-lisik3/SIfMRI_modeling/data')
+                        # default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
 
     args = parser.parse_args()
