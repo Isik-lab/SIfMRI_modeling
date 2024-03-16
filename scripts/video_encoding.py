@@ -8,6 +8,7 @@ from src import encoding
 import torch
 from deepjuice.extraction import FeatureExtractor
 from src import video_ops
+from transformers import AutoModel
 
 class VideoEncoding:
     def __init__(self, args):
@@ -35,6 +36,16 @@ class VideoEncoding:
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
+
+    def get_model(self, model_name):
+        if model_name == 'slowfast_r50':
+            model = torch.hub.load("facebookresearch/pytorchvideo",
+                                   model=self.model_name, pretrained=True).to(self.device).eval()
+        elif model_name == 'xclip-base-patch32':
+            model = AutoModel.from_pretrained(f"microsoft/{model_name}")
+        else:
+            raise Exception(f"{model_name} is not implemented!")
+        return model
     
     def run(self):
         if os.path.exists(self.out_file) and not self.overwrite: 
@@ -46,9 +57,9 @@ class VideoEncoding:
             benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
             benchmark.filter_stimulus(stimulus_set='train')
 
-            print('loading model...')
-            model = torch.hub.load("facebookresearch/pytorchvideo",
-                                   model=self.model_name, pretrained=True).to(self.device).eval()
+            print(f'loading model {self.model_name}...')
+            model = self.get_model(self.model_name)
+
             preprocess = video_ops.get_transform(self.model_name)
             print(f'{preprocess=}')
             dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
