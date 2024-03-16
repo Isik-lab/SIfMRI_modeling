@@ -48,32 +48,41 @@ class VideoEncoding:
         return model
     
     def run(self):
-        if os.path.exists(self.out_file) and not self.overwrite: 
-            # results = pd.read_csv(self.out_file)
-            print('Output file already exists. To run again pass --overwrite.')
-        else:
-            print('loading data...')
-            benchmark = self.load_fmri()
-            benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
-            benchmark.filter_stimulus(stimulus_set='train')
+        try:
+            if os.path.exists(self.out_file) and not self.overwrite:
+                # results = pd.read_csv(self.out_file)
+                print('Output file already exists. To run again pass --overwrite.')
+            else:
+                print('loading data...')
+                benchmark = self.load_fmri()
+                benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
+                benchmark.filter_stimulus(stimulus_set='train')
 
-            print(f'loading model {self.model_name}...')
-            model = self.get_model(self.model_name)
+                print(f'loading model {self.model_name}...')
+                model = self.get_model(self.model_name)
+                print(f"loaded model")
 
-            preprocess = video_ops.get_transform(self.model_name)
-            print(f'{preprocess=}')
-            dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
-                                                    self.clip_duration, preprocess, batch_size=5)
-            feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
-                                                     initial_report=True, 
-                                                     flatten=True, progress=True)
-            
-            print('running regressions')
-            results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor, self.out_path)
+                preprocess = video_ops.get_transform(self.model_name)
+                print(f'{preprocess}')
+                print(f"Loading dataloader")
+                dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
+                                                        self.clip_duration, preprocess, batch_size=5)
+                print(f"loaded dataloader")
+                print(f"Creating feature extractor")
+                feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
+                                                         initial_report=True,
+                                                         flatten=True, progress=True)
+                print(f"loaded feature extractor")
 
-            print('saving results')
-            results.to_csv(self.out_file, index=False)
-            print('Finished!')
+                print('running regressions')
+                results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor, self.out_path)
+
+                print('saving results')
+                results.to_csv(self.out_file, index=False)
+                print('Finished!')
+        except Exception as err:
+            print(err)
+            raise err
 
 
 def main():
