@@ -64,9 +64,6 @@ def get_vsm_benchmarking_results(benchmark, model, dataloader,
                                 batch_strategy='stack')
     extractor.modify_settings(flatten=True)
 
-    # use a CUDA-capable device, if available, else: CPU
-    print(cuda_device_report())
-
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
     score_func = get_scoring_method('pearsonr')

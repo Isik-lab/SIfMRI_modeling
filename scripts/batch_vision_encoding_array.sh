@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH
-#SBATCH --time=50:00
+#SBATCH --time=4:30:00
 #SBATCH --partition=a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
@@ -11,7 +11,7 @@
 #SBATCH --output=slurm-%j.out
 
 ###To submit the job array
-#  file="../data/raw/model_list/vision_models.csv"; num_models=$(($(wc -l < "$file") - 1)); sbatch --array=1-$num_models%3 batch_vision_encoding_array.sh
+#  file="../data/raw/model_list/vision_models.csv"; num_models=$(($(wc -l < "$file") - 1)); sbatch --array=1-$num_models%5 batch_vision_encoding_array.sh
 
 ###To save unfinished tasks
 #  for f in slurm*out; do if ! grep -q "Finished" "$f"; then echo "$(echo $f | sed -n 's/slurm-\([0-9]*\).out/\1/p'),$(grep "model name=" "$f" | sed -n 's/.*model name= \(.*\)/\1/p'),$(tail -n 1 "$f")" >> unfinished_tasks.txt; fi; done
