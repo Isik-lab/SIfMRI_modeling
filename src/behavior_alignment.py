@@ -60,7 +60,7 @@ def get_vsm_benchmarking_results(benchmark, model, dataloader,
     # define the feature extractor object
     extractor = FeatureExtractor(model, dataloader, **devices,
                                 tensor_fn=grouped_average,
-                                memory_limit='30GB',
+                                memory_limit='40GB',
                                 batch_strategy='stack')
     extractor.modify_settings(flatten=True)
 
@@ -186,14 +186,15 @@ def get_llm_benchmarking_results(benchmark, model, dataloader,
                                 batch_strategy='stack')
     extractor.modify_settings(flatten=True)
 
-
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
     score_func = get_scoring_method('pearsonr')
 
     # divide responses
-    y = {'train': torch.from_numpy(benchmark.stimulus_data[target_features].to_numpy()[50:]).to(torch.float32).to('cuda:1')} 
-    y['test'] = torch.from_numpy(benchmark.stimulus_data[target_features].to_numpy()[:50]).to(torch.float32).to('cuda:1')
+    indices = {'train': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'train'].index,
+            'test': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'test'].index}
+    y = {'train': torch.from_numpy(benchmark.stimulus_data[target_features].to_numpy()[indices['train']]).to(torch.float32).to('cuda:1'),  
+         'test': torch.from_numpy(benchmark.stimulus_data[target_features].to_numpy()[indices['test']]).to(torch.float32).to('cuda:1')}
 
     layer_index = 0 # keeps track of depth
     results = []

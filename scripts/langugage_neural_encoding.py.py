@@ -4,16 +4,16 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-from src.behavior_alignment import get_llm_benchmarking_results
+from src.neural_alignment import get_llm_benchmarking_results
 from src.language_ops import parse_caption_data, load_llm, tokenize_captions
 import torch
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
 
 
-class LanguageBehaviorEncoding:
+class LanguageNeuralEncoding:
     def __init__(self, args):
-        self.process = 'LanguageBehaviorEncoding'
+        self.process = 'LanguageNeuralEncoding'
         print('working')
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
@@ -56,7 +56,10 @@ class LanguageBehaviorEncoding:
             videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
             benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
                                                                    categories=videos, ordered=True) 
-            benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name').reset_index(drop=True)
+            benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
+            stim_idx = list(benchmark.stimulus_data.index.to_numpy().astype('str'))
+            benchmark.stimulus_data.reset_index(drop=True, inplace=True)
+            benchmark.response_data = benchmark.response_data[stim_idx]
 
             print('running regressions')
             results = get_llm_benchmarking_results(benchmark, model, dataloader,
@@ -75,7 +78,7 @@ def main():
     parser.add_argument('--top_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
     args = parser.parse_args()
-    LanguageBehaviorEncoding(args).run()
+    LanguageNeuralEncoding(args).run()
 
 
 if __name__ == '__main__':

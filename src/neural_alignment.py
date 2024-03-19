@@ -60,7 +60,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
     # define the feature extractor object
     extractor = FeatureExtractor(model, dataloader, **devices,
                                 tensor_fn=grouped_average,
-                                memory_limit='30GB',
+                                memory_limit='70GB',
                                 batch_strategy='stack')
     extractor.modify_settings(flatten=True)
 
