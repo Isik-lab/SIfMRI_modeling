@@ -13,7 +13,7 @@
 file=${1:-"../data/raw/model_list/language_models.csv"}
 
 ###To submit the job array
-# file="../data/raw/model_list/language_models.csv"; num_models=$(($(wc -l < "$file") - 1)); sbatch --array=1-$num_models%3 batch_lm-beh_encoding_array.sh $file
+# file="../data/raw/model_list/language_models.csv"; num_models=$(($(wc -l < "$file") - 1)); sbatch --array=1-$num_models%4 batch_lm-neural_encoding_array.sh $file
 
 ###To save unfinished tasks
 # for f in slurm*out; do if ! grep -q "Finished" "$f" && grep -q "LanguageBehaviorEncoding" "$f"; then echo "$(grep "model name=" "$f" | sed -n 's/.*model name= \(.*\)/\1/p'),$(echo $f | sed -n 's/slurm-\([0-9]*\).out/\1/p'),$(tail -n 1 "$f")" >> unfinished_lm-behavior_tasks.txt; fi; done
@@ -27,5 +27,5 @@ model_line=$((SLURM_ARRAY_TASK_ID + 1))
 model=$(sed -n "${model_line}p" "$file" | cut -d',' -f1)
 
 # Your sbatch command, using the extracted model name
-source batch_lm-beh_encoding.sh "$model" 
+source batch_lm-neural_encoding.sh "$model" 
 

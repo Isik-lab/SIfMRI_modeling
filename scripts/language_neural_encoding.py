@@ -4,7 +4,7 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-from src.neural_alignment import get_llm_benchmarking_results
+from src.neural_alignment import get_benchmarking_results
 from src.language_ops import parse_caption_data, load_llm, tokenize_captions
 import torch
 from deepjuice.procedural.datasets import get_data_loader
@@ -17,7 +17,7 @@ class LanguageNeuralEncoding:
         print('working')
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
-        self.generative = args.generative
+        self.test_eval = args.test_eval
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
@@ -30,8 +30,11 @@ class LanguageNeuralEncoding:
         print("HF_DATASETS_CACHE is set to:", os.environ['HF_DATASETS_CACHE'])
         print(vars(self))
     
-    def load_data(self):
-        return Benchmark(stimulus_data=f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
+    def load_fmri(self):
+        metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
+        response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
+        stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
+        return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def load_captions(self):
         file = f'{self.data_dir}/interim/CaptionData/captions.csv'
@@ -42,12 +45,11 @@ class LanguageNeuralEncoding:
             # results = pd.read_csv(self.out_file)
             print('Output file already exists. To run again pass --overwrite.')
         else:
-            benchmark = self.load_data()
-            target_features = [col for col in benchmark.stimulus_data.columns if ('rating-' in col) and ('indoor' not in col)]
+            benchmark = self.load_fmri()
             captions = self.load_captions()
 
             # Get the model and dataloader
-            model, tokenizer = load_llm(self.model_uid, generative=self.generative)
+            model, tokenizer = load_llm(self.model_uid)
             dataloader = get_data_loader(captions, tokenizer, input_modality='text',
                                          batch_size=16, data_key='caption', group_keys='video_name')
 
@@ -62,9 +64,9 @@ class LanguageNeuralEncoding:
             benchmark.response_data = benchmark.response_data[stim_idx]
 
             print('running regressions')
-            results = get_llm_benchmarking_results(benchmark, model, dataloader,
-                                                   target_features=target_features,
-                                                   model_name=self.model_name)
+            results = get_benchmarking_results(benchmark, model, dataloader,
+                                               model_name=self.model_name,
+                                               test_eval=self.test_eval)
             print('saving results')
             results.to_csv(self.out_file, index=False, compression='gzip')
             print('Finished!')
@@ -74,7 +76,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--generative', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--top_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
     args = parser.parse_args()

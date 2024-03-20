@@ -1,0 +1,2 @@
+model, other
+sentence-transformers/all-MiniLM-L12-v2, other

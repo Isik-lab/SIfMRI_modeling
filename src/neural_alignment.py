@@ -27,7 +27,8 @@ def feature_scaler(train, test):
 
 def get_benchmarking_results(benchmark, model, dataloader,
                              layer_index_offset=0,
-                             devices={'device': 'cuda:0', 'output_device': 'cuda:0'},
+                             devices=['cuda:0', 'cuda:1'],
+                             memory_limit='30GB', 
                              n_splits=4, random_seed=0,
                              model_name=None,
                              scale_y=True, 
@@ -58,9 +59,9 @@ def get_benchmarking_results(benchmark, model, dataloader,
     print(cuda_device_report())
 
     # define the feature extractor object
-    extractor = FeatureExtractor(model, dataloader, **devices,
+    extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 'output_device': devices[0]},
                                 tensor_fn=grouped_average,
-                                memory_limit='70GB',
+                                memory_limit=memory_limit,
                                 batch_strategy='stack')
     extractor.modify_settings(flatten=True)
 
@@ -71,8 +72,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
     # divide responses
     indices = {'train': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'train'].index,
                'test': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'test'].index}
-    y = {'train': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to('cuda:1'),  
-         'test': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to('cuda:1')}
+    y = {'train': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1]),  
+         'test': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(devices[-1])}
 
     print('Starting CV in the training set')
     layer_index = 0 # keeps track of depth
@@ -87,16 +88,16 @@ def get_benchmarking_results(benchmark, model, dataloader,
             layer_index += 1 # one layer deeper in feature_maps
 
             # reduce dimensionality of feature_maps by sparse random projection
-            feature_map = get_feature_map_srps(feature_map, device='cuda:1')
+            feature_map = get_feature_map_srps(feature_map, device=devices[-1])
             
-            X = feature_map.detach().clone().squeeze().to(torch.float32).to('cuda:1')
+            X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
             X = {'train': X[indices['train']], 'test': X[indices['test']]}
             del feature_map
             torch.cuda.empty_cache()
 
             # Memory saving
             pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True, 
-                                 device='cuda:1', scale_X=False)
+                                 device=devices[-1], scale_X=False)
 
             #### Fit CV in the train set ####
             y_cv_pred, y_cv_true = [], [] #Initialize lists
@@ -156,16 +157,16 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 layer_index += 1 # one layer deeper in feature_maps
 
                 # reduce dimensionality of feature_maps by sparse random projection
-                feature_map = get_feature_map_srps(feature_map, device='cuda:1')
+                feature_map = get_feature_map_srps(feature_map, device=devices[-1])
                 
-                X = feature_map.detach().clone().squeeze().to(torch.float32).to('cuda:1')
+                X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
                 X = {'train': X[indices['train']], 'test': X[indices['test']]}
                 del feature_map
                 torch.cuda.empty_cache()
 
                 # Memory saving
                 pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True, 
-                                    device='cuda:1', scale_X=False)
+                                    device=devices[-1], scale_X=False)
 
                 X_train, X_test = feature_scaler(X['train'].detach().clone(), X['test'].detach().clone())
                 if scale_y: 
@@ -191,46 +192,3 @@ def get_benchmarking_results(benchmark, model, dataloader,
         results['test_score'] = scores_test_max
         print(f'{results.head()=}')
     return results
-
-
-def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device='cuda',
-                                      n_splits=4, random_seed=0, 
-                                      alphas=[10.**power for power in np.arange(-5, 2)]):
-    # use a CUDA-capable device, if available, else: CPU
-    print(f'{device=}')
-    print(f'{cuda_device_report()}')
-
-    # initialize pipe and kfold splitter
-    cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
-    score_func = get_scoring_method('pearsonr')
-    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
-                            device=device, scale_X=True,)
-            
-    # Get X
-    feature_map = get_feature_map_srps(feature_map, device=device)
-    X = feature_map.detach().clone().squeeze().to(torch.float32).to(device)
-    print(f'{X.shape=}')
-
-    # Send the neural data to the GPU
-    y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
-    print(f'{y.shape=}')
-
-    y_pred, y_true = [], [] #Initialize lists
-    cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
-    for train_index, test_index in cv_iterator:
-        X_train, X_test = X[train_index].detach().clone(), X[test_index].detach().clone()
-        y_train, y_test = y[train_index].detach().clone(), y[test_index].detach().clone()
-        pipe.fit(X_train, y_train)
-        y_pred.append(pipe.predict(X_test))
-        y_true.append(y_test)
-    
-    scores = score_func(torch.cat(y_pred), torch.cat(y_true)).cpu().detach().numpy()
-
-    # Make scoresheet based on the benchmark metadata
-    results = []
-    for i, row in benchmark.metadata.iterrows():
-        row['score'] = scores[i]
-        results.append(row)
-
-    return pd.DataFrame(results)
-    

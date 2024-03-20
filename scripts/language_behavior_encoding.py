@@ -4,7 +4,7 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-from src.behavior_alignment import get_llm_benchmarking_results
+from src.behavior_alignment import get_benchmarking_results
 from src.language_ops import parse_caption_data, load_llm, tokenize_captions
 import torch
 from deepjuice.procedural.datasets import get_data_loader
@@ -59,9 +59,10 @@ class LanguageBehaviorEncoding:
             benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name').reset_index(drop=True)
 
             print('running regressions')
-            results = get_llm_benchmarking_results(benchmark, model, dataloader,
-                                                   target_features=target_features,
-                                                   model_name=self.model_name)
+            results = get_benchmarking_results(benchmark, model, dataloader,
+                                               target_features=target_features,
+                                               memory_limit='30GB', 
+                                               model_name=self.model_name)
             print('saving results')
             results.to_csv(self.out_file, index=False, compression='gzip')
             print('Finished!')
