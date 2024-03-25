@@ -8,6 +8,9 @@ from torchvision.transforms import Compose, Lambda
 from pytorchvideo.transforms import ShortSideScale, Normalize
 from pytorchvideo.data.encoded_video import EncodedVideo
 from pytorchvideo.transforms import UniformTemporalSubsample, ApplyTransformToKey
+from torchvision.transforms import Compose, Lambda
+from torchvision.transforms._transforms_video import CenterCropVideo,NormalizeVideo
+
 
 
 class VideoData(CustomDataset):
@@ -47,12 +50,14 @@ def get_transform(model_name):
         return slowfast_transform()
     elif 'x3d' in model_name:
         return x3d_transform(model_name)
-    elif 'xclip' in model_name:
-        return xclip_transform(model_name)
-    elif 'allpro' in model_name:
-        return allpro_transform(model_name)
-    elif 'visionvit' in model_name:
-        return visionvit_transform(model_name)
+    elif 'slow_r50' in model_name:
+        return slow_r50_transform()
+    elif 'c2d_r50' in model_name:
+        return c2d_r50_transform()
+    elif 'i3d_r50' in model_name:
+        return i3d_r50_transform()
+    elif 'csn_r101' in model_name:
+        return csn_r101_transform()
     else:
         print(f'{model_name} model not yet implemented!')
 
@@ -142,33 +147,99 @@ def x3d_transform(model_name):
     )
 
 ####################
-# Xclip transform
+# slow_r50 transform
 ####################
-def xclip_transform(model_name):
+def slow_r50_transform():
+    side_size = 256
     mean = [0.45, 0.45, 0.45]
     std = [0.225, 0.225, 0.225]
     crop_size = 256
-    num_frames = 32
+    num_frames = 8
+    sampling_rate = 8
+    frames_per_second = 30
+    # The duration of the input clip is also specific to the model.
+    #clip_duration = (num_frames * sampling_rate) / frames_per_second
+
+    # Note that this transform is specific to the slow_R50 model.
     return ApplyTransformToKey(
-              key="video",
-              transform=Compose(
-                    [
-                        UniformTemporalSubsample(num_frames),
-                        Lambda(lambda x: x/255.0),
-                        Normalize(mean, std),
-                        ShortSideScale(crop_size),
-                    ]
-                   )
+        key="video",
+        transform=Compose(
+            [
+                UniformTemporalSubsample(num_frames),
+                Lambda(lambda x: x / 255.0),
+                NormalizeVideo(mean, std),
+                ShortSideScale(
+                    size=side_size
+                ),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
+            ]
+        ),
     )
 
 ####################
-# allpro transform
+# c2d_r50 transform
 ####################
-def allpro_transform(model_name):
-    pass
+def c2d_r50_transform():
+    side_size = 256
+    mean = [0.45, 0.45, 0.45]
+    std = [0.225, 0.225, 0.225]
+    crop_size = 256
+    num_frames = 8
+
+    return ApplyTransformToKey(
+        key="video",
+        transform=Compose(
+            [
+                UniformTemporalSubsample(num_frames),
+                Lambda(lambda x: x / 255.0),
+                NormalizeVideo(mean, std),
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
+            ]
+        ),
+    )
 
 ####################
-# visionvit transform
+# i3d_r50 transform
 ####################
-def visionvit_transform(model_name):
-    pass
+def i3d_r50_transform():
+    side_size = 256
+    mean = [0.45, 0.45, 0.45]
+    std = [0.225, 0.225, 0.225]
+    crop_size = 256
+    num_frames = 8
+
+    return ApplyTransformToKey(
+        key="video",
+        transform=Compose(
+            [
+                UniformTemporalSubsample(num_frames),
+                Lambda(lambda x: x / 255.0),
+                NormalizeVideo(mean, std),
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
+            ]
+        ),
+    )
+
+####################
+# csn_r101 transform
+####################
+def csn_r101_transform(model_name):
+    side_size = 256
+    mean = [0.45, 0.45, 0.45]
+    std = [0.225, 0.225, 0.225]
+    crop_size = 224
+    num_frames = 32
+    return ApplyTransformToKey(
+        key="video",
+        transform=Compose(
+            [
+                UniformTemporalSubsample(num_frames),  # Subsamples 32 frames from the video uniformly
+                Lambda(lambda x: x / 255.0),  # Normalize pixel values to [0, 1], assuming x is a tensor in the range [0, 255]
+                ShortSideScale(size=side_size),  # Resize the short side of the frame to 256 pixels
+                CenterCrop(crop_size),  # Crop the center 224x224 pixels from the frame
+                Normalize(mean=mean, std=std),
+            ]
+        ),
+    )
