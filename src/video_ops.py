@@ -3,14 +3,13 @@ import torch
 import pandas as pd
 from deepjuice.procedural.datasets import CustomDataset
 from pytorchvideo.data.encoded_video import EncodedVideo
+from torch.autograd._functions import Resize
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, Lambda
-from pytorchvideo.transforms import ShortSideScale, Normalize
+from torchvision.transforms import Compose, Lambda, Resize, Normalize, CenterCrop
+from pytorchvideo.transforms import ShortSideScale, UniformTemporalSubsample, ApplyTransformToKey
 from pytorchvideo.data.encoded_video import EncodedVideo
-from pytorchvideo.transforms import UniformTemporalSubsample, ApplyTransformToKey
-from torchvision.transforms import Compose, Lambda
-from torchvision.transforms._transforms_video import CenterCropVideo,NormalizeVideo
-
+from torchvision.transforms._transforms_video import CenterCropVideo, NormalizeVideo
+from transformers import VideoMAEImageProcessor
 
 
 class VideoData(CustomDataset):
@@ -58,6 +57,10 @@ def get_transform(model_name):
         return i3d_r50_transform()
     elif 'csn_r101' in model_name:
         return csn_r101_transform()
+    elif 'mvit' in model_name:
+        return mvit_transform()
+    elif 'videomae' in model_name:
+        return videomae_transform()
     else:
         print(f'{model_name} model not yet implemented!')
 
@@ -225,7 +228,7 @@ def i3d_r50_transform():
 ####################
 # csn_r101 transform
 ####################
-def csn_r101_transform(model_name):
+def csn_r101_transform():
     side_size = 256
     mean = [0.45, 0.45, 0.45]
     std = [0.225, 0.225, 0.225]
@@ -243,3 +246,26 @@ def csn_r101_transform(model_name):
             ]
         ),
     )
+
+def mvit_transform():
+    side_size = 256
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+    crop_size = 224
+    num_frames = 16
+    return ApplyTransformToKey(
+        key="video",
+        transform=Compose(
+            [
+                UniformTemporalSubsample(num_frames),  # Subsample 16 frames uniformly across the video
+                Lambda(lambda x: x / 255.0),  # Scale pixel values to [0, 1]
+                Resize(side_size),  # Resize such that the smaller side is 256 pixels
+                CenterCrop(crop_size),  # Crop the center to get 224x224 pixels
+                Normalize(mean=mean, std=std),  # ImageNet normalization
+            ]
+        ),
+    )
+
+def videomae_transform():
+    return VideoMAEImageProcessor.from_pretrained("MCG-NJU/videomae-base-finetuned-kinetics")
+
