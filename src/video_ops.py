@@ -69,22 +69,22 @@ def get_transform(model_name):
 # SlowFast transform
 ####################
 
-class SlowFast_PackPathway(torch.nn.Module):
+class PackPathway(torch.nn.Module):
     """
     Transform for converting video frames as a list of tensors.
     """
     def __init__(self):
         super().__init__()
-        self.alpha = 4
 
     def forward(self, frames: torch.Tensor):
         fast_pathway = frames
+        alpha = 4
         # Perform temporal sampling from the fast pathway.
         slow_pathway = torch.index_select(
             frames,
             1,
             torch.linspace(
-                0, frames.shape[1] - 1, frames.shape[1] // self.alpha
+                0, frames.shape[1] - 1, frames.shape[1] // alpha
             ).long(),
         )
         frame_list = [slow_pathway, fast_pathway]
@@ -96,18 +96,24 @@ def slowfast_transform():
     std = [0.225, 0.225, 0.225]
     crop_size = 256
     num_frames = 32
+    sampling_rate = 2
+    frames_per_second = 30
+    side_size = 256
     return ApplyTransformToKey(
-              key="video",
-              transform=Compose(
-                    [
-                        UniformTemporalSubsample(num_frames),
-                        Lambda(lambda x: x/255.0),
-                        Normalize(mean, std),
-                        ShortSideScale(crop_size),
-                        SlowFast_PackPathway()
-                    ]
-                   )
-    )
+        key="video",
+        transform=Compose(
+        [
+            UniformTemporalSubsample(num_frames),
+            Lambda(lambda x: x/255.0),
+            NormalizeVideo(mean, std),
+            ShortSideScale(
+                size=side_size
+            ),
+            CenterCropVideo(crop_size),
+            PackPathway()
+        ]
+    ),
+)
 
 ####################
 # X3D transform
