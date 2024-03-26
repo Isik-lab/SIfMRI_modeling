@@ -1,7 +1,7 @@
 #
 import torch
 import pandas as pd
-from deepjuice.procedural.datasets import CustomDataset
+from deepjuice.procedural.datasets import CustomData
 from torchvision.transforms import Compose, Lambda, Resize, Normalize, CenterCrop
 from torchvision.transforms._transforms_video import (
     CenterCropVideo,
@@ -19,7 +19,7 @@ from torch.utils.data import DataLoader
 from transformers import VideoMAEImageProcessor
 
 
-class VideoData(CustomDataset):
+class VideoData(CustomData):
     def __init__(self, video_paths, clip_duration,
                  transforms=None, device='cuda'):
         self.videos = video_paths
