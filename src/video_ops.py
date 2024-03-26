@@ -29,10 +29,12 @@ class VideoData(CustomDataset):
         self.data = self.videos
 
     def __getitem__(self, index):
-        video = EncodedVideo.from_path(self.videos[index]) # Initialize an EncodedVideo helper class
-        video_data = video.get_clip(start_sec=0, end_sec=self.clip_duration) # Load the desired clip
-        video_data = self.transforms(video_data) # Transform the 
-        return [i.to(self.device) for i in video_data['video']] #Move to device
+        video = EncodedVideo.from_path(self.videos[index])  # Initialize an EncodedVideo helper class
+        video_data = video.get_clip(start_sec=0, end_sec=self.clip_duration)  # Load the desired clip
+        video_data = self.transforms(video_data)  # Transform the
+        inputs = video_data["video"]  # we only want video not audio
+        inputs = [i.to(self.device)[None, ...] for i in inputs]  # Move to device
+        return inputs
     
     def __len__(self):
         return len(self.videos)
