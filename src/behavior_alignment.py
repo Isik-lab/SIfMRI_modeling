@@ -7,6 +7,7 @@ from tqdm import tqdm
 import pandas as pd
 import gc
 from itertools import product
+from src import stats
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
@@ -32,6 +33,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                  n_splits=4, random_seed=0,
                                  model_name=None,
                                  scale_y=True, memory_limit='30GB',
+                                 grouping_func='grouped_average',
                                  alphas=[10.**power for power in np.arange(-5, 2)]):
 
     # Define a grouping function to average across the different captions
@@ -54,12 +56,38 @@ def get_benchmarking_results(benchmark, model, dataloader,
 
         return torch.concat(tensor_means, dim=0) # as is for testing
 
+        # Define a stacking function to concatenate across the different captions or frames
+    def grouped_stack(tensor, batch_iter=None, **kwargs):
+        if batch_iter is None: return tensor  # Return as is if no batch iteration is provided
+
+        sub_data = dataloader.batch_data.query('batch_iter==@batch_iter')
+
+        grouped_tensors = []  # To fill with concatenated tensors for each group
+        for group in sub_data.group_index.unique():
+            group_data = sub_data.query('group_index==@group')
+            group_idx = group_data.batch_index.to_list()
+
+            # Convert index to tensor on device
+            group_idx = (torch.LongTensor(group_idx)
+                        .to(tensor.device))
+
+            # Concatenate tensors within the group along a new dimension (e.g., dim=1)
+            group_tensor = torch.cat([tensor[idx].unsqueeze(0) for idx in group_idx], dim=0)
+
+            # Add the concatenated group tensor to the list
+            grouped_tensors.append(group_tensor.unsqueeze(0))
+
+        # Concatenate all group tensors along dim=0
+        return torch.cat(grouped_tensors, dim=0)
+
     # use a CUDA-capable device, if available, else: CPU
     print(cuda_device_report())
+    print(f'Searching {len(alphas)} alpha values')
 
     # define the feature extractor object
+    tensor_fn = globals().get(grouping_func)
     extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 'output_device': devices[0]},
-                                tensor_fn=grouped_average,
+                                tensor_fn=tensor_fn,
                                 memory_limit=memory_limit,
                                 batch_strategy='stack')
     extractor.modify_settings(flatten=True)
@@ -126,22 +154,29 @@ def get_benchmarking_results(benchmark, model, dataloader,
 
             # Fit the regression
             pipe.fit(X_train, y_train)
-            scores_test = score_func(pipe.predict(X_test), y_test)
+            y_hat = pipe.predict(X_test)
+            scores_test = score_func(y_hat, y_test)
 
+            r_null = stats.perm_gpu(y_test, y_hat)
+            r_var = stats.bootstrap_gpu(y_test, y_hat)
             # Add performance to the score sheet
-            for target_feature, score_train, score_test in zip(target_features,
-                                                               scores_train.cpu().detach().numpy(),
-                                                               scores_test.cpu().detach().numpy()): 
+            for target_feature, score_train, score_test, null, var in zip(target_features,
+                                                                          scores_train.cpu().detach().numpy(),
+                                                                          scores_test.cpu().detach().numpy(),
+                                                                          r_null.cpu().detach().numpy().T,
+                                                                          r_var.cpu().detach().numpy().T): 
                 # add the scores to a "scoresheet"
                 results.append({**feature_map_info,
                                 'feature': target_feature,
                                 'train_score': score_train,
-                                'test_score': score_test})
+                                'test_score': score_test,
+                                'r_null_dist': null, 'r_var_dist': var})
 
             # Memory saving
             del pipe, scores_train, scores_test
             del X_cv_train, X_cv_test, y_cv_pred, y_cv_true
             del X_train, X_test, y_train, y_test
+            del r_null, r_var
             gc.collect()
             torch.cuda.empty_cache()
     return pd.DataFrame(results)

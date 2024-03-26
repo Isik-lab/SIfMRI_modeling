@@ -18,6 +18,7 @@ class VisionNeuralEncoding:
         self.overwrite = args.overwrite
         self.test_eval = args.test_eval
         self.model_uid = args.model_uid
+        self.grouping_func = args.grouping_func
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
@@ -31,8 +32,8 @@ class VisionNeuralEncoding:
         self.frame_path = f'{self.cache}/frames/'
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
-        Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.csv.gz'
+        Path(f'{self.data_dir}/interim/{self.process}/{self.grouping_func}').mkdir(parents=True, exist_ok=True)
+        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.grouping_func}/model-{self.model_name}.pkl.gz'
         self.frames = [0, 15, 30, 45, 60, 75, 89]
 
     def load_fmri(self):
@@ -69,9 +70,11 @@ class VisionNeuralEncoding:
             print('running regressions')
             results = get_benchmarking_results(benchmark, model, dataloader,
                                                model_name=self.model_name,
-                                               test_eval=self.test_eval)
+                                               test_eval=self.test_eval,
+                                               grouping_func=self.grouping_func,
+                                               memory_limit='30GB')
             print('saving results')
-            results.to_csv(self.out_file, index=False)
+            results.to_pickle(self.out_file, compression='gzip')
             print('Finished!')
 
 
@@ -80,6 +83,7 @@ def main():
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--grouping_func', type=str, default='grouped_average')
     parser.add_argument('--top_dir', '-top', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
     args = parser.parse_args()

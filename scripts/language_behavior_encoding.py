@@ -23,7 +23,7 @@ class LanguageBehaviorEncoding:
         torch.hub.set_dir(self.cache)
         self.model_name = self.model_uid.replace('/', '_')
         Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.csv.gz'
+        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.pkl.gz'
         # check hugging face cache location
         print("HF_HOME is set to:", os.environ['HF_HOME'])
         print("HUGGINGFACE_HUB_CACHE is set to:", os.environ['HUGGINGFACE_HUB_CACHE'])

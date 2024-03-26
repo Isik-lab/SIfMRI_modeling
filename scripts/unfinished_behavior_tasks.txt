@@ -1,4 +1,0 @@
-torchvision_mobilenet_v3_large_imagenet1k_v2,10604974,torch._C._LinAlgError: linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 151).
-timm_mobilenetv3_rw,10604976,torch._C._LinAlgError: linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 151).
-timm_mobilevitv2_150_384_in22ft1k,10604977,ValueError: Oversized maps! Consider exclude_oversize=True
-dino_vitb8,10604978,ValueError: Oversized maps! Consider exclude_oversize=True

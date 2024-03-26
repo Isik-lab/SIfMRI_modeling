@@ -1,2 +1,2 @@
 model, other
-sentence-transformers/all-MiniLM-L12-v2, other
+torchvision_resnet50_imagenet1k_v1, other
