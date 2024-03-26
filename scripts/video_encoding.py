@@ -67,10 +67,19 @@ class VideoEncoding:
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
                                                         clip_duration, preprocess, batch_size=5)
                 print(f"loaded dataloader")
+
                 print(f"Creating feature extractor")
-                feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
-                                                         initial_report=True,
-                                                         flatten=True, progress=True)
+
+                def list_forward(model, x):
+                    return model(x)
+                # check to see if we need to custom forward
+                data_iterator = iter(dataloader)
+                inputs = next(data_iterator)
+                if isinstance(inputs, list):
+                    kwargs = {'forward_fn': list_forward}
+
+                feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB', initial_report=True,
+                                                         flatten=True, progress=True, **kwargs)
                 print(f"loaded feature extractor")
 
                 print('running regressions')
