@@ -17,7 +17,6 @@ class VideoEncoding:
         self.model_name = args.model_name
         self.model_input = args.model_input
         self.data_dir = args.data_dir
-        self.clip_duration = 3
         if self.model_input == 'videos':
             self.extension = 'mp4'
         else:
@@ -62,11 +61,11 @@ class VideoEncoding:
                 model = self.get_model(self.model_name)
                 print(f"loaded model")
 
-                preprocess = video_ops.get_transform(self.model_name)
+                preprocess, clip_duration = video_ops.get_transform(self.model_name)
                 print(f'{preprocess}')
                 print(f"Loading dataloader")
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
-                                                        self.clip_duration, preprocess, batch_size=5)
+                                                        clip_duration, preprocess, batch_size=5)
                 print(f"loaded dataloader")
                 print(f"Creating feature extractor")
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
