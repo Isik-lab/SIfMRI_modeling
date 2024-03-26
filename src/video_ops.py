@@ -57,7 +57,7 @@ def get_transform(model_name):
         frames_per_second = 30
         num_frames = 32
         clip_duration = (num_frames * sampling_rate) / frames_per_second
-        return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], crop_size=256, num_frames=num_frames, side_size=256), clip_duration
+        return [slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], crop_size=256, num_frames=num_frames, side_size=256), clip_duration]
 
     elif 'x3d' in model_name:
         return x3d_transform(model_name)
