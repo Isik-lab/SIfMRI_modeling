@@ -85,11 +85,16 @@ def get_benchmarking_results(benchmark, model, dataloader,
     print(f'Searching {len(alphas)} alpha values')
 
     # define the feature extractor object
-    tensor_fn = globals().get(grouping_func)
-    extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 'output_device': devices[0]},
-                                tensor_fn=tensor_fn,
-                                memory_limit=memory_limit,
-                                batch_strategy='stack')
+    if grouping_func == 'grouped_average':
+        extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 'output_device': devices[0]},
+                                    tensor_fn=grouped_average,
+                                    memory_limit=memory_limit,
+                                    batch_strategy='stack')
+    elif grouping_func == 'grouped_stack':
+        extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 'output_device': devices[0]},
+                            tensor_fn=grouped_stack,
+                            memory_limit=memory_limit,
+                            batch_strategy='stack')
     extractor.modify_settings(flatten=True)
 
     # initialize pipe and kfold splitter
