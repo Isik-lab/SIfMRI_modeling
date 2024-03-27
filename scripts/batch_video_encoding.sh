@@ -11,6 +11,13 @@
 #SBATCH --output=slurm-%x-%j.out
 
 model=${1:-slowfast_r50}
+echo "model name= $model"
+
+project_folder="/home/kgarci18/scratch4-lisik3/SIfMRI_modeling"
+export HF_HOME="${project_folder}/.cache/huggingface/hub"
+export HUGGINGFACE_HUB_CACHE="${project_folder}/.cache/huggingface/hub"
+export HF_DATASETS_CACHE="${project_folder}/.cache/huggingface/hub"
+export TORCH_HOME="${project_folder}/.cache/torch"
 
 ml anaconda
 conda activate deepjuice_video
