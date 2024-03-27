@@ -157,8 +157,7 @@ def x3d_transform(model_name):
                         ShortSideScale(transform_params["crop_size"])
                     ]
                    )
-    ),
-    clip_duration
+    ), clip_duration
 
 ####################
 # slow_r50 transform
