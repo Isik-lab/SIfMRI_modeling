@@ -146,6 +146,7 @@ def x3d_transform(model_name):
 
     # Get transform parameters based on model
     transform_params = model_transform_params[model_name]
+    clip_duration = (transform_params['num_frames'] * transform_params['sampling_rate']) / frames_per_second
     return ApplyTransformToKey(
               key="video",
               transform=Compose(
@@ -156,7 +157,8 @@ def x3d_transform(model_name):
                         ShortSideScale(transform_params["crop_size"])
                     ]
                    )
-    )
+    ),
+    clip_duration
 
 ####################
 # slow_r50 transform
