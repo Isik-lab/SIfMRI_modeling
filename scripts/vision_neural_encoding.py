@@ -5,6 +5,7 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 from src.neural_alignment import get_benchmarking_results
+from src import frame_ops as ops
 import torch
 from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_image_loader
@@ -16,51 +17,26 @@ from slack_sdk import WebClient
 class VisionNeuralEncoding:
     def __init__(self, args):
         self.process = 'VisionNeuralEncoding'
-        print('working')
         self.overwrite = args.overwrite
-        self.test_set_evaluation = args.test_set_evaluation
+        self.test_eval = args.test_eval
         self.model_uid = args.model_uid
-        self.model_input = args.model_input
+        self.grouping_func = args.grouping_func
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
-        self.stimulus_path = f'{self.data_dir}/raw/{self.model_input}/'
 
         # check hugging face cache location
         print("HF_HOME is set to:", os.environ['HF_HOME'])
         print("HUGGINGFACE_HUB_CACHE is set to:", os.environ['HUGGINGFACE_HUB_CACHE'])
         print("HF_DATASETS_CACHE is set to:", os.environ['HF_DATASETS_CACHE'])
-        
-        if self.model_input == 'videos':
-            self.extension = 'mp4'
-        else:
-            self.extension = 'png'
+
+        self.video_path = f'{self.data_dir}/raw/videos/'
+        self.frame_path = f'{self.cache}/frames/'
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.csv.gz'
-        Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
-
-    def send_slack(self, msg='', filepath=None):
-        """
-         Helper function to send slack message to a webhook
-         Arguments:
-             msg: (str) The message to send. Defaults to None
-             filepath (str) Optionally included filepath to an attachment that you want to include. Defaults to None
-         Returns:
-             slack-sdk response
-        """
-        # Slack API functions
-        url = 'https://hooks.slack.com/services/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'
-        webhook = WebhookClient(url)
-        token = 'xoxp-508184378419-2331084514512-6070633594310-1c3ba2835c4bde49662d705517442b09'
-        client = WebClient(token)
-        response = None
-        if filepath:
-            response = client.files_upload(channels='file_automation', title=filepath, file=filepath, initial_comment=msg)
-        elif msg:
-            response = webhook.send(text=msg)
-        return response
-
+        Path(f'{self.data_dir}/interim/{self.process}/{self.grouping_func}').mkdir(parents=True, exist_ok=True)
+        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.grouping_func}/model-{self.model_name}.pkl.gz'
+        self.frames = [0, 15, 30, 45, 60, 75, 89]
 
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
@@ -69,40 +45,49 @@ class VisionNeuralEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
     
     def run(self):
-        try:
-            if os.path.exists(self.out_file) and not self.overwrite:
-                # results = pd.read_csv(self.out_file)
-                print('Output file already exists. To run again pass --overwrite.')
-            else:
-                benchmark = self.load_fmri()
-                benchmark.add_stimulus_path(data_dir=self.stimulus_path, extension=self.extension)
-                benchmark.sort_stimulus_values(col='stimulus_set')
+        if os.path.exists(self.out_file) and not self.overwrite: 
+            # results = pd.read_csv(self.out_file)
+            print('Output file already exists. To run again pass --overwrite.')
+        else:
+            benchmark = self.load_fmri()
+            # Break the videos into frames for averaging
+            frame_data = ops.visual_events(benchmark.stimulus_data,
+                                           self.video_path, self.frame_path,
+                                           frame_idx=self.frames)
 
-                model, preprocess = get_deepjuice_model(self.model_name)
-                dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
-                feature_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
-                                                    flatten=True, progress=True, output_device='cuda')
+            # Get the model and dataloader
+            model, preprocess = get_deepjuice_model(self.model_name)
+            dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
+                                         batch_size=16, data_key='images', group_keys='video_name')
 
-                print('running regressions')
-                results = get_benchmarking_results(benchmark, feature_extractor,
-                                                   test_set_evaluation=self.test_set_evaluation)
-                print('saving results')
-                results.to_csv(self.out_file, index=False)
-                print(f'Saved to {self.out_file}')
-                print('Finished!')
-        except Exception as err:
-            print(f'Error during encoding with model - {self.model_name}, error message = {err}')
-            self.send_slack(msg=f'Error during encoding with model - {self.model_name}, error message = {err}')
+            # Reorganize the benchmark to the dataloader
+            videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
+            benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
+                                                                   categories=videos, ordered=True)
+            benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
+            stim_idx = list(benchmark.stimulus_data.index.to_numpy().astype('str'))
+            benchmark.stimulus_data.reset_index(drop=True, inplace=True)
+            benchmark.response_data = benchmark.response_data[stim_idx]
+
+            print('running regressions')
+            results = get_benchmarking_results(benchmark, model, dataloader,
+                                               model_name=self.model_name,
+                                               test_eval=self.test_eval,
+                                               grouping_func=self.grouping_func,
+                                               memory_limit='30GB')
+            print('saving results')
+            results.to_pickle(self.out_file, compression='gzip')
+            print('Finished!')
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
-    parser.add_argument('--model_input', type=str, default='images')
-    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument('--test_set_evaluation', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--grouping_func', type=str, default='grouped_average')
     parser.add_argument('--top_dir', '-top', type=str,
-                         default='/home/kgarci18/scratch4-lisik3/SIfMRI_modeling')
+                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
     args = parser.parse_args()
     VisionNeuralEncoding(args).run()
 
