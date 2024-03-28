@@ -147,7 +147,7 @@ def get_benchmarking_results(benchmark, feature_extractor,
             np.save(f'{file_path}/layer-{feature_map_uid}.npy', scores_arr)
 
             if scores_out is None:
-                scores_out = scores_arr.copy()
+                scores_out = -np.inf * np.ones_like(scores_arr)
                 model_layer_index = np.ones_like(scores_out, dtype='int') + layer_index_offset
                 model_layer = np.zeros_like(scores_out, dtype='object')
                 model_layer.fill(feature_map_uid)
