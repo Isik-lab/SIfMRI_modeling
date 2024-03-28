@@ -74,97 +74,22 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
             np.save(f'{file_path}/layer-{feature_map_uid}.npy', scores_arr)
 
             if scores_out is None:
-                scores_out = scores_arr.copy()
-                model_layer_index = np.ones_like(scores_out, dtype='int') + layer_index_offset
-                model_layer = np.zeros_like(scores_out, dtype='object')
-                model_layer.fill(feature_map_uid)
-            else:
-                # replace the value in the output if the previous value is less than the current value
-                scores_out[scores_out < scores_arr] = scores_arr[scores_out < scores_arr]
-                model_layer_index[scores_out < scores_arr] = layer_index + layer_index_offset
-                model_layer[scores_out < scores_arr] = feature_map_uid
-
-    # Make scoresheet based on the benchmark metadata
-    results = []
-    for i, row in benchmark.metadata.iterrows():
-        row['layer_index'] = model_layer_index[i]
-        row['layer'] = model_layer[i]
-        row['score'] = scores_out[i]
-        results.append(row)
-
-    return pd.DataFrame(results)
-
-
-def get_benchmarking_results(benchmark, feature_extractor,
-                                      file_path,
-                                      layer_index_offset=0,
-                                      device='cuda',
-                                      n_splits=4,
-                                      random_seed=0):
-    # use a CUDA-capable device, if available, else: CPU
-    print(f'device: {device}')
-    print(cuda_device_report())
-
-    # initialize pipe and kfold splitter
-    cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
-    alphas = [10. ** power for power in np.arange(-5, 2)]
-    score_func = get_scoring_method('pearsonr')
-    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
-                         device=device, scale_X=True, )
-
-    # Send the neural data to the GPU
-    y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
-
-    layer_index = 0  # keeps track of depth
-    scores_out = None
-    for batch, feature_maps in enumerate(feature_extractor):
-        print(f"Running batch: {batch + 1}")
-        feature_map_iterator = tqdm(feature_maps.items(), desc='Brain Mapping (Layer)', leave=False)
-        for feature_map_uid, feature_map in feature_map_iterator:
-            layer_index += 1  # one layer deeper in feature_maps
-
-            # reduce dimensionality of feature_maps by sparse random projection
-            feature_map = get_feature_map_srps(feature_map, device=device)
-
-            # Avoiding "CUDA error: an illegal memory access was encountered"
-            X = feature_map.detach().clone().squeeze().to(torch.float32)
-            del feature_map
-            torch.cuda.empty_cache()
-
-            y_pred, y_true = [], []  # Initialize lists
-            cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
-            for train_index, test_index in cv_iterator:
-                X_train, X_test = X[train_index].detach().clone(), X[test_index].detach().clone()
-                y_train, y_test = y[train_index].detach().clone(), y[test_index].detach().clone()
-                pipe.fit(X_train, y_train)
-                y_pred.append(pipe.predict(X_test))
-                y_true.append(y_test)
-
-            scores = score_func(torch.cat(y_pred), torch.cat(y_true))
-
-            # save the current scores to disk
-            scores_arr = scores.cpu().detach().numpy()
-            np.save(f'{file_path}/layer-{feature_map_uid}.npy', scores_arr)
-
-            if scores_out is None:
                 scores_out = -np.inf * np.ones_like(scores_arr)
-                model_layer_index = np.ones_like(scores_out, dtype='int') + layer_index_offset
+                model_layer_index = np.full(scores_arr.shape, layer_index + layer_index_offset)
                 model_layer = np.zeros_like(scores_out, dtype='object')
                 model_layer.fill(feature_map_uid)
-                print(f'First pass: {set(model_layer_index)}')
             else:
                 # replace the value in the output if the previous value is less than the current value
-                scores_out[scores_out < scores_arr] = scores_arr[scores_out < scores_arr]
-                model_layer_index[scores_out < scores_arr] = layer_index + layer_index_offset
-                model_layer[scores_out < scores_arr] = feature_map_uid
-                print(f'{layer_index} pass: {set(model_layer_index)}')
+                indices = scores_out < scores_arr
+                scores_out[indices] = scores_arr[indices]
+                model_layer_index[indices] = layer_index + layer_index_offset
+                model_layer[indices] = feature_map_uid
 
     # Make scoresheet based on the benchmark metadata
     results = []
     for i, row in benchmark.metadata.iterrows():
         row['layer_index'] = model_layer_index[i]
         row['layer'] = model_layer[i]
-        row['layer_depth'] = np.round(model_layer[i] / layer_index, 2)
         row['score'] = scores_out[i]
         results.append(row)
 
