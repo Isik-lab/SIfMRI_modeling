@@ -9,6 +9,7 @@ import torch
 from deepjuice.extraction import FeatureExtractor
 from src import video_ops
 from transformers import AutoModel
+from deepjuice.systemops.devices import cuda_device_report
 
 class VideoEncoding:
     def __init__(self, args):
@@ -78,7 +79,12 @@ class VideoEncoding:
                 if isinstance(inputs, list):
                     kwargs = {'forward_fn': list_forward}
 
-                feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB', initial_report=True,
+                # Calculate the memory limit and generate the feature_extractor
+                total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
+                total_memory = int(float(total_memory_string.split()[0]))
+                memory_limit = int(total_memory * 0.75)
+                memory_limit_string = f'{memory_limit}GB'
+                feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
                                                          flatten=True, progress=True, **kwargs)
                 print(f"loaded feature extractor")
 
