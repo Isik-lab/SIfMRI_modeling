@@ -5,9 +5,10 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 from src.neural_alignment import get_benchmarking_results
+from src import frame_ops as ops
 import torch
 from deepjuice.model_zoo.options import get_deepjuice_model
-from deepjuice.procedural.datasets import get_image_loader
+from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
 from slack_sdk.webhook import WebhookClient
 from slack_sdk import WebClient
@@ -16,29 +17,26 @@ from slack_sdk import WebClient
 class VisionNeuralEncoding:
     def __init__(self, args):
         self.process = 'VisionNeuralEncoding'
-        print('working')
         self.overwrite = args.overwrite
-        self.test_set_evaluation = args.test_set_evaluation
+        self.test_eval = args.test_eval
         self.model_uid = args.model_uid
-        self.model_input = args.model_input
+        self.grouping_func = args.grouping_func
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
-        self.stimulus_path = f'{self.data_dir}/raw/{self.model_input}/'
 
         # check hugging face cache location
         print("HF_HOME is set to:", os.environ['HF_HOME'])
         print("HUGGINGFACE_HUB_CACHE is set to:", os.environ['HUGGINGFACE_HUB_CACHE'])
         print("HF_DATASETS_CACHE is set to:", os.environ['HF_DATASETS_CACHE'])
-        
-        if self.model_input == 'videos':
-            self.extension = 'mp4'
-        else:
-            self.extension = 'png'
+
+        self.video_path = f'{self.data_dir}/raw/videos/'
+        self.frame_path = f'{self.cache}/frames/'
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.csv.gz'
-        Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
+        Path(f'{self.data_dir}/interim/{self.process}/{self.grouping_func}').mkdir(parents=True, exist_ok=True)
+        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.grouping_func}/model-{self.model_name}.pkl.gz'
+        self.frames = [0, 15, 30, 45, 60, 75, 89]
 
     def send_slack(self, msg='', filepath=None):
         """
@@ -75,20 +73,33 @@ class VisionNeuralEncoding:
                 print('Output file already exists. To run again pass --overwrite.')
             else:
                 benchmark = self.load_fmri()
-                benchmark.add_stimulus_path(data_dir=self.stimulus_path, extension=self.extension)
-                benchmark.sort_stimulus_values(col='stimulus_set')
+                # Break the videos into frames for averaging
+                frame_data = ops.visual_events(benchmark.stimulus_data,
+                                               self.video_path, self.frame_path,
+                                               frame_idx=self.frames)
 
+                # Get the model and dataloader
                 model, preprocess = get_deepjuice_model(self.model_name)
-                dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
-                feature_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB',
-                                                    flatten=True, progress=True, output_device='cuda')
+                dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
+                                             batch_size=16, data_key='images', group_keys='video_name')
+
+                # Reorganize the benchmark to the dataloader
+                videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
+                benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
+                                                                       categories=videos, ordered=True)
+                benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
+                stim_idx = list(benchmark.stimulus_data.index.to_numpy().astype('str'))
+                benchmark.stimulus_data.reset_index(drop=True, inplace=True)
+                benchmark.response_data = benchmark.response_data[stim_idx]
 
                 print('running regressions')
-                results = get_benchmarking_results(benchmark, feature_extractor,
-                                                   test_set_evaluation=self.test_set_evaluation)
+                results = get_benchmarking_results(benchmark, model, dataloader,
+                                                   model_name=self.model_name,
+                                                   test_eval=self.test_eval,
+                                                   grouping_func=self.grouping_func,
+                                                   memory_limit='30GB')
                 print('saving results')
-                results.to_csv(self.out_file, index=False)
-                print(f'Saved to {self.out_file}')
+                results.to_pickle(self.out_file, compression='gzip')
                 print('Finished!')
         except Exception as err:
             print(f'Error during encoding with model - {self.model_name}, error message = {err}')
@@ -98,11 +109,11 @@ class VisionNeuralEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
-    parser.add_argument('--model_input', type=str, default='images')
-    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument('--test_set_evaluation', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--grouping_func', type=str, default='grouped_average')
     parser.add_argument('--top_dir', '-top', type=str,
-                         default='/home/kgarci18/scratch4-lisik3/SIfMRI_modeling')
+                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
     args = parser.parse_args()
     VisionNeuralEncoding(args).run()
 
