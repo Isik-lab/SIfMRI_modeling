@@ -19,7 +19,7 @@ def gen_mask(files, rel_mask=None):
 
 
 class Benchmark:
-    def __init__(self, metadata, stimulus_data, response_data):
+    def __init__(self, metadata=None, stimulus_data=None, response_data=None):
         if type(metadata) is str:
             self.metadata = pd.read_csv(metadata)
         else:
@@ -41,7 +41,6 @@ class Benchmark:
             self.stimulus_data['stimulus_path'] = data_dir + self.stimulus_data.video_name.str.replace('mp4', 'png')
         else:
             self.stimulus_data['stimulus_path'] = data_dir + self.stimulus_data.video_name
-        print(self.stimulus_data.head())
 
     def filter_rois(self, rois='none'):
         if rois != 'none':
@@ -77,7 +76,16 @@ class Benchmark:
         self.stimulus_data = self.stimulus_data[self.stimulus_data['stimulus_set'] == stimulus_set].reset_index()
         stim_idx = list(self.stimulus_data['index'].to_numpy().astype('str'))
         self.stimulus_data.drop(columns='index', inplace=True)
-        self.response_data = self.response_data[stim_idx]
+        if self.response_data is not None:
+            self.response_data = self.response_data[stim_idx]
+
+    def sort_stimulus_values(self, col='stimulus_set'):
+        self.stimulus_data = self.stimulus_data.sort_values(by=col).reset_index()
+        stim_idx = list(self.stimulus_data['index'].to_numpy().astype('str'))
+        self.stimulus_data.drop(columns='index', inplace=True)
+        if self.response_data is not None: 
+            self.response_data = self.response_data[stim_idx].reset_index(drop=True)
+
 
     def generate_rdms(self):
         """
