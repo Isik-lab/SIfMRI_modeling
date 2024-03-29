@@ -85,12 +85,15 @@ class VideoEncoding:
                 model = self.get_model(self.model_name)
                 print(f"loaded model")
 
-                preprocess, clip_duration, forward_fn = video_ops.get_transform(self.model_name)
+                preprocess, clip_duration = video_ops.get_transform(self.model_name)
                 print(f'{preprocess}')
                 print(f"Loading dataloader")
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
                                                         clip_duration, preprocess, batch_size=5)
                 print(f"loaded dataloader")
+
+                def custom_forward(model, x):
+                    return model(x)
 
                 print(f"Creating feature extractor")
                 # Calculate the memory limit and generate the feature_extractor
@@ -98,7 +101,7 @@ class VideoEncoding:
                 total_memory = int(float(total_memory_string.split()[0]))
                 memory_limit = int(total_memory * 0.75)
                 memory_limit_string = f'{memory_limit}GB'
-                kwargs = {"forward_fn": forward_fn}
+                kwargs = {"forward_fn": custom_forward}
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
                                                          flatten=True, progress=True, **kwargs)
                 print(f"loaded feature extractor")
