@@ -106,6 +106,7 @@ class VisionNeuralEncoding:
             self.send_slack(msg=f'Error during encoding with model - {self.model_name}, error message = {err}')
 
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
@@ -113,7 +114,7 @@ def main():
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--grouping_func', type=str, default='grouped_average')
     parser.add_argument('--top_dir', '-top', type=str,
-                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
+                         default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')
     args = parser.parse_args()
     VisionNeuralEncoding(args).run()
 

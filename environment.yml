@@ -39,6 +39,7 @@ dependencies:
   - cuda-runtime=12.1.0=0
   - cython-blis=0.7.11=py312ha883a20_0
   - dataclasses=0.8=pyh6d0b6a4_7
+  - datasets=2.16.1=pyhd8ed1ab_0
   - decorator=5.1.1=pyhd3eb1b0_0
   - defusedxml=0.7.1=pyhd8ed1ab_0
   - dill=0.3.7=pyhd8ed1ab_0
@@ -57,6 +58,7 @@ dependencies:
   - gmp=6.2.1=h295c915_3
   - gnutls=3.6.15=he1e5248_0
   - grpc-cpp=1.48.2=he1ff14a_1
+  - huggingface_hub=0.20.2=pyhd8ed1ab_0
   - icu=58.2=hf484d3e_1000
   - idna=3.6=pyhd8ed1ab_0
   - importlib-metadata=7.0.1=pyha770c72_0
@@ -220,6 +222,12 @@ dependencies:
     - brotli==1.0.9
     - catalogue==2.0.10
     - comm==0.2.2
+    - certifi==2023.11.17
+    - cffi==1.16.0
+    - charset-normalizer==3.3.2
+    - click==8.1.7
+    - clip==1.0
+    - comm==0.2.1
     - confection==0.1.4
     - contourpy==1.2.0
     - cycler==0.12.1
@@ -239,6 +247,9 @@ dependencies:
     - keras==3.1.0
     - kiwisolver==1.4.5
     - libclang==18.1.1
+    - keras==3.0.5
+    - libclang==16.0.6
+    - lightning-utilities==0.9.0
     - lxml==4.9.3
     - markdown==3.6
     - markupsafe==2.1.3
@@ -248,34 +259,46 @@ dependencies:
     - mkl-random==1.2.4
     - mkl-service==2.4.0
     - ml-dtypes==0.3.2
+    - mpmath==1.3.0
     - mtalg==1.1.2
     - multidict==6.0.4
     - multiprocess==0.70.15
+    - murmurhash==1.0.7
     - namex==0.0.7
     - nest-asyncio==1.6.0
+    - networkx==3.1
+    - nltk==3.8.1
     - numexpr==2.8.7
     - numpy==1.26.3
+    - open-clip-torch==2.24.0
     - opencv-python==4.9.0.80
     - opt-einsum==3.3.0
     - optree==0.10.0
     - pandas==2.1.4
     - pillow==10.0.1
+    - pip==23.3.1
+    - preshed==3.0.6
     - prompt-toolkit==3.0.43
     - protobuf==4.25.3
     - psutil==5.9.8
     - pyarrow==11.0.0
     - pydantic-core==2.14.6
     - pyparsing==3.1.2
+    - pydantic==1.10.12
+    - pyopenssl==23.2.0
     - pysocks==1.7.1
     - pyyaml==6.0.1
     - pyzmq==25.1.2
     - regex==2023.10.3
+    - requests==2.31.0
     - rpds-py==0.10.6
     - safetensors==0.4.2
     - scikit-learn==1.3.0
     - scipy==1.11.4
     - seaborn==0.13.2
     - sentencepiece==0.1.99
+    - setuptools==68.2.2
+    - spacy==3.7.2
     - srsly==2.4.8
     - tensorboard==2.16.2
     - tensorboard-data-server==0.7.2
@@ -291,7 +314,10 @@ dependencies:
     - tornado==6.3.3
     - transformers==4.34.0
     - typing-extensions==4.9.0
+    - urllib3==1.26.18
+    - wcwidth==0.2.13
     - werkzeug==3.0.1
+    - wheel==0.42.0
     - wrapt==1.16.0
     - xxhash==2.0.2
     - yarl==1.9.3

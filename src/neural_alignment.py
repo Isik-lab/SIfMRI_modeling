@@ -29,7 +29,7 @@ def feature_scaler(train, test):
 def get_benchmarking_results(benchmark, model, dataloader,
                              layer_index_offset=0,
                              devices=['cuda:0', 'cuda:1'],
-                             memory_limit='30GB', 
+                             memory_limit='30GB',
                              n_splits=4, random_seed=0,
                              model_name=None,
                              scale_y=True, 
@@ -104,7 +104,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
     # divide responses
     indices = {'train': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'train'].index,
                'test': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'test'].index}
-    y = {'train': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1]),  
+    y = {'train': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1]),
          'test': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(devices[-1])}
 
     print('Starting CV in the training set')
@@ -244,3 +244,45 @@ def get_benchmarking_results(benchmark, model, dataloader,
         results.iloc[roi_indices]['r_var_dist'] = r_var.cpu().detach().numpy().T.tolist()
     print(results.head(20))
     return results
+
+
+def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device='cuda',
+                                      n_splits=4, random_seed=0,
+                                      alphas=[10.**power for power in np.arange(-5, 2)]):
+    # use a CUDA-capable device, if available, else: CPU
+    print(f'{device=}')
+    print(f'{cuda_device_report()}')
+
+    # initialize pipe and kfold splitter
+    cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
+    score_func = get_scoring_method('pearsonr')
+    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
+                            device=device, scale_X=True,)
+
+    # Get X
+    feature_map = get_feature_map_srps(feature_map, device=device)
+    X = feature_map.detach().clone().squeeze().to(torch.float32).to(device)
+    print(f'{X.shape=}')
+
+    # Send the neural data to the GPU
+    y = torch.from_numpy(benchmark.response_data.to_numpy().T).to(torch.float32).to(device)
+    print(f'{y.shape=}')
+
+    y_pred, y_true = [], [] #Initialize lists
+    cv_iterator = tqdm(cv.split(X), desc='CV', total=n_splits)
+    for train_index, test_index in cv_iterator:
+        X_train, X_test = X[train_index].detach().clone(), X[test_index].detach().clone()
+        y_train, y_test = y[train_index].detach().clone(), y[test_index].detach().clone()
+        pipe.fit(X_train, y_train)
+        y_pred.append(pipe.predict(X_test))
+        y_true.append(y_test)
+
+    scores = score_func(torch.cat(y_pred), torch.cat(y_true)).cpu().detach().numpy()
+
+    # Make scoresheet based on the benchmark metadata
+    results = []
+    for i, row in benchmark.metadata.iterrows():
+        row['score'] = scores[i]
+        results.append(row)
+
+    return pd.DataFrame(results)
