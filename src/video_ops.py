@@ -66,7 +66,7 @@ def get_transform(model_name):
         return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames, side_size=256), clip_duration, slowfast_forward
 
     elif 'x3d' in model_name:
-        return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30), x3d_forward
+        return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
 
     elif 'slow_r50' in model_name:
         return slow_r50_transform()
@@ -170,7 +170,7 @@ def x3d_transform(model_name, mean, std, fps):
                 ShortSideScale(size=transform_params["side_size"])
             ]
         )
-    ), clip_duration
+    ), clip_duration, x3d_forward
 
 ####################
 # slow_r50 transform
