@@ -3,12 +3,34 @@ from pathlib import Path
 import argparse
 import pandas as pd
 import os
+import time
 from src.mri import Benchmark
 from src import encoding
 import torch
 from deepjuice.extraction import FeatureExtractor
 from src import video_ops
 from transformers import AutoModel
+from deepjuice.systemops.devices import cuda_device_report
+from slack_sdk.webhook import WebhookClient
+from slack_sdk import WebClient
+
+def send_msg(msg):
+    # Slack API functions
+    url = 'https://hooks.slack.com/services/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'
+    webhook = WebhookClient(url)
+    response = webhook.send(text=msg)
+    return response
+
+def send_attachment(filepath, msg):
+    token = 'xoxp-508184378419-2331084514512-6070633594310-1c3ba2835c4bde49662d705517442b09'
+    client = WebClient(token)
+    response = client.files_upload(
+      channels='file_automation',
+      title=filepath,
+      file=filepath,
+      initial_comment=msg,
+    )
+    return response
 
 class VideoEncoding:
     def __init__(self, args):
@@ -48,6 +70,8 @@ class VideoEncoding:
     
     def run(self):
         try:
+            start_time = time.time()
+            send_msg(f'Started Rockfish job for {self.model_name}!')
             if os.path.exists(self.out_file) and not self.overwrite:
                 # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')
@@ -68,17 +92,17 @@ class VideoEncoding:
                                                         clip_duration, preprocess, batch_size=5)
                 print(f"loaded dataloader")
 
-                print(f"Creating feature extractor")
-
-                def list_forward(model, x):
+                def custom_forward(model, x):
                     return model(x)
-                # check to see if we need to custom forward
-                data_iterator = iter(dataloader)
-                inputs = next(data_iterator)
-                if isinstance(inputs, list):
-                    kwargs = {'forward_fn': list_forward}
 
-                feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit='10GB', initial_report=True,
+                print(f"Creating feature extractor")
+                # Calculate the memory limit and generate the feature_extractor
+                total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
+                total_memory = int(float(total_memory_string.split()[0]))
+                memory_limit = int(total_memory * 0.75)
+                memory_limit_string = f'{memory_limit}GB'
+                kwargs = {"forward_fn": custom_forward}
+                feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
                                                          flatten=True, progress=True, **kwargs)
                 print(f"loaded feature extractor")
 
@@ -87,9 +111,15 @@ class VideoEncoding:
 
                 print('saving results')
                 results.to_csv(self.out_file, index=False)
-                print('Finished!')
+
+                end_time = time.time()
+                elapsed = end_time - start_time
+                elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+                print(f'Finished in {elapsed}!')
+                send_msg(f'Finished for model = {self.model_name} in {elapsed}')
         except Exception as err:
             print(err)
+            send_msg(f'ERROR! Failed for model = {self.model_name}: Error message = {err}')
             raise err
 
 

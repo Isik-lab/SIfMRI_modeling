@@ -33,7 +33,12 @@ class VideoData(CustomData):
         video_data = video.get_clip(start_sec=0, end_sec=self.clip_duration) # Load the desired clip
         video_data = self.transforms(video_data) # Transform the
         inputs = video_data["video"]
-        return [i.to(self.device) for i in inputs] #Move to device
+        # Move to device
+        if isinstance(inputs, torch.Tensor):
+            inputs = inputs.to(self.device)
+        else:
+            inputs = [x.to(self.device) for x in inputs]
+        return inputs
     
     def __len__(self):
         return len(self.videos)
@@ -55,13 +60,14 @@ def get_video_loader(video_set, clip_duration, transforms, batch_size=64, **kwar
 def get_transform(model_name):
     if 'slowfast' in model_name:
         sampling_rate = 2
-        frames_per_second = 30
+        fps = 30
         num_frames = 32
-        clip_duration = (num_frames * sampling_rate) / frames_per_second
+        clip_duration = (num_frames * sampling_rate) / fps
         return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames, side_size=256), clip_duration
 
     elif 'x3d' in model_name:
-        return x3d_transform(model_name)
+        return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
+
     elif 'slow_r50' in model_name:
         return slow_r50_transform()
     elif 'c2d_r50' in model_name:
@@ -121,41 +127,41 @@ def slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_f
 # X3D transform
 ####################
 
-def x3d_transform(model_name):
-    mean = [0.45, 0.45, 0.45]
-    std = [0.225, 0.225, 0.225]
-    frames_per_second = 30
+def x3d_transform(model_name, mean, std, fps):
     model_transform_params = {
         "x3d_xs": {
+            "side_size": 182,
             "crop_size": 182,
             "num_frames": 4,
             "sampling_rate": 12,
         },
         "x3d_s": {
+            "side_size": 182,
             "crop_size": 182,
             "num_frames": 13,
             "sampling_rate": 6,
         },
         "x3d_m": {
+            "side_size": 256,
             "crop_size": 256,
             "num_frames": 16,
             "sampling_rate": 5,
         }
     }
-
     # Get transform parameters based on model
     transform_params = model_transform_params[model_name]
-    clip_duration = (transform_params['num_frames'] * transform_params['sampling_rate']) / frames_per_second
+    clip_duration = (transform_params["num_frames"] * transform_params["sampling_rate"]) / fps
+
     return ApplyTransformToKey(
-              key="video",
-              transform=Compose(
-                    [
-                        UniformTemporalSubsample(transform_params["num_frames"]),
-                        Lambda(lambda x: x/255.0),
-                        Normalize(mean, std),
-                        ShortSideScale(transform_params["crop_size"])
-                    ]
-                   )
+        key="video",
+        transform=Compose(
+            [
+                UniformTemporalSubsample(transform_params["num_frames"]),
+                Lambda(lambda x: x / 255.0),
+                NormalizeVideo(mean, std),
+                ShortSideScale(size=transform_params["side_size"])
+            ]
+        )
     ), clip_duration
 
 ####################

@@ -25,8 +25,8 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
                                       file_path,
                                       layer_index_offset=0,
                                       device='cuda',
-                                      n_splits=4, random_seed=0,
-                                      alphas=[10.**power for power in np.arange(-5, 2)]):
+                                      n_splits=4,
+                                      random_seed=0):
 
     # use a CUDA-capable device, if available, else: CPU
     print(f'device: {device}')
@@ -44,7 +44,8 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
 
     layer_index = 0 # keeps track of depth
     scores_out = None
-    for feature_maps in feature_extractor:
+    for batch, feature_maps in enumerate(feature_extractor):
+        print(f"Running batch: {batch+1}")
         feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1 # one layer deeper in feature_maps
@@ -73,15 +74,16 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
             np.save(f'{file_path}/layer-{feature_map_uid}.npy', scores_arr)
 
             if scores_out is None:
-                scores_out = scores_arr.copy()
-                model_layer_index = np.ones_like(scores_out, dtype='int') + layer_index_offset
+                scores_out = -np.inf * np.ones_like(scores_arr)
+                model_layer_index = np.full(scores_arr.shape, layer_index + layer_index_offset)
                 model_layer = np.zeros_like(scores_out, dtype='object')
                 model_layer.fill(feature_map_uid)
             else:
                 # replace the value in the output if the previous value is less than the current value
-                scores_out[scores_out < scores_arr] = scores_arr[scores_out < scores_arr]
-                model_layer_index[scores_out < scores_arr] = layer_index + layer_index_offset
-                model_layer[scores_out < scores_arr] = feature_map_uid
+                indices = scores_out < scores_arr
+                scores_out[indices] = scores_arr[indices]
+                model_layer_index[indices] = layer_index + layer_index_offset
+                model_layer[indices] = feature_map_uid
 
     # Make scoresheet based on the benchmark metadata
     results = []
@@ -89,10 +91,10 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
         row['layer_index'] = model_layer_index[i]
         row['layer'] = model_layer[i]
         row['score'] = scores_out[i]
+        row['layer_depth'] = np.round(model_layer_index[i] / layer_index, 2)
         results.append(row)
 
     return pd.DataFrame(results)
-
 
 def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device='cuda',
                                       n_splits=4, random_seed=0, 
