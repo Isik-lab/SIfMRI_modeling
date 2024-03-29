@@ -6,12 +6,11 @@ import os
 from src.mri import Benchmark
 from src.neural_alignment import get_benchmarking_results
 from src import frame_ops as ops
+from src import tools
 import torch
 from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
-from slack_sdk.webhook import WebhookClient
-from slack_sdk import WebClient
 
 
 class VisionNeuralEncoding:
@@ -37,28 +36,6 @@ class VisionNeuralEncoding:
         Path(f'{self.data_dir}/interim/{self.process}/{self.grouping_func}').mkdir(parents=True, exist_ok=True)
         self.out_file = f'{self.data_dir}/interim/{self.process}/{self.grouping_func}/model-{self.model_name}.pkl.gz'
         self.frames = [0, 15, 30, 45, 60, 75, 89]
-
-    def send_slack(self, msg='', filepath=None):
-        """
-         Helper function to send slack message to a webhook
-         Arguments:
-             msg: (str) The message to send. Defaults to None
-             filepath (str) Optionally included filepath to an attachment that you want to include. Defaults to None
-         Returns:
-             slack-sdk response
-        """
-        # Slack API functions
-        url = 'https://hooks.slack.com/services/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'
-        webhook = WebhookClient(url)
-        token = 'xoxp-508184378419-2331084514512-6070633594310-1c3ba2835c4bde49662d705517442b09'
-        client = WebClient(token)
-        response = None
-        if filepath:
-            response = client.files_upload(channels='file_automation', title=filepath, file=filepath, initial_comment=msg)
-        elif msg:
-            response = webhook.send(text=msg)
-        return response
-
 
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
@@ -103,7 +80,7 @@ class VisionNeuralEncoding:
                 print('Finished!')
         except Exception as err:
             print(f'Error during encoding with model - {self.model_name}, error message = {err}')
-            self.send_slack(msg=f'Error during encoding with model - {self.model_name}, error message = {err}')
+            tools.send_slack(msg=f'Error during encoding with model - {self.model_name}, error message = {err}', channel='kathy')
 
 
 

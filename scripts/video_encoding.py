@@ -6,31 +6,12 @@ import os
 import time
 from src.mri import Benchmark
 from src import encoding
+from src import tools
 import torch
 from deepjuice.extraction import FeatureExtractor
 from src import video_ops
 from transformers import AutoModel
 from deepjuice.systemops.devices import cuda_device_report
-from slack_sdk.webhook import WebhookClient
-from slack_sdk import WebClient
-
-def send_msg(msg):
-    # Slack API functions
-    url = 'https://hooks.slack.com/services/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'
-    webhook = WebhookClient(url)
-    response = webhook.send(text=msg)
-    return response
-
-def send_attachment(filepath, msg):
-    token = 'xoxp-508184378419-2331084514512-6070633594310-1c3ba2835c4bde49662d705517442b09'
-    client = WebClient(token)
-    response = client.files_upload(
-      channels='file_automation',
-      title=filepath,
-      file=filepath,
-      initial_comment=msg,
-    )
-    return response
 
 class VideoEncoding:
     def __init__(self, args):
@@ -71,7 +52,7 @@ class VideoEncoding:
     def run(self):
         try:
             start_time = time.time()
-            send_msg(f'Started Rockfish job for {self.model_name}!')
+            tools.send_slack(f'Started Rockfish job for {self.model_name}!', channel='kathy')
             if os.path.exists(self.out_file) and not self.overwrite:
                 # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')
@@ -116,10 +97,10 @@ class VideoEncoding:
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
-                send_msg(f'Finished for model = {self.model_name} in {elapsed}')
+                tools.send_slack(f'Finished for model = {self.model_name} in {elapsed}', channel='kathy')
         except Exception as err:
             print(err)
-            send_msg(f'ERROR! Failed for model = {self.model_name}: Error message = {err}')
+            tools.send_slack(f'ERROR! Failed for model = {self.model_name}: Error message = {err}', channel='kathy')
             raise err
 
 

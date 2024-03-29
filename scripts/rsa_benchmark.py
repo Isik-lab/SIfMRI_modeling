@@ -1,9 +1,7 @@
 import argparse
 import sys
 from pathlib import Path
-
 from torch import hub
-
 # Calculate the path to the root of the project
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
@@ -12,12 +10,12 @@ import os
 import time
 from src.mri import Benchmark
 from src import encoding
+from src import tools
 from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_image_loader
 from deepjuice.extraction import FeatureExtractor, get_feature_map_metadata
 from deepjuice.model_zoo import get_model_options
-from slack_sdk.webhook import WebhookClient
-from slack_sdk import WebClient
+
 
 class RSABenchmark:
     """
@@ -81,27 +79,6 @@ class RSABenchmark:
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
-
-    def send_slack(self, msg='', filepath=None):
-        """
-         Helper function to send slack message to a webhook
-         Arguments:
-             msg: (str) The message to send. Defaults to None
-             filepath (str) Optionally included filepath to an attachment that you want to include. Defaults to None
-         Returns:
-             slack-sdk response
-        """
-        # Slack API functions
-        url = 'https://hooks.slack.com/services/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'
-        webhook = WebhookClient(url)
-        token = 'xoxp-508184378419-2331084514512-6070633594310-1c3ba2835c4bde49662d705517442b09'
-        client = WebClient(token)
-        response = None
-        if filepath:
-            response = client.files_upload(channels='file_automation', title=filepath, file=filepath, initial_comment=msg)
-        elif msg:
-            response = webhook.send(text=msg)
-        return response
 
     def run(self):
         """
@@ -211,7 +188,7 @@ class RSABenchmark:
                 end_time = time.time()
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
                 print(f'Elapsed time: {elapsed}')
-                self.send_slack(f'Model - {self.model_uid} - Failed with error message: {err}')
+                tools.slack.send(f'Model - {self.model_uid} - Failed with error message: {err}')
 
 
 def main():
