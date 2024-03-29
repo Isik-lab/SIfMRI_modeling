@@ -71,6 +71,7 @@ class VideoEncoding:
     def run(self):
         try:
             start_time = time.time()
+            send_msg(f'Started Rockfish job for {self.model_name}!')
             if os.path.exists(self.out_file) and not self.overwrite:
                 # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')

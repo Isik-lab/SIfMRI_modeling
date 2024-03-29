@@ -91,7 +91,7 @@ def get_training_benchmarking_results(benchmark, feature_extractor,
         row['layer_index'] = model_layer_index[i]
         row['layer'] = model_layer[i]
         row['score'] = scores_out[i]
-        row['layer_depth'] = np.round(model_layer[i] / layer_index, 2)
+        row['layer_depth'] = np.round(model_layer_index[i] / layer_index, 2)
         results.append(row)
 
     return pd.DataFrame(results)
