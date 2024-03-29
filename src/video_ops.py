@@ -33,7 +33,12 @@ class VideoData(CustomData):
         video_data = video.get_clip(start_sec=0, end_sec=self.clip_duration) # Load the desired clip
         video_data = self.transforms(video_data) # Transform the
         inputs = video_data["video"]
-        return [i.to(self.device) for i in inputs] #Move to device
+        # Move to device
+        if isinstance(inputs, torch.Tensor):
+            inputs = inputs.to(self.device)
+        else:
+            inputs = [x.to(self.device) for x in inputs]
+        return inputs
     
     def __len__(self):
         return len(self.videos)
