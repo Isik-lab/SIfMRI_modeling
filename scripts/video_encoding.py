@@ -85,7 +85,7 @@ class VideoEncoding:
                 model = self.get_model(self.model_name)
                 print(f"loaded model")
 
-                preprocess, clip_duration = video_ops.get_transform(self.model_name)
+                preprocess, clip_duration, forward_fn = video_ops.get_transform(self.model_name)
                 print(f'{preprocess}')
                 print(f"Loading dataloader")
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
@@ -93,20 +93,12 @@ class VideoEncoding:
                 print(f"loaded dataloader")
 
                 print(f"Creating feature extractor")
-
-                def list_forward(model, x):
-                    return model(x)
-                # check to see if we need to custom forward
-                data_iterator = iter(dataloader)
-                inputs = next(data_iterator)
-                if isinstance(inputs, list):
-                    kwargs = {'forward_fn': list_forward}
-
                 # Calculate the memory limit and generate the feature_extractor
                 total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
                 total_memory = int(float(total_memory_string.split()[0]))
                 memory_limit = int(total_memory * 0.75)
                 memory_limit_string = f'{memory_limit}GB'
+                kwargs = {"forward_fn": forward_fn}
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
                                                          flatten=True, progress=True, **kwargs)
                 print(f"loaded feature extractor")

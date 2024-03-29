@@ -58,10 +58,10 @@ def get_transform(model_name):
         fps = 30
         num_frames = 32
         clip_duration = (num_frames * sampling_rate) / fps
-        return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames, side_size=256), clip_duration
+        return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames, side_size=256), clip_duration, slowfast_forward
 
     elif 'x3d' in model_name:
-        return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
+        return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30), x3d_forward
 
     elif 'slow_r50' in model_name:
         return slow_r50_transform()
@@ -78,6 +78,14 @@ def get_transform(model_name):
     else:
         print(f'{model_name} model not yet implemented!')
 
+####################
+# Custom forward functions
+####################
+def slowfast_forward(model, x):
+    return model(x)
+
+def x3d_forward(model, x):
+    return model(x[None, ...])
 
 ####################
 # SlowFast transform
