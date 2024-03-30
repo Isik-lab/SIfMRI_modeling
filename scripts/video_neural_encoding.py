@@ -41,7 +41,7 @@ class VideoNeuralEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def get_model(self, model_name):
-        if model_name in ['slowfast_r50', 'x3d_xs', 'x3d_s', 'x3d_m', 'slow_r50', 'c2d_r50', 'i3d_r50', 'csn_r101']:
+        if model_name in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
             model = torch.hub.load("facebookresearch/pytorchvideo",
                                    model=self.model_name, pretrained=True).to(self.device).eval()
         elif model_name == 'xclip-base-patch32':

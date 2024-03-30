@@ -97,7 +97,12 @@ def get_transform(model_name):
         return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
 
     elif 'mvit' in model_name:
-        return mvit_transform()
+        num_frames = 16
+        sampling_rate = 4
+        fps = 30
+        clip_duration = (num_frames * sampling_rate) / fps
+        return mvit_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+
     elif 'videomae' in model_name:
         return videomae_transform()
     else:
@@ -249,23 +254,21 @@ def csn_r101_transform(mean, std, side_size, num_frames):
         )
     )
 
-def mvit_transform():
-    side_size = 256
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
-    crop_size = 224
-    num_frames = 16
+####################
+# mvit-b transform
+####################
+def mvit_transform(mean, std, side_size, num_frames):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
             [
-                UniformTemporalSubsample(num_frames),  # Subsample 16 frames uniformly across the video
-                Lambda(lambda x: x / 255.0),  # Scale pixel values to [0, 1]
-                Resize(side_size),  # Resize such that the smaller side is 256 pixels
-                CenterCrop(crop_size),  # Crop the center to get 224x224 pixels
-                Normalize(mean=mean, std=std),  # ImageNet normalization
+                UniformTemporalSubsample(num_frames),
+                Lambda(lambda x: x / 255.0),
+                NormalizeVideo(mean, std),
+                ShortSideScale(size=side_size)
+
             ]
-        ),
+        )
     )
 
 def videomae_transform():
