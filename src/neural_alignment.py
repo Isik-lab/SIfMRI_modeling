@@ -250,7 +250,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
     return results
 
 
-def get_video_benchmarking_results(benchmark, feature_extractor, out_path,
+def get_video_benchmarking_results(benchmark, feature_extractor,
                              layer_index_offset=0,
                              devices=['cuda:0', 'cuda:1'],
                              n_splits=4, random_seed=0,
