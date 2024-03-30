@@ -66,13 +66,6 @@ class VideoBehaviorEncoding:
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
                                                         clip_duration, preprocess, batch_size=5)
 
-                # Reorganize the benchmark to the dataloader
-                videos = dataloader.batch_data.groupby(by='video_name').groups.keys()
-                print(videos)
-                benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
-                                                                       categories=videos, ordered=True)
-                benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
-
                 def custom_forward(model, x):
                     return model(x)
                 kwargs = {"forward_fn": custom_forward}
