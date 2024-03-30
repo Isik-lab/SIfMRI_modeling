@@ -83,7 +83,8 @@ class VideoBehaviorEncoding:
                 # Perform all the regressions
                 print('Running regressions...')
                 results = behavior_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, target_features=target_features, model_name=self.model_name, devices=['cuda:0'])
-                print('Saving results')
+                print(results.head(20))
+                print('Saving results...')
                 results.to_pickle(self.out_file, compression='gzip')
 
                 end_time = time.time()
