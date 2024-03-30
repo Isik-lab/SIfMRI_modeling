@@ -20,7 +20,7 @@ class VideoEncoding:
         self.model_name = args.model_name
         self.model_input = args.model_input
         self.data_dir = args.data_dir
-        self.user = args.username
+        self.user = args.user
         if self.model_input == 'videos':
             self.extension = 'mp4'
         else:
