@@ -69,7 +69,11 @@ def get_transform(model_name):
         return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
 
     elif 'slow_r50' in model_name:
-        return slow_r50_transform()
+        num_frames = 8
+        sampling_rate = 8
+        fps = 30
+        clip_duration = (num_frames * sampling_rate) / fps
+        return slow_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
     elif 'c2d_r50' in model_name:
         return c2d_r50_transform()
     elif 'i3d_r50' in model_name:
@@ -167,18 +171,7 @@ def x3d_transform(model_name, mean, std, fps):
 ####################
 # slow_r50 transform
 ####################
-def slow_r50_transform():
-    side_size = 256
-    mean = [0.45, 0.45, 0.45]
-    std = [0.225, 0.225, 0.225]
-    crop_size = 256
-    num_frames = 8
-    sampling_rate = 8
-    frames_per_second = 30
-    # The duration of the input clip is also specific to the model.
-    #clip_duration = (num_frames * sampling_rate) / frames_per_second
-
-    # Note that this transform is specific to the slow_R50 model.
+def slow_r50_transform(mean, std, side_size, num_frames):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -186,12 +179,9 @@ def slow_r50_transform():
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(
-                    size=side_size
-                ),
-                CenterCropVideo(crop_size=(crop_size, crop_size))
+                ShortSideScale(size=side_size)
             ]
-        ),
+        )
     )
 
 ####################
