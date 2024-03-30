@@ -74,12 +74,28 @@ def get_transform(model_name):
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return slow_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+
     elif 'c2d_r50' in model_name:
-        return c2d_r50_transform()
+        num_frames = 8
+        sampling_rate = 8
+        fps = 30
+        clip_duration = (num_frames * sampling_rate) / fps
+        return c2d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+
     elif 'i3d_r50' in model_name:
-        return i3d_r50_transform()
+        num_frames = 8
+        sampling_rate = 8
+        fps = 30
+        clip_duration = (num_frames * sampling_rate) / fps
+        return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+
     elif 'csn_r101' in model_name:
-        return csn_r101_transform()
+        num_frames = 32
+        sampling_rate = 2
+        fps = 30
+        clip_duration = (num_frames * sampling_rate) / fps
+        return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+
     elif 'mvit' in model_name:
         return mvit_transform()
     elif 'videomae' in model_name:
@@ -187,13 +203,7 @@ def slow_r50_transform(mean, std, side_size, num_frames):
 ####################
 # c2d_r50 transform
 ####################
-def c2d_r50_transform():
-    side_size = 256
-    mean = [0.45, 0.45, 0.45]
-    std = [0.225, 0.225, 0.225]
-    crop_size = 256
-    num_frames = 8
-
+def c2d_r50_transform(mean, std, side_size, num_frames):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -201,22 +211,15 @@ def c2d_r50_transform():
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size),
-                CenterCropVideo(crop_size=(crop_size, crop_size))
+                ShortSideScale(size=side_size)
             ]
-        ),
+        )
     )
 
 ####################
 # i3d_r50 transform
 ####################
-def i3d_r50_transform():
-    side_size = 256
-    mean = [0.45, 0.45, 0.45]
-    std = [0.225, 0.225, 0.225]
-    crop_size = 256
-    num_frames = 8
-
+def i3d_r50_transform(mean, std, side_size, num_frames):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -224,32 +227,26 @@ def i3d_r50_transform():
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size),
-                CenterCropVideo(crop_size=(crop_size, crop_size))
+                ShortSideScale(size=side_size)
             ]
-        ),
+        )
     )
 
 ####################
 # csn_r101 transform
 ####################
-def csn_r101_transform():
-    side_size = 256
-    mean = [0.45, 0.45, 0.45]
-    std = [0.225, 0.225, 0.225]
-    crop_size = 224
-    num_frames = 32
+def csn_r101_transform(mean, std, side_size, num_frames):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
             [
-                UniformTemporalSubsample(num_frames),  # Subsamples 32 frames from the video uniformly
-                Lambda(lambda x: x / 255.0),  # Normalize pixel values to [0, 1], assuming x is a tensor in the range [0, 255]
-                ShortSideScale(size=side_size),  # Resize the short side of the frame to 256 pixels
-                CenterCrop(crop_size),  # Crop the center 224x224 pixels from the frame
-                Normalize(mean=mean, std=std),
+                UniformTemporalSubsample(num_frames),
+                Lambda(lambda x: x / 255.0),
+                NormalizeVideo(mean, std),
+                ShortSideScale(size=side_size)
+
             ]
-        ),
+        )
     )
 
 def mvit_transform():
