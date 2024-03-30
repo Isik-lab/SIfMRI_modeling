@@ -22,4 +22,4 @@ export TORCH_HOME="${project_folder}/.cache/torch"
 ml anaconda
 conda activate ~/miniconda3/envs/deepjuice
 
-~/miniconda3/envs/deepjuice/bin/python video_encoding.py --model_name $model --model_input videos --overwrite --user $user
+~/miniconda3/envs/deepjuice/bin/python video_neural_encoding.py --model_name $model --model_input videos --overwrite --user $user

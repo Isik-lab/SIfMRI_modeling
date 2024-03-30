@@ -13,9 +13,9 @@ from src import video_ops
 from transformers import AutoModel
 from deepjuice.systemops.devices import cuda_device_report
 
-class VideoEncoding:
+class VideoNeuralEncoding:
     def __init__(self, args):
-        self.process = 'VideoEncoding'
+        self.process = 'VideoNeuralEncoding'
         self.overwrite = args.overwrite
         self.model_name = args.model_name
         self.model_input = args.model_input
@@ -52,18 +52,18 @@ class VideoEncoding:
     
     def run(self):
         try:
-            start_time = time.time()
-            tools.send_slack(f'Started Rockfish job for {self.model_name}...', channel=self.user)
             if os.path.exists(self.out_file) and not self.overwrite:
                 # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')
             else:
-                print('loading data...')
+                start_time = time.time()
+                tools.send_slack(f'Started: {self.process} {self.model_name} on Rockfish...', channel=self.user)
+                print('Loading data...')
                 benchmark = self.load_fmri()
                 benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
-                benchmark.filter_stimulus(stimulus_set='train')
+                # benchmark.filter_stimulus(stimulus_set='train')
 
-                print(f'loading model {self.model_name}...')
+                print(f'Loading model {self.model_name}...')
                 model = self.get_model(self.model_name)
 
                 preprocess, clip_duration = video_ops.get_transform(self.model_name)
@@ -89,14 +89,14 @@ class VideoEncoding:
                 print('Running regressions...')
                 results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, devices=['cuda:0'])
 
-                print('saving results')
+                print('Saving results')
                 results.to_pickle(self.out_file, compression='gzip')
 
                 end_time = time.time()
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished for model = {self.model_name} in {elapsed}', channel=self.user)
+                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
         except Exception as err:
             print(err)
             tools.send_slack(f'ERROR! Failed for model = {self.model_name}: Error message = {err}', channel=self.user)
@@ -120,7 +120,7 @@ def main():
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
 
     args = parser.parse_args(remaining_argv)
-    VideoEncoding(args).run()
+    VideoNeuralEncoding(args).run()
 
 
 if __name__ == '__main__':
