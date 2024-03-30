@@ -26,7 +26,7 @@ class VideoBehaviorEncoding:
         else:
             self.device = 'cpu'
         self.out_path = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}'
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.csv'
+        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.pkl.gz'
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
 
     def load_data(self):
@@ -52,6 +52,7 @@ class VideoBehaviorEncoding:
                 tools.send_slack(f'Started: {self.process} {self.model_name} on Rockfish...', channel=self.user)
                 # Load data and sort
                 benchmark = self.load_data()
+                benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
                 print(f'Loading target features...')
                 target_features = [col for col in benchmark.stimulus_data.columns if
                                    ('rating-' in col) and ('indoor' not in col)]
@@ -102,7 +103,7 @@ class VideoBehaviorEncoding:
                 tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
         except Exception as err:
             print(err)
-            tools.send_slack(f'ERROR! Failed for model = {self.model_name}: Error message = {err}', channel=self.user)
+            tools.send_slack(f'Error: {self.process} {self.model_name} Error = {err}', channel=self.user)
             raise err
 
 

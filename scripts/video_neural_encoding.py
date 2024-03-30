@@ -31,7 +31,7 @@ class VideoNeuralEncoding:
         else:
             self.device = 'cpu'
         self.out_path = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}'
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.csv'
+        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.pkl.gz'
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
     
     def load_fmri(self):
@@ -87,7 +87,7 @@ class VideoNeuralEncoding:
                                                          flatten=True, progress=True, **kwargs)
 
                 print('Running regressions...')
-                results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, devices=['cuda:0'])
+                results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, devices=['cuda:0'], model_name=self.model_name, test_eval=True)
 
                 print('Saving results')
                 results.to_pickle(self.out_file, compression='gzip')
@@ -99,7 +99,7 @@ class VideoNeuralEncoding:
                 tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
         except Exception as err:
             print(err)
-            tools.send_slack(f'ERROR! Failed for model = {self.model_name}: Error message = {err}', channel=self.user)
+            tools.send_slack(f'Error: {self.process} {self.model_name} Error = {err}', channel=self.user)
             raise err
 
 
