@@ -9,7 +9,7 @@ import pandas as pd
 import os
 import time
 from src.mri import Benchmark
-from src import encoding
+from src import neural_alignment
 from src import tools
 from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_image_loader
@@ -110,7 +110,7 @@ class RSABenchmark:
                                                          exclude_oversize=True)
                 print('Model loaded!')
                 print('Running rsa...')
-                results = encoding.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, model_uid=self.model_uid)
+                results = neural_alignment.get_training_rsa_benchmark_results(benchmark, feature_map_extractor, model_uid=self.model_uid)
                 print('Finished RSA scoring!')
                 results.to_csv(self.raw_out_file, index=False)
                 print(f'Raw results saved to {self.raw_out_file}')

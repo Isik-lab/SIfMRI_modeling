@@ -12,7 +12,6 @@ from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
 
-
 class VisionNeuralEncoding:
     def __init__(self, args):
         self.process = 'VisionNeuralEncoding'

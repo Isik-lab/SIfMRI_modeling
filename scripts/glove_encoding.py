@@ -4,7 +4,7 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-from src import encoding, language_ops
+from src import neural_alignment, language_ops
 import torch
     
 
@@ -55,7 +55,7 @@ class GLoVeEncoding:
             print(f'{features.shape=}')
 
             print('running regressions')
-            results = encoding.get_lm_encoded_training_benchmarking_results(benchmark, features)
+            results = neural_alignment.get_lm_encoded_training_benchmarking_results(benchmark, features)
 
             print('saving results')
             results.to_csv(self.out_file, index=False)

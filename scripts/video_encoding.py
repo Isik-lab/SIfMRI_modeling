@@ -5,7 +5,7 @@ import pandas as pd
 import os
 import time
 from src.mri import Benchmark
-from src import encoding
+from src import neural_alignment
 from src import tools
 import torch
 from deepjuice.extraction import FeatureExtractor
@@ -52,7 +52,7 @@ class VideoEncoding:
     def run(self):
         try:
             start_time = time.time()
-            tools.send_slack(f'Started Rockfish job for {self.model_name}!', channel='kathy')
+            tools.send_slack(f'Started Rockfish job for {self.model_name}...', channel='kathy')
             if os.path.exists(self.out_file) and not self.overwrite:
                 # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')
@@ -64,34 +64,32 @@ class VideoEncoding:
 
                 print(f'loading model {self.model_name}...')
                 model = self.get_model(self.model_name)
-                print(f"loaded model")
 
                 preprocess, clip_duration = video_ops.get_transform(self.model_name)
                 print(f'{preprocess}')
-                print(f"Loading dataloader")
+                print(f"Loading dataloader...")
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
                                                         clip_duration, preprocess, batch_size=5)
-                print(f"loaded dataloader")
 
                 def custom_forward(model, x):
                     return model(x)
+                kwargs = {"forward_fn": custom_forward}
 
-                print(f"Creating feature extractor")
                 # Calculate the memory limit and generate the feature_extractor
                 total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
                 total_memory = int(float(total_memory_string.split()[0]))
                 memory_limit = int(total_memory * 0.75)
                 memory_limit_string = f'{memory_limit}GB'
-                kwargs = {"forward_fn": custom_forward}
+
+                print(f"Creating feature extractor...")
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
                                                          flatten=True, progress=True, **kwargs)
-                print(f"loaded feature extractor")
 
-                print('running regressions')
-                results = encoding.get_training_benchmarking_results(benchmark, feature_map_extractor, self.out_path)
+                print('Running regressions...')
+                results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor)
 
                 print('saving results')
-                results.to_csv(self.out_file, index=False)
+                results.to_pickle(self.out_file, compression='gzip')
 
                 end_time = time.time()
                 elapsed = end_time - start_time
@@ -105,12 +103,13 @@ class VideoEncoding:
 
 
 def main():
+    username = os.getlogin()
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', type=str, default='No_Model')
     parser.add_argument('--model_input', type=str, default='videos')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
-                        default='/home/kgarci18/scratch4-lisik3/SIfMRI_modeling/data')
+                        default=f'/home/{username}/scratch4-lisik3/{username}/SIfMRI_modeling/data')
                         # default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
 
