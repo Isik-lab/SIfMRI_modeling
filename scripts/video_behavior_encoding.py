@@ -90,7 +90,7 @@ class VideoBehaviorEncoding:
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
+                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed} :baby-yoda:', channel=self.user)
         except Exception as err:
             print(err)
             tools.send_slack(f'Error: {self.process} {self.model_name} Error = {err}', channel=self.user)

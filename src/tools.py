@@ -27,7 +27,7 @@ def get_nearest_multiple(a, b):
             
     return nearest_multiple # integer space
 
-def send_slack(msg='', channel='SIfMRI-modelling-alerts', attachment=None):
+def send_slack(msg='', channel=None, attachment=None):
     """
      Helper function to send slack message to a webhook
      Arguments:
@@ -47,7 +47,7 @@ def send_slack(msg='', channel='SIfMRI-modelling-alerts', attachment=None):
     elif channel == 'emcmaho7':
         url = emalie_channel
     else:
-        url = file_channel
+        raise "Channel is not recognised!"
 
     response = None
     if attachment:
