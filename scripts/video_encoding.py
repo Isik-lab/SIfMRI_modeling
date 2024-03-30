@@ -87,7 +87,7 @@ class VideoEncoding:
                                                          flatten=True, progress=True, **kwargs)
 
                 print('Running regressions...')
-                results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor)
+                results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, devices=['cuda:0'])
 
                 print('saving results')
                 results.to_pickle(self.out_file, compression='gzip')
