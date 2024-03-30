@@ -42,9 +42,9 @@ def send_slack(msg='', channel='SIfMRI-modelling-alerts', attachment=None):
     emalie_channel = 'https://hooks.slack.com/services/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'
     file_channel = 'https://hooks.slack.com/services/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'
 
-    if channel == 'kathy':
+    if channel == 'kgarci18':
         url = kathy_channel
-    elif channel == 'emalie':
+    elif channel == 'emcmaho7':
         url = emalie_channel
     else:
         url = file_channel

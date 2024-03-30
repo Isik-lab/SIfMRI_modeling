@@ -20,6 +20,7 @@ class VideoEncoding:
         self.model_name = args.model_name
         self.model_input = args.model_input
         self.data_dir = args.data_dir
+        self.user = args.username
         if self.model_input == 'videos':
             self.extension = 'mp4'
         else:
@@ -52,7 +53,7 @@ class VideoEncoding:
     def run(self):
         try:
             start_time = time.time()
-            tools.send_slack(f'Started Rockfish job for {self.model_name}...', channel='kathy')
+            tools.send_slack(f'Started Rockfish job for {self.model_name}...', channel=self.user)
             if os.path.exists(self.out_file) and not self.overwrite:
                 # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')
@@ -95,25 +96,30 @@ class VideoEncoding:
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished for model = {self.model_name} in {elapsed}', channel='kathy')
+                tools.send_slack(f'Finished for model = {self.model_name} in {elapsed}', channel=self.user)
         except Exception as err:
             print(err)
-            tools.send_slack(f'ERROR! Failed for model = {self.model_name}: Error message = {err}', channel='kathy')
+            tools.send_slack(f'ERROR! Failed for model = {self.model_name}: Error message = {err}', channel=self.user)
             raise err
 
 
 def main():
-    username = os.getlogin()
     parser = argparse.ArgumentParser()
+    # Add arguments that are needed before setting the default for data_dir
+    parser.add_argument('--user', type=str, default='kgarci18')
+    # Parse known args first to get the user
+    args, remaining_argv = parser.parse_known_args()
+    user = args.user  # Get the user from the parsed known args
+
     parser.add_argument('--model_name', type=str, default='No_Model')
     parser.add_argument('--model_input', type=str, default='videos')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
-                        default=f'/home/{username}/scratch4-lisik3/{username}/SIfMRI_modeling/data')
+                        default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')
                         # default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
 
-    args = parser.parse_args()
+    args = parser.parse_args(remaining_argv)
     VideoEncoding(args).run()
 
 
