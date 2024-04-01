@@ -45,6 +45,9 @@ class VideoData(CustomData):
                 return_tensors="pt",
                 padding=True,
             )
+            inputs['input_ids'] = inputs['input_ids'].squeeze(0)
+            inputs['attention_mask'] = inputs['attention_mask'].squeeze(0)
+            inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
             inputs = inputs.to(self.device)
             return inputs
         else:
