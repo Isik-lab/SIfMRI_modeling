@@ -1,5 +1,6 @@
 #
 import torch
+import numpy as np
 import pandas as pd
 from deepjuice.procedural.datasets import CustomData
 from torchvision.transforms import Compose, Lambda, Resize, Normalize, CenterCrop
@@ -16,7 +17,7 @@ from pytorchvideo.transforms import (
 )
 from torch.autograd._functions import Resize
 from torch.utils.data import DataLoader
-from transformers import VideoMAEImageProcessor
+from transformers import AutoImageProcessor
 
 
 class VideoData(CustomData):
@@ -271,6 +272,25 @@ def mvit_transform(mean, std, side_size, num_frames):
         )
     )
 
+####################
+# videomae transform
+####################
+def sample_frame_indices(clip_len, frame_sample_rate, seg_len):
+    '''
+    Sample a given number of frame indices from the video.
+    Args:
+        clip_len (`int`): Total number of frames to sample.
+        frame_sample_rate (`int`): Sample every n-th frame.
+        seg_len (`int`): Maximum allowed index of sample's last frame.
+    Returns:
+        indices (`List[int]`): List of sampled frame indices
+    '''
+    converted_len = int(clip_len * frame_sample_rate)
+    end_idx = np.random.randint(converted_len, seg_len)
+    start_idx = end_idx - converted_len
+    indices = np.linspace(start_idx, end_idx, num=clip_len)
+    indices = np.clip(indices, start_idx, end_idx - 1).astype(np.int64)
+    return indices
 def videomae_transform():
-    return VideoMAEImageProcessor.from_pretrained("MCG-NJU/videomae-base-finetuned-kinetics")
+    return AutoImageProcessor.from_pretrained("MCG-NJU/videomae-base")
 

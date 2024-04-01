@@ -10,7 +10,7 @@ from src import tools
 import torch
 from deepjuice.extraction import FeatureExtractor
 from src import video_ops
-from transformers import AutoModel
+from transformers import AutoModel, VideoMAEModel
 from deepjuice.systemops.devices import cuda_device_report
 
 class VideoNeuralEncoding:
@@ -41,11 +41,13 @@ class VideoNeuralEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def get_model(self, model_name):
-        if model_name in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
+        if model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
             model = torch.hub.load("facebookresearch/pytorchvideo",
                                    model=self.model_name, pretrained=True).to(self.device).eval()
-        elif model_name == 'xclip-base-patch32':
+        elif model_name.lower() == 'xclip-base-patch32':
             model = AutoModel.from_pretrained(f"microsoft/{model_name}")
+        elif model_name.lower() == 'videomae_base_short':
+            model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
         else:
             raise Exception(f"{model_name} is not implemented!")
         return model
