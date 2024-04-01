@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 from src.neural_alignment import get_benchmarking_results
-from src.language_ops import parse_caption_data, load_llm, tokenize_captions
+from src.language_ops import parse_caption_data, get_model, tokenize_captions
 import torch
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
@@ -49,7 +49,7 @@ class LanguageNeuralEncoding:
             captions = self.load_captions()
 
             # Get the model and dataloader
-            model, tokenizer = load_llm(self.model_uid)
+            model, tokenizer = get_model(self.model_uid)
             dataloader = get_data_loader(captions, tokenizer, input_modality='text',
                                          batch_size=16, data_key='caption', group_keys='video_name')
 
@@ -66,6 +66,7 @@ class LanguageNeuralEncoding:
             print('running regressions')
             results = get_benchmarking_results(benchmark, model, dataloader,
                                                model_name=self.model_name,
+                                               memory_limit='70GB',
                                                test_eval=self.test_eval)
             print('saving results')
             results.to_pickle(self.out_file, compression='gzip')

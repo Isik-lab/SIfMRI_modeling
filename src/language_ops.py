@@ -13,6 +13,9 @@ from src.tools import moving_grouped_average
 import numpy as np
 import pandas as pd
 
+gpt_list = ['gpt2']
+llama_list = ['Open-Llama']
+
 ######SLIP###########
 
 def slip_language_model(model_filepath, device='cuda'):
@@ -81,12 +84,39 @@ def glove_feature_extraction(captions):
 
 ######General###########
 
-def load_llm(model_uid, generative=False):
-    if generative: 
-        model_config = {'use_cache': False}
-        model_ = AutoModel.from_pretrained(model_uid, **model_config)
-    else:
-        model_ = AutoModel.from_pretrained(model_uid)
+def get_model(model_uid): 
+    if model_uid in gpt_list:
+        return load_gpt2(model_uid)
+    elif model_uid in llama_list: 
+        return load_llama()
+    else:# model_uid in general_list: 
+        try:
+            return load_llm(model_uid)
+        except: 
+            print('model configuration not specified')
+
+
+def load_llama():
+    print('loading LlaMa')
+    from transformers import OpenLlamaForCausalLM
+    model_ = OpenLlamaForCausalLM.from_pretrained("openlm-research/open_llama_7b")
+    tokenizer_ = AutoTokenizer.from_pretrained("openlm-research/open_llama_7b")
+    tokenizer_.add_special_tokens({'pad_token': '[PAD]'})
+    model_.resize_token_embeddings(len(tokenizer_))
+    return model_, tokenizer_
+
+
+def load_gpt2(model_uid):
+    model_config = {'use_cache': False}
+    model_ = AutoModel.from_pretrained(model_uid, **model_config)
+    tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
+    tokenizer_.add_special_tokens({'pad_token': '[PAD]'})
+    model_.resize_token_embeddings(len(tokenizer_))
+    return model_, tokenizer_
+
+
+def load_llm(model_uid):
+    model_ = AutoModel.from_pretrained(model_uid)
     tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
     tokenizer_.add_special_tokens({'pad_token': '[PAD]'})
     model_.resize_token_embeddings(len(tokenizer_))
