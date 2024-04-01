@@ -33,9 +33,8 @@ class VideoBehaviorEncoding:
         return Benchmark(stimulus_data=f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
 
     def get_model(self, model_name):
-        if model_name in ['slowfast_r50', 'x3d_xs', 'x3d_s', 'x3d_m']:
-            model = torch.hub.load("facebookresearch/pytorchvideo",
-                                   model=self.model_name, pretrained=True).to(self.device).eval()
+        if model_name in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
+            model = torch.hub.load("facebookresearch/pytorchvideo", model=self.model_name, pretrained=True).to(self.device).eval()
         elif model_name == 'xclip-base-patch32':
             model = AutoModel.from_pretrained(f"microsoft/{model_name}")
         else:

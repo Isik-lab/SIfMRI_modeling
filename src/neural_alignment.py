@@ -401,6 +401,7 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
 
         roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
         print(type(roi_indices))
+        print(len(roi_indices))
         print(f'{y_test.shape=}')
         print(f'{y_hat_max.shape=}')
         r_null = stats.perm_gpu(y_test[:, roi_indices], y_hat_max[:, roi_indices], verbose=True)
