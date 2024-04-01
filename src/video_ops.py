@@ -70,7 +70,7 @@ class VideoData(CustomData):
             
         return self[index] # the output of __getitem__
 
-    def read_video_pyav(container, indices):
+    def read_video_pyav(self, container, indices):
         '''
         Decode the video with PyAV decoder.
         Args:
@@ -90,7 +90,7 @@ class VideoData(CustomData):
                 frames.append(frame)
         return np.stack([x.to_ndarray(format="rgb24") for x in frames])
 
-    def sample_frame_indices(clip_len, frame_sample_rate, seg_len):
+    def sample_frame_indices(self, clip_len, frame_sample_rate, seg_len):
         '''
         Sample a given number of frame indices from the video.
         Args:
@@ -160,10 +160,11 @@ def get_transform(model_name):
         return mvit_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
 
     elif 'videomae' in model_name:
-        return videomae_transform()
+        return videomae_transform(), 3
 
     elif 'xclip' in model_name:
-        return xclip_transform()
+        return xclip_transform(), 3
+
     else:
         print(f'{model_name} model not yet implemented!')
 
