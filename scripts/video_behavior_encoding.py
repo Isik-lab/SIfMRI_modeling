@@ -10,6 +10,7 @@ from deepjuice.extraction import FeatureExtractor
 from pathlib import Path
 from transformers import AutoModel
 from deepjuice.systemops.devices import cuda_device_report
+from transformers import AutoModel, VideoMAEModel
 
 class VideoBehaviorEncoding:
     def __init__(self, args):
@@ -37,6 +38,8 @@ class VideoBehaviorEncoding:
             model = torch.hub.load("facebookresearch/pytorchvideo", model=self.model_name, pretrained=True).to(self.device).eval()
         elif model_name == 'xclip-base-patch32':
             model = AutoModel.from_pretrained(f"microsoft/{model_name}")
+        elif model_name.lower() == 'videomae_base_short':
+            model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
         else:
             raise Exception(f"{model_name} is not implemented!")
         return model
