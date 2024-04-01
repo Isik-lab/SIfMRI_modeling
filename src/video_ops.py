@@ -1,5 +1,5 @@
-#
 import torch
+import av
 import numpy as np
 import pandas as pd
 from deepjuice.procedural.datasets import CustomData
@@ -17,7 +17,8 @@ from pytorchvideo.transforms import (
 )
 from torch.autograd._functions import Resize
 from torch.utils.data import DataLoader
-from transformers import AutoImageProcessor
+from transformers import AutoImageProcessor, AutoProcessor
+import transformers
 
 
 class VideoData(CustomData):
@@ -27,19 +28,36 @@ class VideoData(CustomData):
         self.clip_duration = clip_duration
         self.device = device
         self.transforms = transforms
+        if isinstance(transforms, transformers.models.x_clip.processing_x_clip.XCLIPProcessor):
+            self.xclip = True
+        else:
+            self.xclip = False
         self.data = self.videos
 
     def __getitem__(self, index):
-        video = EncodedVideo.from_path(self.videos[index]) # Initialize an EncodedVideo helper class
-        video_data = video.get_clip(start_sec=0, end_sec=self.clip_duration) # Load the desired clip
-        video_data = self.transforms(video_data) # Transform the
-        inputs = video_data["video"]
-        # Move to device
-        if isinstance(inputs, torch.Tensor):
+        if self.xclip:
+            container = av.open(self.videos[index])
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
+            video_data = self.read_video_pyav(container, indices)
+            inputs = self.transforms(
+                text=["people"],
+                videos=list(video_data),
+                return_tensors="pt",
+                padding=True,
+            )
             inputs = inputs.to(self.device)
+            return inputs
         else:
-            inputs = [x.to(self.device) for x in inputs]
-        return inputs
+            video = EncodedVideo.from_path(self.videos[index]) # Initialize an EncodedVideo helper class
+            video_data = video.get_clip(start_sec=0, end_sec=self.clip_duration) # Load the desired clip
+            video_data = self.transforms(video_data) # Transform the
+            inputs = video_data["video"]
+            # Move to device
+            if isinstance(inputs, torch.Tensor):
+                inputs = inputs.to(self.device)
+            else:
+                inputs = [x.to(self.device) for x in inputs]
+            return inputs
     
     def __len__(self):
         return len(self.videos)
@@ -51,6 +69,43 @@ class VideoData(CustomData):
             print('not yet implemented')
             
         return self[index] # the output of __getitem__
+
+    def read_video_pyav(container, indices):
+        '''
+        Decode the video with PyAV decoder.
+        Args:
+            container (`av.container.input.InputContainer`): PyAV container.
+            indices (`List[int]`): List of frame indices to decode.
+        Returns:
+            result (np.ndarray): np array of decoded frames of shape (num_frames, height, width, 3).
+        '''
+        frames = []
+        container.seek(0)
+        start_index = indices[0]
+        end_index = indices[-1]
+        for i, frame in enumerate(container.decode(video=0)):
+            if i > end_index:
+                break
+            if i >= start_index and i in indices:
+                frames.append(frame)
+        return np.stack([x.to_ndarray(format="rgb24") for x in frames])
+
+    def sample_frame_indices(clip_len, frame_sample_rate, seg_len):
+        '''
+        Sample a given number of frame indices from the video.
+        Args:
+            clip_len (`int`): Total number of frames to sample.
+            frame_sample_rate (`int`): Sample every n-th frame.
+            seg_len (`int`): Maximum allowed index of sample's last frame.
+        Returns:
+            indices (`List[int]`): List of sampled frame indices
+        '''
+        converted_len = int(clip_len * frame_sample_rate)
+        end_idx = np.random.randint(converted_len, seg_len)
+        start_idx = end_idx - converted_len
+        indices = np.linspace(start_idx, end_idx, num=clip_len)
+        indices = np.clip(indices, start_idx, end_idx - 1).astype(np.int64)
+        return indices
     
 
 def get_video_loader(video_set, clip_duration, transforms, batch_size=64, **kwargs):
@@ -106,6 +161,9 @@ def get_transform(model_name):
 
     elif 'videomae' in model_name:
         return videomae_transform()
+
+    elif 'xclip' in model_name:
+        return xclip_transform()
     else:
         print(f'{model_name} model not yet implemented!')
 
@@ -294,3 +352,9 @@ def sample_frame_indices(clip_len, frame_sample_rate, seg_len):
 def videomae_transform():
     return AutoImageProcessor.from_pretrained("MCG-NJU/videomae-base")
 
+
+####################
+# xclip transform
+####################
+def xclip_transform():
+    return AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
