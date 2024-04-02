@@ -71,7 +71,14 @@ class VideoBehaviorEncoding:
 
                 def custom_forward(model, x):
                     return model(x)
-                kwargs = {"forward_fn": custom_forward}
+
+                def transform_forward(model, x):
+                    return model(**x)
+
+                if self.model_name == 'timesformer-base-finetuned-k400':
+                    kwargs = {"forward_fn": transform_forward}
+                else:
+                    kwargs = {"forward_fn": custom_forward}
 
                 # Calculate the memory limit and generate the feature_extractor
                 total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
