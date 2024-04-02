@@ -235,8 +235,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
 
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max
-        results['r_null_dist'] = [np.nan]
-        results['r_var_dist'] = [np.nan]
+        results['r_null_dist'] = np.nan
+        results['r_var_dist'] = np.nan
         results['r_null_dist'] = results['r_null_dist'].astype('object')
         results['r_var_dist'] = results['r_var_dist'].astype('object')
 
@@ -255,6 +255,5 @@ def get_benchmarking_results(benchmark, model, dataloader,
             results.at[idx, 'r_null_dist'] = r_null_val
             results.at[idx, 'r_var_dist'] = r_var_val
 
-        print(results.r_null_dist.unique())
-    # print(results.head(20))
+    print(results.head(20))
     return results
