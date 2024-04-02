@@ -3,11 +3,8 @@ import av
 import numpy as np
 import pandas as pd
 from deepjuice.procedural.datasets import CustomData
-from torchvision.transforms import Compose, Lambda, Resize, Normalize, CenterCrop
-from torchvision.transforms._transforms_video import (
-    CenterCropVideo,
-    NormalizeVideo,
-)
+from torchvision.transforms import Compose, Lambda
+from torchvision.transforms._transforms_video import NormalizeVideo
 from pytorchvideo.data.encoded_video import EncodedVideo
 from pytorchvideo.transforms import (
     ApplyTransformToKey,
@@ -15,9 +12,8 @@ from pytorchvideo.transforms import (
     UniformTemporalSubsample,
     UniformCropVideo
 )
-from torch.autograd._functions import Resize
 from torch.utils.data import DataLoader
-from transformers import AutoImageProcessor, AutoProcessor, AutoModel, TimesformerForVideoClassification
+from transformers import AutoImageProcessor, AutoProcessor
 import transformers
 
 
@@ -151,7 +147,7 @@ def get_video_loader(video_set, clip_duration, transforms, batch_size=64, **kwar
 
 
 def get_transform(model_name):
-    if 'slowfast' in model_name:
+    if model_name == 'slowfast_r50':
         sampling_rate = 2
         fps = 30
         num_frames = 32
@@ -161,28 +157,28 @@ def get_transform(model_name):
     elif 'x3d' in model_name:
         return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
 
-    elif 'slow_r50' in model_name:
+    elif model_name == 'slow_r50':
         num_frames = 8
         sampling_rate = 8
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return slow_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
 
-    elif 'c2d_r50' in model_name:
+    elif model_name == 'c2d_r50':
         num_frames = 8
         sampling_rate = 8
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return c2d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
 
-    elif 'i3d_r50' in model_name:
+    elif model_name == 'i3d_r50':
         num_frames = 8
         sampling_rate = 8
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
 
-    elif 'csn_r101' in model_name:
+    elif model_name == 'csn_r101':
         num_frames = 32
         sampling_rate = 2
         fps = 30
@@ -201,6 +197,9 @@ def get_transform(model_name):
 
     elif 'xclip' in model_name:
         return xclip_transform(), 3
+
+    elif model_name == 'timesformer-base-finetuned-k400':
+        return timesformer_transform(), 3
 
     else:
         print(f'{model_name} model not yet implemented!')
@@ -396,3 +395,9 @@ def videomae_transform():
 ####################
 def xclip_transform():
     return AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
+
+####################
+# xclip transform
+####################
+def timesformer_transform():
+    return AutoImageProcessor.from_pretrained("facebook/timesformer-base-finetuned-k400")
