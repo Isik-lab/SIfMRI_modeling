@@ -10,7 +10,7 @@ from src import tools
 import torch
 from deepjuice.extraction import FeatureExtractor
 from src import video_ops
-from transformers import AutoModel, VideoMAEModel
+from transformers import AutoModel, VideoMAEModel, TimesformerForVideoClassification
 from deepjuice.systemops.devices import cuda_device_report
 
 class VideoNeuralEncoding:
@@ -48,6 +48,8 @@ class VideoNeuralEncoding:
             model = AutoModel.from_pretrained(f"microsoft/{model_name}")
         elif model_name.lower() == 'videomae_base_short':
             model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
+        elif model_name.lower() == 'timesformer-base-finetuned-k400':
+            model = TimesformerForVideoClassification.from_pretrained("facebook/timesformer-base-finetuned-k400")
         else:
             raise Exception(f"{model_name} is not implemented!")
         return model

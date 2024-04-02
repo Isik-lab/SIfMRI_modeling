@@ -8,9 +8,8 @@ from src.mri import Benchmark
 from src import video_ops, behavior_alignment, tools
 from deepjuice.extraction import FeatureExtractor
 from pathlib import Path
-from transformers import AutoModel
 from deepjuice.systemops.devices import cuda_device_report
-from transformers import AutoModel, VideoMAEModel
+from transformers import AutoModel, VideoMAEModel, TimesformerForVideoClassification
 
 class VideoBehaviorEncoding:
     def __init__(self, args):
@@ -40,6 +39,8 @@ class VideoBehaviorEncoding:
             model = AutoModel.from_pretrained(f"microsoft/{model_name}")
         elif model_name.lower() == 'videomae_base_short':
             model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
+        elif model_name.lower() == 'timesformer-base-finetuned-k400':
+            model = TimesformerForVideoClassification.from_pretrained("facebook/timesformer-base-finetuned-k400")
         else:
             raise Exception(f"{model_name} is not implemented!")
         return model

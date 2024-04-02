@@ -17,7 +17,7 @@ from pytorchvideo.transforms import (
 )
 from torch.autograd._functions import Resize
 from torch.utils.data import DataLoader
-from transformers import AutoImageProcessor, AutoProcessor
+from transformers import AutoImageProcessor, AutoProcessor, AutoModel, TimesformerForVideoClassification
 import transformers
 
 
@@ -29,15 +29,18 @@ class VideoData(CustomData):
         self.device = device
         self.transforms = transforms
         if isinstance(transforms, transformers.models.x_clip.processing_x_clip.XCLIPProcessor):
-            self.xclip = True
+            self.model_type = 'xclip'
+        elif isinstance(transforms, transformers.models.videomae.image_processing_videomae.VideoMAEImageProcessor):
+            self.model_type = 'transformer'
         else:
-            self.xclip = False
+            self.model_type = 'normal'
         self.data = self.videos
 
     def __getitem__(self, index):
-        if self.xclip:
+        if self.model_type == 'xclip':
             container = av.open(self.videos[index])
-            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1,
+                                                seg_len=container.streams.video[0].frames)
             video_data = self.read_video_pyav(container, indices)
             inputs = self.transforms(
                 text=["people"],
@@ -50,10 +53,18 @@ class VideoData(CustomData):
             inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
             inputs = inputs.to(self.device)
             return inputs
+        elif self.model_type == 'transformer':
+            container = av.open(self.videos[index])
+            indices = sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
+            video_data = self.video_to_list_arrays(container, indices)
+            inputs = self.transforms(video_data, return_tensors="pt")
+            inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
+            inputs = inputs.to(self.device)
+            return inputs
         else:
-            video = EncodedVideo.from_path(self.videos[index]) # Initialize an EncodedVideo helper class
-            video_data = video.get_clip(start_sec=0, end_sec=self.clip_duration) # Load the desired clip
-            video_data = self.transforms(video_data) # Transform the
+            video = EncodedVideo.from_path(self.videos[index])  # Initialize an EncodedVideo helper class
+            video_data = video.get_clip(start_sec=0, end_sec=self.clip_duration)  # Load the desired clip
+            video_data = self.transforms(video_data)  # Transform the
             inputs = video_data["video"]
             # Move to device
             if isinstance(inputs, torch.Tensor):
@@ -61,17 +72,40 @@ class VideoData(CustomData):
             else:
                 inputs = [x.to(self.device) for x in inputs]
             return inputs
-    
+
     def __len__(self):
         return len(self.videos)
 
     def get_sample(self, index=None, show_original=False):
         index = self.get_sample_index(index, len(self))
-            
+
         if show_original:
             print('not yet implemented')
-            
-        return self[index] # the output of __getitem__
+
+        return self[index]  # the output of __getitem__
+
+    def video_to_list_arrays(self, container, indices):
+        '''
+        Decode the video with PyAV decoder.
+        Args:
+            container (`av.container.input.InputContainer`): PyAV container.
+            indices (`List[int]`): List of frame indices to decode.
+        Returns:
+            result (List[np.ndarray]): List of np arrays of decoded frames of shape (3, height, width).
+        '''
+        frames = []
+        container.seek(0)
+        start_index = indices[0]
+        end_index = indices[-1]
+        for i, frame in enumerate(container.decode(video=0)):
+            if i > end_index:
+                break
+            if i >= start_index and i in indices:
+                # Convert the frame to an ndarray and transpose it
+                frame_ndarray = frame.to_ndarray(format="rgb24")
+                transposed_frame = np.transpose(frame_ndarray, (2, 0, 1))  # Reorder dimensions to C, H, W
+                frames.append(transposed_frame)
+        return frames
 
     def read_video_pyav(self, container, indices):
         '''
