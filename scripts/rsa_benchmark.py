@@ -15,6 +15,8 @@ from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_image_loader
 from deepjuice.extraction import FeatureExtractor, get_feature_map_metadata
 from deepjuice.model_zoo import get_model_options
+from src import tools
+import time
 
 
 class RSABenchmark:
@@ -50,6 +52,7 @@ class RSABenchmark:
         self.process = 'RSABenchmark'
         print(f'Starting process {self.process} with args:')
         self.overwrite = args.overwrite
+        self.user = args.user
         self.model_uid = args.model_uid
         self.model_input = args.model_input
         self.data_dir = args.data_dir
@@ -91,6 +94,8 @@ class RSABenchmark:
             return
         else:
             try:
+                start_time = time.time()
+                tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
                 print('Loading data...')
                 benchmark = self.load_fmri()
                 stimulus_path = f'{self.data_dir}/raw/{self.model_input}/',
@@ -179,28 +184,31 @@ class RSABenchmark:
                     elif metric == 'ersa':
                         df_result.to_csv(self.fmt_ersa_out_file, index=False)
                 print('Finished formatted results!')
-                print('! Finished RSA Benchmark !')
+
                 end_time = time.time()
-                elapsed = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
-                print(f'Elapsed time: {elapsed}')
+                elapsed = end_time - start_time
+                elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+                print(f'Finished in {elapsed}!')
+                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
             except Exception as err:
-                print(f'Failed with error message: {err}')
-                end_time = time.time()
-                elapsed = time.strftime("%H:%M:%S", time.gmtime(end_time - start_time))
-                print(f'Elapsed time: {elapsed}')
-                tools.slack.send(f'Model - {self.model_uid} - Failed with error message: {err}')
+                print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
+                tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
 
 
 def main():
-    current_user = os.getenv('USER')
-    default_data_dir = f'/home/{current_user}/scratch4-lisik3/{current_user}/SIfMRI_modeling/data'
     parser = argparse.ArgumentParser()
+    # Add arguments that are needed before setting the default for data_dir
+    parser.add_argument('--user', type=str, default='emcmaho7')
+    # Parse known args first to get the user
+    args, remaining_argv = parser.parse_known_args()
+    user = args.user  # Get the user from the parsed known args
+
     parser.add_argument('--model_uid', type=str, default='slip_vit_s_yfcc15m')
     parser.add_argument('--model_input', type=str, default='images')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
-                        default=default_data_dir)
-    parser.add_argument('--top_dir', type=str, default=f'/home/kgarci18/scratch4-lisik3/SIfMRI_modeling')
+                        default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
+    parser.add_argument('--top_dir', type=str, default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
     args = parser.parse_args()
     RSABenchmark(args).run()
 
