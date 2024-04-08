@@ -1,2 +1,0 @@
-model, other
-torchvision_resnet50_imagenet1k_v1, other

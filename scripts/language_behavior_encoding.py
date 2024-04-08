@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 from src.behavior_alignment import get_benchmarking_results
-from src.language_ops import parse_caption_data, load_llm, tokenize_captions
+from src.language_ops import parse_caption_data, get_model, tokenize_captions
 import torch
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
@@ -17,7 +17,7 @@ class LanguageBehaviorEncoding:
         print('working')
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
-        self.generative = args.generative
+        self.memory_limit = args.memory_limit
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
@@ -47,7 +47,7 @@ class LanguageBehaviorEncoding:
             captions = self.load_captions()
 
             # Get the model and dataloader
-            model, tokenizer = load_llm(self.model_uid, generative=self.generative)
+            model, tokenizer = get_model(self.model_uid)
             dataloader = get_data_loader(captions, tokenizer, input_modality='text',
                                          batch_size=16, data_key='caption', group_keys='video_name')
 
@@ -61,7 +61,7 @@ class LanguageBehaviorEncoding:
             print('running regressions')
             results = get_benchmarking_results(benchmark, model, dataloader,
                                                target_features=target_features,
-                                               memory_limit='30GB', 
+                                               memory_limit=self.memory_limit, 
                                                model_name=self.model_name)
             print('saving results')
             results.to_csv(self.out_file, index=False, compression='gzip')
@@ -71,8 +71,8 @@ class LanguageBehaviorEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
+    parser.add_argument('--memory_limit', type=str, default='70GB')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--generative', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--top_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  
     args = parser.parse_args()

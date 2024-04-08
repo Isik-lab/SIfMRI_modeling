@@ -12,13 +12,14 @@ from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
 
+
 class VisionNeuralEncoding:
     def __init__(self, args):
         self.process = 'VisionNeuralEncoding'
         self.overwrite = args.overwrite
         self.test_eval = args.test_eval
         self.model_uid = args.model_uid
-        self.grouping_func = args.grouping_func
+        self.frame_handling = args.frame_handling
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
@@ -29,12 +30,18 @@ class VisionNeuralEncoding:
         print("HF_DATASETS_CACHE is set to:", os.environ['HF_DATASETS_CACHE'])
 
         self.video_path = f'{self.data_dir}/raw/videos/'
-        self.frame_path = f'{self.cache}/frames/'
+        if self.frame_handling != 'first_frame':
+            self.frame_path = f'{self.cache}/frames/'
+            self.frames = [0, 15, 30, 45, 60, 75, 89]
+            self.grouping_func = self.frame_handling
+        else:
+            self.frame_path = f'{self.cache}/first_frame/'
+            self.frames = [0]
+            self.grouping_func = None
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
-        Path(f'{self.data_dir}/interim/{self.process}/{self.grouping_func}').mkdir(parents=True, exist_ok=True)
-        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.grouping_func}/model-{self.model_name}.pkl.gz'
-        self.frames = [0, 15, 30, 45, 60, 75, 89]
+        Path(f'{self.data_dir}/interim/{self.process}/{self.frame_handling}').mkdir(parents=True, exist_ok=True)
+        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.frame_handling}/model-{self.model_name}.pkl.gz'
 
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
@@ -58,6 +65,7 @@ class VisionNeuralEncoding:
                 model, preprocess = get_deepjuice_model(self.model_name)
                 dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
                                              batch_size=16, data_key='images', group_keys='video_name')
+                print(dataloader.batch_data.head())
 
                 # Reorganize the benchmark to the dataloader
                 videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
@@ -73,6 +81,7 @@ class VisionNeuralEncoding:
                                                    model_name=self.model_name,
                                                    test_eval=self.test_eval,
                                                    grouping_func=self.grouping_func,
+                                                   devices=['cuda:0'],
                                                    memory_limit='30GB')
                 print('saving results')
                 results.to_pickle(self.out_file, compression='gzip')
@@ -82,13 +91,12 @@ class VisionNeuralEncoding:
             tools.send_slack(msg=f'Error during encoding with model - {self.model_name}, error message = {err}', channel='kathy')
 
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--grouping_func', type=str, default='grouped_average')
+    parser.add_argument('--frame_handling', type=str, default='first_frame')
     parser.add_argument('--top_dir', '-top', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')
     args = parser.parse_args()

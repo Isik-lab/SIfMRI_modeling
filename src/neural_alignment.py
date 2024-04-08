@@ -8,6 +8,7 @@ from tqdm import tqdm
 import pandas as pd
 import gc 
 from src import stats
+from src.stats import feature_scaler
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
@@ -22,12 +23,6 @@ from deepjuice.alignment import compute_rdm, compare_rdms
 
 from deepjuice.reduction import compute_srp
 from deepjuice.alignment import compute_score
-
-
-def feature_scaler(train, test):
-    mean_ = torch.mean(train)
-    std_ = torch.std(train)
-    return (train-mean_)/std_, (test-mean_)/std_
 
 
 def get_benchmarking_results(benchmark, model, dataloader,
@@ -99,6 +94,12 @@ def get_benchmarking_results(benchmark, model, dataloader,
                             tensor_fn=grouped_stack,
                             memory_limit=memory_limit,
                             batch_strategy='stack')
+    else:
+        extractor = FeatureExtractor(model, dataloader,
+                                     **{'device': devices[0],
+                                         'output_device': devices[0]},
+                                     memory_limit=memory_limit,
+                                     batch_strategy='stack')
     extractor.modify_settings(flatten=True)
 
     # initialize pipe and kfold splitter
@@ -233,19 +234,26 @@ def get_benchmarking_results(benchmark, model, dataloader,
 
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max
-        
-        # Run permutation testing and bootstapping
         results['r_null_dist'] = np.nan
         results['r_var_dist'] = np.nan
+        results['r_null_dist'] = results['r_null_dist'].astype('object')
+        results['r_var_dist'] = results['r_var_dist'].astype('object')
 
+        # Do permutation testing on voxels in ROIs
         roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
         print(type(roi_indices))
         print(f'{y_test.shape=}')
         print(f'{y_hat_max.shape=}')
-        r_null = stats.perm_gpu(y_test[:, roi_indices], y_hat_max[:, roi_indices], verbose=True)
-        r_var = stats.bootstrap_gpu(y_test[:, roi_indices], y_hat[:, roi_indices], verbose=True)
-        results.iloc[roi_indices]['r_null_dist'] = r_null.cpu().detach().numpy().T.tolist()
-        results.iloc[roi_indices]['r_var_dist'] = r_var.cpu().detach().numpy().T.tolist()
+        r_null = stats.perm_gpu(y_test[:, roi_indices],
+                                y_hat_max[:, roi_indices],
+                                verbose=True).cpu().detach().numpy().T.tolist()
+        r_var = stats.bootstrap_gpu(y_test[:, roi_indices], 
+                                    y_hat[:, roi_indices],
+                                    verbose=True).cpu().detach().numpy().T.tolist()
+        for idx, (r_null_val, r_var_val) in zip(roi_indices, zip(r_null, r_var)):
+            results.at[idx, 'r_null_dist'] = r_null_val
+            results.at[idx, 'r_var_dist'] = r_var_val
+
     print(results.head(20))
     return results
 

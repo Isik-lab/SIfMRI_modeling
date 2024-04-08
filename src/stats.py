@@ -6,6 +6,12 @@ from tqdm import tqdm
 import torch
 
 
+def feature_scaler(train, test, axis=0):
+    mean_ = torch.mean(train, dim=axis, keepdim=True)
+    std_ = torch.std(train, dim=axis, keepdim=True)
+    return (train-mean_)/std_, (test-mean_)/std_
+
+
 def calculate_p(r_null_, r_true_, n_perm_, H0_):
     # Get the p-value depending on the type of test
     denominator = n_perm_ + 1

@@ -36,7 +36,7 @@ class ReorganizeBehavior:
             # Compute reliability
             r = stats.corr(np.array(response_even), np.array(response_odd))
             metadata.append({'feature': feature_out,
-                            'reliabilty': r})
+                            'reliability': r})
         
         metadata = pd.DataFrame(metadata)
         print(metadata.head(20))
@@ -52,7 +52,7 @@ class ReorganizeBehavior:
     def run(self):
         stimulus_data, video_names = self.load_stimulus_data()
         metadata = self.generate_benchmark(video_names)
-        stimulus_data.to_csv(f'{self.data_dir}/interim/{self.process}/stimulus_data.csv', index=False)
+        # stimulus_data.to_csv(f'{self.data_dir}/interim/{self.process}/stimulus_data.csv', index=False)
         metadata.to_csv(f'{self.data_dir}/interim/{self.process}/metadata.csv', index=False)
 
 
