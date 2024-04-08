@@ -7,6 +7,7 @@ from tqdm import tqdm
 import pandas as pd
 import gc 
 from src import stats
+from src.stats import feature_scaler
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
@@ -18,12 +19,6 @@ from deepjuice.procedural.cv_ops import CVIndexer
 from deepjuice.alignment import TorchRidgeGCV
 from deepjuice.reduction import compute_srp
 from deepjuice.alignment import compute_score
-
-
-def feature_scaler(train, test):
-    mean_ = torch.mean(train)
-    std_ = torch.std(train)
-    return (train-mean_)/std_, (test-mean_)/std_
 
 
 def get_benchmarking_results(benchmark, model, dataloader,

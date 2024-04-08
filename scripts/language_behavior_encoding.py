@@ -17,6 +17,7 @@ class LanguageBehaviorEncoding:
         print('working')
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
+        self.memory_limit = args.memory_limit
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
@@ -60,7 +61,7 @@ class LanguageBehaviorEncoding:
             print('running regressions')
             results = get_benchmarking_results(benchmark, model, dataloader,
                                                target_features=target_features,
-                                               memory_limit='70GB', 
+                                               memory_limit=self.memory_limit, 
                                                model_name=self.model_name)
             print('saving results')
             results.to_csv(self.out_file, index=False, compression='gzip')
@@ -70,6 +71,7 @@ class LanguageBehaviorEncoding:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
+    parser.add_argument('--memory_limit', type=str, default='70GB')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--top_dir', '-data', type=str,
                          default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling')  

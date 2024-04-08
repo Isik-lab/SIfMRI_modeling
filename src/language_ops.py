@@ -89,7 +89,7 @@ def get_model(model_uid):
         return load_gpt2(model_uid)
     elif model_uid in llama_list: 
         return load_llama()
-    else:# model_uid in general_list: 
+    else:
         try:
             return load_llm(model_uid)
         except: 
