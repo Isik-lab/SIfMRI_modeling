@@ -10,7 +10,7 @@ from src import tools
 import torch
 from deepjuice.extraction import FeatureExtractor
 from src import video_ops
-from transformers import AutoModel, VideoMAEModel, TimesformerForVideoClassification
+from transformers import AutoModel, VideoMAEModel, TimesformerForVideoClassification, XCLIPVisionModel
 from deepjuice.systemops.devices import cuda_device_report
 
 class VideoNeuralEncoding:
@@ -45,7 +45,7 @@ class VideoNeuralEncoding:
             model = torch.hub.load("facebookresearch/pytorchvideo",
                                    model=self.model_name, pretrained=True).to(self.device).eval()
         elif model_name.lower() == 'xclip-base-patch32':
-            model = AutoModel.from_pretrained(f"microsoft/{model_name}")
+            model = XCLIPVisionModel.from_pretrained("microsoft/xclip-base-patch32")
         elif model_name.lower() == 'videomae_base_short':
             model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
         elif model_name.lower() == 'timesformer-base-finetuned-k400':
@@ -69,21 +69,30 @@ class VideoNeuralEncoding:
 
                 print(f'Loading model {self.model_name}...')
                 model = self.get_model(self.model_name)
+                if self.model_name == 'xclip-base-patch32':
+                    batch_size = 1
+                else:
+                    batch_size = 5
 
                 preprocess, clip_duration = video_ops.get_transform(self.model_name)
                 print(f'{preprocess}')
                 print(f"Loading dataloader...")
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
-                                                        clip_duration, preprocess, batch_size=5)
+                                                        clip_duration, preprocess, batch_size=batch_size)
 
                 def custom_forward(model, x):
                     return model(x)
+
+                def xclip_forward(model, x):
+                    return model(*x)
 
                 def transform_forward(model, x):
                     return model(**x)
 
                 if self.model_name == 'timesformer-base-finetuned-k400':
                     kwargs = {"forward_fn": transform_forward}
+                elif self.model_name == 'xclip-base-patch32':
+                    kwargs = {"forward_fn": xclip_forward}
                 else:
                     kwargs = {"forward_fn": custom_forward}
 
@@ -93,7 +102,7 @@ class VideoNeuralEncoding:
                 memory_limit = int(total_memory * 0.75)
                 memory_limit_string = f'{memory_limit}GB'
 
-                print(f"Creating feature extractor...")
+                print(f"Creating feature extractor with {memory_limit_string} batches...")
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
                                                          flatten=True, progress=True, **kwargs)
 

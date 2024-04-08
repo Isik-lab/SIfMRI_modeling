@@ -35,23 +35,16 @@ class VideoData(CustomData):
     def __getitem__(self, index):
         if self.model_type == 'xclip':
             container = av.open(self.videos[index])
-            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1,
-                                                seg_len=container.streams.video[0].frames)
-            video_data = self.read_video_pyav(container, indices)
-            inputs = self.transforms(
-                text=["people"],
-                videos=list(video_data),
-                return_tensors="pt",
-                padding=True,
-            )
-            inputs['input_ids'] = inputs['input_ids'].squeeze(0)
-            inputs['attention_mask'] = inputs['attention_mask'].squeeze(0)
-            inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
+            video = self.read_video_pyav(container, indices)
+            pixel_values = self.transforms(videos=list(video), return_tensors="pt").pixel_values
+            batch_size, num_frames, num_channels, height, width = pixel_values.shape
+            inputs = pixel_values.reshape(-1, num_channels, height, width)
             inputs = inputs.to(self.device)
             return inputs
         elif self.model_type == 'transformer':
             container = av.open(self.videos[index])
-            indices = sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
             video_data = self.video_to_list_arrays(container, indices)
             inputs = self.transforms(video_data, return_tensors="pt")
             inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
