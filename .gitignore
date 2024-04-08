@@ -1,7 +1,9 @@
+.cache/*
 data/*
 reports/presentations/*
 reports/writing/*
 reports/figures/*
+scripts/slurm*out
 */.ipynb_checkpoints/*
 */__pycache__/*
 */*/*.pyc
