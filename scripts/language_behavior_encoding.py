@@ -64,7 +64,7 @@ class LanguageBehaviorEncoding:
                                                memory_limit=self.memory_limit, 
                                                model_name=self.model_name)
             print('saving results')
-            results.to_csv(self.out_file, index=False, compression='gzip')
+            results.to_pickle(self.out_file, compression='gzip')
             print('Finished!')
 
 
