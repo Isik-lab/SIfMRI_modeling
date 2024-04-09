@@ -4,6 +4,7 @@ reports/presentations/*
 reports/writing/*
 reports/figures/*
 scripts/slurm*out
+scripts/model_uid.csv
 */.ipynb_checkpoints/*
 */__pycache__/*
 */*/*.pyc
