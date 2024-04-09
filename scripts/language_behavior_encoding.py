@@ -6,11 +6,32 @@ import os
 from src.mri import Benchmark
 from src.behavior_alignment import get_benchmarking_results
 from src.language_ops import parse_caption_data, get_model, tokenize_captions
+from src.language_ablation import strip_sentence
 from src import tools
 import time
 import torch
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
+from tqdm import tqdm
+tqdm.pandas()
+
+
+def perturb_captions(df, func_name='none'):
+    if func_name == 'mask_nouns': 
+        from src.language_ablation import mask_all_nouns as mask_func
+    elif func_name == 'mask_verbs':
+        from src.language_ablation import mask_all_verbs as mask_func
+    elif func_name == 'mask_nonnouns':
+        from src.language_ablation import mask_nonnouns as mask_func
+    elif func_name == 'mask_nonverbs':
+        from src.language_ablation import mask_nonverbs as mask_func
+
+    df.reset_index(drop=True, inplace=True)
+    df['caption'] = df['caption'].astype(object)
+    if func_name != 'none':
+        df['caption'] = df['caption'].progress_apply(lambda x: mask_func(strip_sentence(x)))
+    else:
+        df['caption'] = df['caption'].progress_apply(strip_sentence)
 
 
 class LanguageBehaviorEncoding:
@@ -19,27 +40,44 @@ class LanguageBehaviorEncoding:
         print('working')
         self.user = args.user
         self.overwrite = args.overwrite
+        self.perturbation = args.perturbation
+        self.perturb_func = args.perturb_func
         self.model_uid = args.model_uid
         self.memory_limit = args.memory_limit
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
         self.model_name = self.model_uid.replace('/', '_')
-        Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.pkl.gz'
+
+        if not self.perturbation: 
+            self.out_file = f'{self.data_dir}/interim/{self.process}/no_perturbation/model-{self.model_name}.pkl.gz'
+            self.input_file = f'{self.data_dir}/interim/{self.process}/no_perturbation/captions.csv'
+        else:
+            self.out_file = f'{self.data_dir}/interim/{self.process}/perturbation/{self.perturb_func}/model-{self.model_name}_perturb-{self.perturb_func}.pkl.gz'
+            self.input_file = f'{self.data_dir}/interim/{self.process}/perturbation/{self.perturb_func}/{self.perturb_func}.csv'
+        print(vars(self))
         # check hugging face cache location
         print("HF_HOME is set to:", os.environ['HF_HOME'])
         print("HUGGINGFACE_HUB_CACHE is set to:", os.environ['HUGGINGFACE_HUB_CACHE'])
         print("HF_DATASETS_CACHE is set to:", os.environ['HF_DATASETS_CACHE'])
-        print(vars(self))
+
+        Path(f'{self.data_dir}/interim/{self.process}/no_perturbation').mkdir(parents=True, exist_ok=True)
+        Path(f'{self.data_dir}/interim/{self.process}/perturbation/{self.perturb_func}').mkdir(parents=True, exist_ok=True)
     
     def load_data(self):
         return Benchmark(stimulus_data=f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
 
     def load_captions(self):
-        file = f'{self.data_dir}/interim/CaptionData/captions.csv'
-        return parse_caption_data(file)
-    
+        if not os.path.exists(self.input_file): 
+            file = f'{self.data_dir}/interim/CaptionData/captions.csv'
+            df = parse_caption_data(file)
+            if self.perturbation:
+                perturb_captions(df, func_name=self.perturb_func)
+            df.to_csv(self.input_file, index=False)
+            return df 
+        else:
+            return pd.read_csv(self.input_file)
+
     def run(self):
         try:
             if os.path.exists(self.out_file) and not self.overwrite:
@@ -56,7 +94,6 @@ class LanguageBehaviorEncoding:
                 model, tokenizer = get_model(self.model_uid)
                 dataloader = get_data_loader(captions, tokenizer, input_modality='text',
                                              batch_size=16, data_key='caption', group_keys='video_name')
-
 
                 # Reorganize the benchmark to the dataloader
                 videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
@@ -90,10 +127,11 @@ def main():
     # Parse known args first to get the user
     args, remaining_argv = parser.parse_known_args()
     user = args.user  # Get the user from the parsed known args
-
-    parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
+    parser.add_argument('--model_uid', type=str, default='sentence-transformers/paraphrase-MiniLM-L6-v2')
     parser.add_argument('--memory_limit', type=str, default='70GB')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--perturbation', action=argparse.BooleanOptionalAction, default=False) 
+    parser.add_argument('--perturb_func', type=str, default='none')
     parser.add_argument('--top_dir', '-data', type=str,
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
 
