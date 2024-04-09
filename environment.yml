@@ -216,7 +216,6 @@ dependencies:
   - wcwidth=0.2.13=pyhd8ed1ab_0
   - weasel=0.3.4=pyhd8ed1ab_0
   - webencodings=0.5.1=pyhd8ed1ab_2
-  - wheel=0.42.0=pyhd8ed1ab_0
   - xz=5.4.5=h5eee18b_0
   - yaml=0.2.5=h7b6447c_0
   - zeromq=4.3.5=h6a678d5_0
@@ -245,7 +244,7 @@ dependencies:
     - google-pasta==0.2.0
     - grpcio==1.62.1
     - h5py==3.10.0
-    - huggingface-hub==0.17.0
+    - huggingface-hub==0.17.3
     - ipykernel==6.29.0
     - ipython==8.20.0
     - jedi==0.19.1
@@ -274,7 +273,7 @@ dependencies:
     - opt-einsum==3.3.0
     - optree==0.10.0
     - pandas==2.1.4
-    - pillow==10.0.1
+    - pillow==10.2.0
     - preshed==3.0.6
     - prompt-toolkit==3.0.43
     - protobuf==4.25.3
@@ -302,7 +301,7 @@ dependencies:
     - tf-keras==2.16.0
     - thinc==8.2.2
     - timm==0.9.12
-    - tokenizers==0.14.1
+    - tokenizers==0.13.3
     - torch==2.2.0
     - torchaudio==2.2.0
     - torchvision==0.17.0
@@ -310,6 +309,7 @@ dependencies:
     - transformers==4.38.1
     - typing-extensions==4.9.0
     - werkzeug==3.0.1
+    - wheel==0.43.0
     - wrapt==1.16.0
     - xxhash==2.0.2
     - yarl==1.9.3
