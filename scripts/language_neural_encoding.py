@@ -21,6 +21,7 @@ class LanguageNeuralEncoding:
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
         self.test_eval = args.test_eval
+        self.memory_limit = args.memory_limit
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
@@ -72,7 +73,7 @@ class LanguageNeuralEncoding:
                 print('running regressions')
                 results = get_benchmarking_results(benchmark, model, dataloader,
                                                    model_name=self.model_name,
-                                                   memory_limit='70GB',
+                                                   memory_limit=self.memory_limit,
                                                    test_eval=self.test_eval)
                 print('saving results')
                 results.to_pickle(self.out_file, compression='gzip')
@@ -94,8 +95,8 @@ def main():
     # Parse known args first to get the user
     args, remaining_argv = parser.parse_known_args()
     user = args.user  # Get the user from the parsed known args
-
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
+    parser.add_argument('--memory_limit', type=str, default='70GB')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--top_dir', '-data', type=str,
