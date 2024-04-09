@@ -1,6 +1,8 @@
 #
 import spacy
 import random
+import pandas as pd
+from tqdm import tqdm
 
 
 def strip_sentence(sentence):
@@ -126,6 +128,29 @@ def mask_adverbial_clauses(text, filler='[MASK]', model_name='en_core_web_sm'):
     return strip_sentence(masked_text)
 
 
+def mask_nonnouns(text, filler='[MASK]', model_name='en_core_web_sm'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+
+    masked_text = text
+    spans_to_mask = []
+
+    # Iterate over all tokens in the text
+    for token in doc:
+        # If the token is not a noun or proper noun, add it to the spans to mask
+        if token.pos_ not in ["NOUN", "PROPN"]:
+            spans_to_mask.append((token.idx, token.idx + len(token.text)))
+
+    # Sort spans in reverse order to avoid indexing issues during replacement
+    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
+
+    # Replace spans with the filler
+    for start, end in spans_to_mask:
+        masked_text = masked_text[:start] + filler * (end - start) + masked_text[end:]
+
+    return masked_text
+
+
 def mask_all_nouns(text, filler='[MASK]', model_name='en_core_web_sm'):
     nlp = spacy.load(model_name)
     doc = nlp(text)
@@ -144,6 +169,28 @@ def mask_all_nouns(text, filler='[MASK]', model_name='en_core_web_sm'):
         masked_text = masked_text[:start] + filler + masked_text[end:]
 
     return strip_sentence(masked_text)
+
+
+def mask_nonverbs(text, filler='[MASK]', model_name='en_core_web_sm'):
+    nlp = spacy.load(model_name)
+    doc = nlp(text)
+
+    masked_text = text
+    spans_to_mask = []
+
+    for token in doc:
+        # If the token is not a verb, mark it for masking
+        if token.pos_ not in ["VERB", "AUX"]:
+            spans_to_mask.append((token.idx, token.idx + len(token.text)))
+
+    # Sort spans in reverse order to avoid indexing issues during masking
+    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
+
+    for start, end in spans_to_mask:
+        # Use filler * (end - start) to maintain the length of the text being replaced
+        masked_text = masked_text[:start] + filler * (end - start) + masked_text[end:]
+
+    return masked_text
 
 
 def mask_all_verbs(text, filler='[MASK]', model_name='en_core_web_sm'):
@@ -186,35 +233,3 @@ def correct_grammar(prompt, text, tokenizer, model):
     input_ids = tokenizer(prompt + text, return_tensors="pt").input_ids
     outputs = model.generate(input_ids, max_length=256)
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-
-def get_nouns(text, model_name='en_core_web_sm'):
-    nlp = spacy.load(model_name)
-    doc = nlp(text)
-    # Extract nouns using list comprehension
-    ablated_text = [token.text for token in doc if token.pos_ == "NOUN"]
-    return strip_sentence(' '.join(ablated_text))
-
-
-def get_verbs(text, model_name='en_core_web_sm'):
-    nlp = spacy.load(model_name)
-    doc = nlp(text)
-    # Extract verbs using list comprehension
-    ablated_text = [token.text for token in doc if token.pos_ == "VERB"]
-    return strip_sentence(' '.join(ablated_text))
-
-
-def get_non_nouns(text, model_name='en_core_web_sm'):
-    nlp = spacy.load(model_name)
-    doc = nlp(text)
-    # Extract everything but nouns using list comprehension
-    ablated_text = [token.text for token in doc if token.pos_ != "NOUN"]   
-    return strip_sentence(' '.join(ablated_text))
-
-
-def get_non_verbs(text, model_name='en_core_web_sm'):
-    nlp = spacy.load(model_name)
-    doc = nlp(text)
-    # Extract everything but verbs using list comprehension
-    ablated_text = [token.text for token in doc if token.pos_ != "VERB"]
-    return strip_sentence(' '.join(ablated_text))

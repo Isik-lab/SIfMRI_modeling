@@ -10,13 +10,22 @@ dependencies:
   - abseil-cpp=20211102.0=h27087fc_1
   - aiosignal=1.3.1=pyhd8ed1ab_0
   - annotated-types=0.6.0=pyhd8ed1ab_0
-  - arrow-cpp=11.0.0=h374c478_2
+  - arrow-cpp=14.0.2=h374c478_1
   - asttokens=2.0.5=pyhd3eb1b0_0
   - attrs=23.2.0=pyh71513ae_0
-  - aws-c-common=0.6.8=h5eee18b_1
-  - aws-c-event-stream=0.1.6=h6a678d5_6
-  - aws-checksums=0.1.11=h5eee18b_2
-  - aws-sdk-cpp=1.8.185=h721c034_1
+  - aws-c-auth=0.6.19=h5eee18b_0
+  - aws-c-cal=0.5.20=hdbd6064_0
+  - aws-c-common=0.8.5=h5eee18b_0
+  - aws-c-compression=0.2.16=h5eee18b_0
+  - aws-c-event-stream=0.2.15=h6a678d5_0
+  - aws-c-http=0.6.25=h5eee18b_0
+  - aws-c-io=0.13.10=h5eee18b_0
+  - aws-c-mqtt=0.7.13=h5eee18b_0
+  - aws-c-s3=0.1.51=hdbd6064_0
+  - aws-c-sdkutils=0.1.6=h5eee18b_0
+  - aws-checksums=0.1.13=h5eee18b_0
+  - aws-crt-cpp=0.18.16=h6a678d5_0
+  - aws-sdk-cpp=1.10.55=h721c034_0
   - beautifulsoup4=4.12.3=pyha770c72_0
   - blas=1.0=mkl
   - bleach=6.1.0=pyhd8ed1ab_0
@@ -39,6 +48,7 @@ dependencies:
   - cuda-runtime=12.1.0=0
   - cython-blis=0.7.11=py312ha883a20_0
   - dataclasses=0.8=pyh6d0b6a4_7
+  - datasets=2.18.0=pyhd8ed1ab_0
   - decorator=5.1.1=pyhd3eb1b0_0
   - defusedxml=0.7.1=pyhd8ed1ab_0
   - dill=0.3.7=pyhd8ed1ab_0
@@ -57,6 +67,7 @@ dependencies:
   - gmp=6.2.1=h295c915_3
   - gnutls=3.6.15=he1e5248_0
   - grpc-cpp=1.48.2=he1ff14a_1
+  - huggingface_hub=0.22.2=pyhd8ed1ab_0
   - icu=58.2=hf484d3e_1000
   - idna=3.6=pyhd8ed1ab_0
   - importlib-metadata=7.0.1=pyha770c72_0
@@ -143,7 +154,7 @@ dependencies:
   - numpy-base=1.26.3=py312h0da6c21_0
   - openh264=2.1.1=h4ff587b_0
   - openjpeg=2.4.0=h3ad879b_0
-  - openssl=3.0.12=h7f8727e_0
+  - openssl=3.0.13=h7f8727e_0
   - orc=1.7.4=hb3bc3d3_1
   - packaging=23.2=pyhd8ed1ab_0
   - pandoc=2.19.2=ha770c72_0
@@ -174,6 +185,7 @@ dependencies:
   - referencing=0.32.1=pyhd8ed1ab_0
   - requests=2.31.0=pyhd8ed1ab_0
   - rich=13.7.0=pyhd8ed1ab_0
+  - s2n=1.3.27=hdbd6064_0
   - sacremoses=0.0.43=pyhd3eb1b0_0
   - sentence-transformers=2.3.0=pyhd8ed1ab_0
   - setuptools=69.2.0=pyhd8ed1ab_0
@@ -223,7 +235,9 @@ dependencies:
     - confection==0.1.4
     - contourpy==1.2.0
     - cycler==0.12.1
+    - cymem==2.0.6
     - debugpy==1.8.1
+    - en-core-web-sm==3.7.1
     - flatbuffers==24.3.7
     - fonttools==4.50.0
     - frozenlist==1.4.0
@@ -251,6 +265,7 @@ dependencies:
     - mtalg==1.1.2
     - multidict==6.0.4
     - multiprocess==0.70.15
+    - murmurhash==1.0.7
     - namex==0.0.7
     - nest-asyncio==1.6.0
     - numexpr==2.8.7
@@ -260,10 +275,11 @@ dependencies:
     - optree==0.10.0
     - pandas==2.1.4
     - pillow==10.0.1
+    - preshed==3.0.6
     - prompt-toolkit==3.0.43
     - protobuf==4.25.3
     - psutil==5.9.8
-    - pyarrow==11.0.0
+    - pyarrow==14.0.2
     - pydantic-core==2.14.6
     - pyparsing==3.1.2
     - pysocks==1.7.1
@@ -276,6 +292,7 @@ dependencies:
     - scipy==1.11.4
     - seaborn==0.13.2
     - sentencepiece==0.1.99
+    - spacy==3.7.2
     - srsly==2.4.8
     - tensorboard==2.16.2
     - tensorboard-data-server==0.7.2
@@ -283,13 +300,14 @@ dependencies:
     - tensorflow-hub==0.16.1
     - termcolor==2.4.0
     - tf-keras==2.16.0
+    - thinc==8.2.2
     - timm==0.9.12
     - tokenizers==0.14.1
     - torch==2.2.0
     - torchaudio==2.2.0
     - torchvision==0.17.0
     - tornado==6.3.3
-    - transformers==4.34.0
+    - transformers==4.38.1
     - typing-extensions==4.9.0
     - werkzeug==3.0.1
     - wrapt==1.16.0
