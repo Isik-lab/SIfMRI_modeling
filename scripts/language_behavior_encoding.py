@@ -122,13 +122,12 @@ class LanguageBehaviorEncoding:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_uid', type=str, default='sentence-transformers/paraphrase-MiniLM-L6-v2')
     # Add arguments that are needed before setting the default for data_dir
     parser.add_argument('--user', type=str, default='emcmaho7')
     # Parse known args first to get the user
     args, remaining_argv = parser.parse_known_args()
     user = args.user  # Get the user from the parsed known args
-    parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
+    parser.add_argument('--model_uid', type=str, default='sentence-transformers/paraphrase-MiniLM-L6-v2')
     parser.add_argument('--memory_limit', type=str, default='70GB')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--perturbation', action=argparse.BooleanOptionalAction, default=False) 
