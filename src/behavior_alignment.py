@@ -21,12 +21,6 @@ from deepjuice.alignment import TorchRidgeGCV
 from deepjuice.reduction import compute_srp
 
 
-def feature_scaler(train, test):
-    mean_ = torch.mean(train)
-    std_ = torch.std(train)
-    return (train-mean_)/std_, (test-mean_)/std_
-
-
 def get_benchmarking_results(benchmark, model, dataloader,
                                  target_features,
                                  layer_index_offset=0,
@@ -96,6 +90,12 @@ def get_benchmarking_results(benchmark, model, dataloader,
                             tensor_fn=grouped_stack,
                             memory_limit=memory_limit,
                             batch_strategy='stack')
+    else:
+        extractor = FeatureExtractor(model, dataloader,
+                                     **{'device': devices[0],
+                                         'output_device': devices[0]},
+                                     memory_limit=memory_limit,
+                                     batch_strategy='stack')
     extractor.modify_settings(flatten=True)
 
     # initialize pipe and kfold splitter
