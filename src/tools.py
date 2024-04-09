@@ -39,7 +39,7 @@ def send_slack(msg='', channel=None, attachment=None):
     """
     # Slack API functions
     kathy_channel = 'https://hooks.slack.com/services/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'
-    emalie_channel = 'https://hooks.slack.com/services/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'
+    emalie_channel = 'https://hooks.slack.com/services/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'
     file_channel = 'https://hooks.slack.com/services/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'
 
     if channel == 'kgarci18':
