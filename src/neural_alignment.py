@@ -467,12 +467,13 @@ def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device=
 
     return pd.DataFrame(results)
 
-def get_training_rsa_benchmark_results(benchmark, feature_extractor,
+def get_rsa_benchmark_results(benchmark, feature_extractor,
                                       layer_index_offset=0,
                                       device='cuda',
-                                      n_splits=5, random_seed=1,
-                                      alphas=np.logspace(-1, 5, 7).tolist(),
+                                      n_splits=4, random_seed=1,
+                                      alphas=[10.**power for power in np.arange(-5, 2)],
                                       metrics = ['crsa', 'ersa'],
+                                      test_eval = False,
                                       feature_map_stats=None,
                                       model_uid = None,
                                       stack_final_results=True):
@@ -500,7 +501,7 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
     """
 
     # HELPER FUNCTIONS #
-    def generate_fold_indices(n_splits=5, random_seed=1, n_stimuli=200) -> list:
+    def generate_fold_indices(n_splits=4, random_seed=1, n_stimuli=200) -> list:
         """
         Generates indices for training and testing splits based on k-fold cross-validation.
 
@@ -597,39 +598,42 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
     row_indices = benchmark.row_indices
 
     # get the kfold indices
-    if benchmark.video_set == 'train':
-        n_stimuli = 200
-    elif benchmark.video_set == 'test':
-        n_stimuli = 50
-    else:
-        n_stimuli = 250
-    ind_splits = generate_fold_indices(n_splits, random_seed, n_stimuli)
-    # use ind_splits to split the rdms
-    rdm_splits = get_rdm_splits(benchmark.rdms, ind_splits)
+    train_ind_splits = generate_fold_indices(n_splits, random_seed, 200)
+    test_ind_splits = generate_fold_indices(n_splits, random_seed, 50)
 
+    # use ind_splits to split the rdms
+    train_rdm_splits = get_rdm_splits(benchmark.train_rdms, train_ind_splits)
+    test_rdm_splits = get_rdm_splits(benchmark.test_rdms, test_ind_splits)
+
+    #### Start with training ####
     # now, we iterate over our extractor
     layer_index = 0  # keeps track of depth
+    feature_maps_device = None
     for feature_maps in feature_extractor:
         # dimensionality reduction of feature maps
         feature_maps = get_feature_map_srps(feature_maps, device='cuda')
+        feature_maps_device = feature_maps
         # now, we loop over our batch of feature_maps from the extractor...
         # ...starting by defining an iterator that will track our progress
-        feature_map_iterator = tqdm(feature_maps.items(), desc='Brain Mapping (Layer)')
+        feature_map_iterator = tqdm(feature_maps.items(), desc='Training Brain Mapping (Layer)')
 
         for feature_map_uid, feature_map in feature_map_iterator:
             # index the 5 fold splits for this layer
-            xy_folds = get_kfold_xy_rdms(feature_map, Y, ind_splits)
+            xy_folds = get_kfold_xy_rdms(feature_map, Y, train_ind_splits)
 
             layer_index += 1 # one layer deeper in feature_maps
 
+            # main data to add to our scoresheet per feature_map
+            feature_map_info = {'model_uid': model_uid,
+                                'model_layer': feature_map_uid,
+                                'model_layer_index': layer_index + layer_index_offset
+                                }
+
+            # lists to containd scores across folds
+            ersa_fold_scores = []
+            crsa_fold_scores = []
             # loop over each fold in the kfold
             for i, fold in enumerate(xy_folds):
-                # main data to add to our scoresheet per feature_map
-                feature_map_info = {'model_uid': model_uid,
-                                    'model_layer': feature_map_uid,
-                                    # layer_index_offset is used here in case of subsetting
-                                    'model_layer_index': layer_index + layer_index_offset,
-                                    'k_fold': i+1}
 
                 # now, our X Variable that we push onto the gpu:
                 X = {'train': apply_tensor_op(fold['train']['X']).to(dtype=torch.float32, device='cuda'),
@@ -651,10 +655,10 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                     # encoding RSA score
                     if metric == 'ersa':
                         for split in ['train', 'test']:
-                            for region in benchmark.rdms:
-                                for subj_id in benchmark.rdms[region]:
+                            for region in benchmark.train_rdms:
+                                for subj_id in benchmark.train_rdms[region]:
                                     # get the relevant train-test split of the brain RDM
-                                    target_rdm = rdm_splits[i][region][subj_id][split]
+                                    target_rdm = train_rdm_splits[i][region][subj_id][split]
                                     # get the response_indices for current ROI group
                                     response_indices = row_indices[region][subj_id]
                                     # get predicted values for each response_index...
@@ -666,36 +670,33 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                                     score = compare_rdms(model_rdm, target_rdm, method='spearman')
 
                                     # add the scores to a "scoresheet"
-                                    scoresheet = {**feature_map_info,
-                                                  'region': region,
+                                    scoresheet = {'region': region,
                                                   'subj_id': subj_id,
                                                   'cv_split': split,
+                                                  'fold': i+1,
                                                   'score': score}
-
-                                    # append the scoresheet to our running list
-                                    scoresheet_lists['ersa'].append(scoresheet)
+                                    ersa_fold_scores.append(scoresheet)
 
                     elif metric == 'crsa':
                         for split in ['train', 'test']:
                             # get the relevant train-test split of the model RDM
                             model_rdm = compute_rdm(X[split], method='pearson', device=device)
-                            for region in benchmark.rdms:
-                                for subj_id in benchmark.rdms[region]:
+                            for region in benchmark.train_rdms:
+                                for subj_id in benchmark.train_rdms[region]:
                                     # get the relevant train-test split of the brain RDM
-                                    target_rdm = rdm_splits[i][region][subj_id][split]
+                                    target_rdm = train_rdm_splits[i][region][subj_id][split]
                                     # compare lower triangles of model + brain RDM
                                     # with our specified 2nd-order distance metric
                                     score = compare_rdms(model_rdm, target_rdm, method='spearman')
 
                                     # add the scores to a "scoresheet"
-                                    scoresheet = {**feature_map_info,
-                                                  'region': region,
+                                    scoresheet = {'region': region,
                                                   'subj_id': subj_id,
                                                   'cv_split': split,
+                                                  'fold': i + 1,
                                                   'score': score}
+                                    crsa_fold_scores.append(scoresheet)
 
-                                    # append the scoresheet to our running list
-                                    scoresheet_lists['crsa'].append(scoresheet)
 
                 # clean up tensors on gpu
                 X = {key: tensor.to('cpu') for key, tensor in X.items()}
@@ -703,16 +704,132 @@ def get_training_rsa_benchmark_results(benchmark, feature_extractor,
                 gc.collect()
                 torch.cuda.empty_cache()
 
-    results = {metric: pd.DataFrame(scores) for metric, scores in scoresheet_lists.items()}
-    if stack_final_results:
-        # if we do stack, results are a single concatenated dataframe
-        # with only the common_columns of each (excluding method data)
-        result_columns = pd.unique([col for results in results.values() for col in results.columns]).tolist()
-        common_columns = [col for col in result_columns if all(col in result.columns for result in results.values())]
-        common_columns = ['metric'] + common_columns # indicator
-        results_list = []
-        for metric, result in results.items():
-            result.insert(0, 'metric', metric)
-            results_list.append(result[common_columns])
+            ##### END OF FOLD LOOP #####
+            # calculate the best of the folds
+            ersa_df = pd.DataFrame(ersa_fold_scores)
+            ersa_df = ersa_df[ersa_df['cv_split'] == 'test'].groupby(['region', 'subj_id', 'cv_split']).mean().reset_index()
+            ersa_scores = ersa_df.assign(**feature_map_info)
+            scoresheet_lists['ersa'].append(ersa_scores)
 
-    return pd.concat(results_list) if stack_final_results else results
+            crsa_df = pd.DataFrame(crsa_fold_scores)
+            crsa_df = crsa_df[crsa_df['cv_split'] == 'test'].groupby(['region', 'subj_id', 'cv_split']).mean().reset_index()
+            crsa_scores = crsa_df.assign(**feature_map_info)
+            scoresheet_lists['crsa'].append(crsa_scores)
+
+    ##### END OF FEATURE MAPS BATCHES #####
+    all_layers = {}
+    train_results = {}
+    for metric in metrics:
+        all_layers[metric] = pd.concat(scoresheet_lists[metric])
+        grouped_bests = all_layers[metric][['model_uid', 'region', 'subj_id', 'score']].groupby(['model_uid', 'region', 'subj_id']).idxmax().reset_index()
+        best_layers = []
+        for ind, row in grouped_bests.iterrows():
+            row['model_layer'] = all_layers[metric].iloc[row['score']]['model_layer']
+            row['model_layer_index'] = all_layers[metric].iloc[row['score']]['model_layer_index']
+            row['score'] = all_layers[metric].iloc[row['score']]['score']
+            row['model_layer_depth'] = row['model_layer_index'] / all_layers[metric]['model_layer_index'].max()
+            row['test_set'] = 'train'
+            best_layers.append(pd.DataFrame(row).T)
+        train_results[metric] = pd.concat(best_layers)
+
+    ##### START TEST SET #####
+    if test_eval:
+        print('Running rsa in the test set')
+        test_results = {'ersa': [], 'crsa': []}
+        feature_map_iterator = tqdm(feature_maps_device.items(), desc='Testing Brain Mapping (Layer)')
+        for metric in metrics:
+            for region in benchmark.test_rdms:
+                for subj_id in benchmark.test_rdms[region]:
+                    target_row = train_results[metric][(train_results[metric]['region'] == region) & (train_results[metric]['subj_id'] == subj_id)].copy()
+                    target_layer = target_row['model_layer'].values[0]
+                    for feature_map_uid, feature_map in feature_map_iterator:
+                        if feature_map_uid == target_layer:
+                            # index the 4 fold splits for this layer
+                            xy_folds = get_kfold_xy_rdms(feature_map, Y, test_ind_splits)
+
+                            # lists to contain scores across folds
+                            fold_scores = []
+                            # loop over each fold in the kfold
+                            for i, fold in enumerate(xy_folds):
+                                # now, our X Variable that we push onto the gpu:
+                                X = {'train': apply_tensor_op(fold['train']['X']).to(dtype=torch.float32, device='cuda'),
+                                     'test': apply_tensor_op(fold['test']['X']).to(dtype=torch.float32, device='cuda')}
+
+                                y = {'train': fold['train']['y'],
+                                     'test': fold['test']['y']}
+
+                                # initialize the regression, in this case ridge regression with LOOCV over alphas
+                                regression = TorchRidgeGCV(alphas=alphas, device='cuda', scale_X=True)
+                                regression.fit(X['train'], y['train'])  # fit the regression on the train split
+                                # RidgeGCV gives us both internally generated LOOCV values for the train dataset
+                                # as well as the ability to predict our test set in the same way as any regressor
+                                y_pred = {'train': regression.cv_y_pred_, 'test': regression.predict(X['test'])}
+
+                                # encoding RSA score
+                                if metric == 'ersa':
+                                    for split in ['train', 'test']:
+                                        target_rdm = test_rdm_splits[i][region][subj_id][split]
+                                        # get the response_indices for current ROI group
+                                        response_indices = row_indices[region][subj_id]
+                                        # get predicted values for each response_index...
+                                        y_pred_i = y_pred[split][:, response_indices]
+                                        # ... and use them to calculate the weighted RDM
+                                        model_rdm = compute_rdm(y_pred_i, 'pearson')
+                                        # compare brain-reweighted model RDM to brain RDM
+                                        # with our specified 2nd-order distance metric...
+                                        score = compare_rdms(model_rdm, target_rdm, method='spearman')
+
+                                        # add the scores to a "scoresheet"
+                                        scoresheet = {'region': region,
+                                                      'subj_id': subj_id,
+                                                      'cv_split': split,
+                                                      'fold': i + 1,
+                                                      'score': score}
+                                        fold_scores.append(scoresheet)
+
+                                elif metric == 'crsa':
+                                    for split in ['train', 'test']:
+                                        # get the relevant train-test split of the model RDM
+                                        model_rdm = compute_rdm(X[split], method='pearson', device=device)
+                                        # get the relevant train-test split of the brain RDM
+                                        target_rdm = test_rdm_splits[i][region][subj_id][split]
+                                        # compare lower triangles of model + brain RDM
+                                        # with our specified 2nd-order distance metric
+                                        score = compare_rdms(model_rdm, target_rdm, method='spearman')
+
+                                        # add the scores to a "scoresheet"
+                                        scoresheet = {'region': region,
+                                                      'subj_id': subj_id,
+                                                      'cv_split': split,
+                                                      'fold': i + 1,
+                                                      'score': score}
+                                        fold_scores.append(scoresheet)
+
+                                # clean up tensors on gpu
+                                X = {key: tensor.to('cpu') for key, tensor in X.items()}
+                                del regression
+                                gc.collect()
+                                torch.cuda.empty_cache()
+
+                            ##### END OF FOLD LOOP #####
+                            # calculate the best of the folds
+                            rsa_df = pd.DataFrame(fold_scores)
+                            rsa_scores = rsa_df[rsa_df['cv_split'] == 'test'].groupby(
+                                ['region', 'subj_id', 'cv_split']).mean().reset_index()
+                            target_row['test_set'] = 'test'
+                            target_row['score'] = rsa_scores['score']
+                            test_results[metric].append(target_row)
+
+        test_results[metric] = pd.concat(test_results[metric])
+
+    # combine and return results
+    results_list = []
+    for metric, result in train_results.items():
+        result.insert(0, 'metric', metric)
+        results_list.append(result)
+    if test_eval:
+        for metric, result in test_results.items():
+            result.insert(0, 'metric', metric)
+            results_list.append(result)
+
+    return pd.concat(results_list)

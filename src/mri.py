@@ -34,6 +34,17 @@ class Benchmark:
             self.response_data = pd.read_csv(response_data)
         else:
             self.response_data = response_data
+        self.train_response_data = None
+        self.test_response_data = None
+        self.train_rdm_stimulus = None
+        self.test_rdm_stimulus = None
+        self.train_rdms = None
+        self.test_rdms = None
+        self.train_rdm_indices = None
+        self.test_rdm_indices = None
+        self.train_row_indices = None
+        self.test_row_indices = None
+
 
 
     def add_stimulus_path(self, data_dir, extension='png'):
@@ -107,16 +118,27 @@ class Benchmark:
         """
         subjects = [1, 2, 3, 4]
         # Build Brain RDM's
-        custom_rdms = {}
-        custom_rdm_indices = {}
-        custom_roi_indices = {}
-        self.response_data.index.name = 'voxel_id'
+        custom_train_rdms = {}
+        custom_test_rdms = {}
+        custom_train_rdm_indices = {}
+        custom_test_rdm_indices = {}
+        custom_train_row_indices = {}
+        custom_test_row_indices = {}
+
+        # train
+        self.train_rdm_stimulus = self.stimulus_data[self.stimulus_data['stimulus_set'] == 'train'].reset_index()
+        stim_idx = list(self.train_rdm_stimulus['index'].to_numpy().astype('str'))
+        self.train_rdm_stimulus.drop(columns='index', inplace=True)
+        if self.response_data is not None:
+            self.train_response_data = self.response_data[stim_idx]
+            self.train_response_data.index.name = 'voxel_id'
+
         for roi in self.metadata['roi_name'].unique()[1:]:
             sub_dict = {}
-            custom_rdm_indices[roi] = {}
+            custom_train_rdm_indices[roi] = {}
             for sub in subjects:
                 # Applying ROI to Whole brain betas
-                betas = self.response_data.loc[
+                betas = self.train_response_data.loc[
                     self.metadata[(self.metadata['roi_name'] == roi) & (self.metadata['subj_id'] == sub)].index]
                 # Correlating pairwise across 200 videos
                 df_beta = pd.DataFrame(betas)
@@ -127,17 +149,49 @@ class Benchmark:
                 sub_dict[sub] = sub_rdm
 
                 # Populate the Indices
-                custom_rdm_indices[roi][sub] = self.metadata.loc[
+                custom_train_rdm_indices[roi][sub] = self.metadata.loc[
                     (self.metadata['roi_name'] == roi) & (self.metadata['subj_id'] == sub)].voxel_id.to_list()
 
             # Populate the row Indices
-            custom_row_indices = custom_rdm_indices  # these are a direct match as the index in response data is numeric starting at 0, old code used - (response_data.reset_index().query('voxel_id==@roi_index').index.to_numpy())
+            custom_train_row_indices = custom_train_rdm_indices  # these are a direct match as the index in response data is numeric starting at 0, old code used - (response_data.reset_index().query('voxel_id==@roi_index').index.to_numpy())
+            custom_train_rdms[roi] = sub_dict
+        self.train_rdms = custom_train_rdms
+        self.train_rdm_indices = custom_train_rdm_indices
+        self.train_row_indices = custom_train_row_indices
 
-            custom_rdms[roi] = sub_dict
-        self.rdms = custom_rdms
-        self.rdm_indices = custom_rdm_indices
-        self.row_indices = custom_row_indices
-        self.video_set = 'train'
+        # test
+        self.test_rdm_stimulus = self.stimulus_data[self.stimulus_data['stimulus_set'] == 'test'].reset_index()
+        stim_idx = list(self.test_rdm_stimulus['index'].to_numpy().astype('str'))
+        self.test_rdm_stimulus.drop(columns='index', inplace=True)
+        if self.response_data is not None:
+            self.test_response_data = self.response_data[stim_idx]
+            self.test_response_data.index.name = 'voxel_id'
+
+        for roi in self.metadata['roi_name'].unique()[1:]:
+            sub_dict = {}
+            custom_test_rdm_indices[roi] = {}
+            for sub in subjects:
+                # Applying ROI to Whole brain betas
+                betas = self.test_response_data.loc[
+                    self.metadata[(self.metadata['roi_name'] == roi) & (self.metadata['subj_id'] == sub)].index]
+                # Correlating pairwise across 200 videos
+                df_beta = pd.DataFrame(betas)
+                df_pearson = 1 - df_beta.corr(method='pearson')
+                sub_rdm = df_pearson.to_numpy()
+                sub_dict[sub] = sub_rdm
+                sub_rdm = (convert_to_tensor(sub_rdm).to(torch.float64).to('cpu'))
+                sub_dict[sub] = sub_rdm
+
+                # Populate the Indices
+                custom_test_rdm_indices[roi][sub] = self.metadata.loc[
+                    (self.metadata['roi_name'] == roi) & (self.metadata['subj_id'] == sub)].voxel_id.to_list()
+
+            # Populate the row Indices
+            custom_test_row_indices = custom_test_rdm_indices  # these are a direct match as the index in response data is numeric starting at 0, old code used - (response_data.reset_index().query('voxel_id==@roi_index').index.to_numpy())
+            custom_test_rdms[roi] = sub_dict
+        self.test_rdms = custom_test_rdms
+        self.test_rdm_indices = custom_test_rdm_indices
+        self.test_row_indices = custom_test_row_indices
 
     def update(self, iterable):
         """
