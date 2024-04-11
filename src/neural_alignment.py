@@ -594,7 +594,8 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
     # if no feature_map_stats provided, make empty dict:
     if feature_map_stats is None: feature_map_stats = {}
     # get the voxel (neuroid) indices for each specified roi
-    row_indices = benchmark.row_indices
+    train_row_indices = benchmark.train_row_indices
+    test_row_indices = benchmark.test_row_indices
 
     # get the kfold indices
     train_ind_splits = generate_fold_indices(n_splits, random_seed, 200)
@@ -659,7 +660,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                                     # get the relevant train-test split of the brain RDM
                                     target_rdm = train_rdm_splits[i][region][subj_id][split]
                                     # get the response_indices for current ROI group
-                                    response_indices = row_indices[region][subj_id]
+                                    response_indices = train_row_indices[region][subj_id]
                                     # get predicted values for each response_index...
                                     y_pred_i = y_pred[split][:, response_indices]
                                     # ... and use them to calculate the weighted RDM
@@ -769,7 +770,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                                     for split in ['train', 'test']:
                                         target_rdm = test_rdm_splits[i][region][subj_id][split]
                                         # get the response_indices for current ROI group
-                                        response_indices = row_indices[region][subj_id]
+                                        response_indices = test_row_indices[region][subj_id]
                                         # get predicted values for each response_index...
                                         y_pred_i = y_pred[split][:, response_indices]
                                         # ... and use them to calculate the weighted RDM
