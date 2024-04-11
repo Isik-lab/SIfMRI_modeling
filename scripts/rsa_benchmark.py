@@ -93,7 +93,7 @@ class RSABenchmark:
         else:
             try:
                 start_time = time.time()
-                tools.send_slack(f'Started: {self.process} {self.model_uid}...', channel=self.user)
+                tools.send_slack(f'Started :baby-yoda: : {self.process} {self.model_uid}...', channel=self.user)
                 print('Loading data...')
                 benchmark = self.load_fmri()
                 stimulus_path = f'{self.data_dir}/raw/{self.model_input}/',
@@ -150,10 +150,10 @@ class RSABenchmark:
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_uid} in {elapsed}', channel=self.user)
+                tools.send_slack(f'Finished :white_check_mark: : {self.process} {self.model_uid} in {elapsed}', channel=self.user)
             except Exception as err:
                 print(f'Error: {self.process} {self.model_uid}: Error Msg = {err}')
-                tools.send_slack(f'Error: {self.process} {self.model_uid}: Error Msg = {err}', channel=self.user)
+                tools.send_slack(f'Error :x: : {self.process} {self.model_uid}: Error Msg = {err}', channel=self.user)
                 raise err
 
 def main():

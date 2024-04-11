@@ -665,11 +665,11 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                                     score = compare_rdms(model_rdm, target_rdm, method='spearman')
 
                                     # add the scores to a "scoresheet"
-                                    scoresheet = {'region': region,
+                                    scoresheet = {'roi_name': region,
                                                   'subj_id': subj_id,
                                                   'cv_split': split,
                                                   'fold': i+1,
-                                                  'score': score}
+                                                  'train_score': score}
                                     ersa_fold_scores.append(scoresheet)
 
                     elif metric == 'crsa':
@@ -685,11 +685,11 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                                     score = compare_rdms(model_rdm, target_rdm, method='spearman')
 
                                     # add the scores to a "scoresheet"
-                                    scoresheet = {'region': region,
+                                    scoresheet = {'roi_name': region,
                                                   'subj_id': subj_id,
                                                   'cv_split': split,
                                                   'fold': i + 1,
-                                                  'score': score}
+                                                  'train_score': score}
                                     crsa_fold_scores.append(scoresheet)
 
 
@@ -702,12 +702,12 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             ##### END OF FOLD LOOP #####
             # calculate the best of the folds
             ersa_df = pd.DataFrame(ersa_fold_scores)
-            ersa_df = ersa_df[ersa_df['cv_split'] == 'test'].groupby(['region', 'subj_id', 'cv_split']).mean().reset_index()
+            ersa_df = ersa_df[ersa_df['cv_split'] == 'test'].groupby(['roi_name', 'subj_id', 'cv_split']).mean().reset_index()
             ersa_scores = ersa_df.assign(**feature_map_info)
             scoresheet_lists['ersa'].append(ersa_scores)
 
             crsa_df = pd.DataFrame(crsa_fold_scores)
-            crsa_df = crsa_df[crsa_df['cv_split'] == 'test'].groupby(['region', 'subj_id', 'cv_split']).mean().reset_index()
+            crsa_df = crsa_df[crsa_df['cv_split'] == 'test'].groupby(['roi_name', 'subj_id', 'cv_split']).mean().reset_index()
             crsa_scores = crsa_df.assign(**feature_map_info)
             scoresheet_lists['crsa'].append(crsa_scores)
             print(f'Finished results for layer: {feature_map_uid}')
@@ -717,14 +717,12 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
     train_results = {}
     for metric in metrics:
         all_layers[metric] = pd.concat(scoresheet_lists[metric])
-        grouped_bests = all_layers[metric][['model_uid', 'region', 'subj_id', 'score']].groupby(['model_uid', 'region', 'subj_id']).idxmax().reset_index()
+        grouped_bests = all_layers[metric][['model_uid', 'roi_name', 'subj_id', 'train_score']].groupby(['model_uid', 'roi_name', 'subj_id']).idxmax().reset_index()
         best_layers = []
         for ind, row in grouped_bests.iterrows():
-            row['model_layer'] = all_layers[metric].iloc[row['score']]['model_layer']
-            row['model_layer_index'] = all_layers[metric].iloc[row['score']]['model_layer_index']
-            row['score'] = all_layers[metric].iloc[row['score']]['score']
+            row['model_layer_index'] = all_layers[metric].iloc[row['train_score']]['model_layer_index']
+            row['train_score'] = all_layers[metric].iloc[row['train_score']]['train_score']
             row['model_layer_depth'] = row['model_layer_index'] / all_layers[metric]['model_layer_index'].max()
-            row['test_set'] = 'train'
             best_layers.append(pd.DataFrame(row).T)
         train_results[metric] = pd.concat(best_layers)
     print("Finished training results")
@@ -737,7 +735,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
         for metric in metrics:
             for region in benchmark.test_rdms:
                 for subj_id in benchmark.test_rdms[region]:
-                    target_row = train_results[metric][(train_results[metric]['region'] == region) & (train_results[metric]['subj_id'] == subj_id)].copy()
+                    target_row = train_results[metric][(train_results[metric]['roi_name'] == region) & (train_results[metric]['subj_id'] == subj_id)].copy()
                     target_layer = target_row['model_layer'].values[0]
                     for feature_map_uid, feature_map in feature_map_iterator:
                         if feature_map_uid == target_layer:
@@ -777,11 +775,11 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                                         score = compare_rdms(model_rdm, target_rdm, method='spearman')
 
                                         # add the scores to a "scoresheet"
-                                        scoresheet = {'region': region,
+                                        scoresheet = {'roi_name': region,
                                                       'subj_id': subj_id,
                                                       'cv_split': split,
                                                       'fold': i + 1,
-                                                      'score': score}
+                                                      'test_score': score}
                                         fold_scores.append(scoresheet)
 
                                 elif metric == 'crsa':
@@ -795,11 +793,11 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                                         score = compare_rdms(model_rdm, target_rdm, method='spearman')
 
                                         # add the scores to a "scoresheet"
-                                        scoresheet = {'region': region,
+                                        scoresheet = {'roi_name': region,
                                                       'subj_id': subj_id,
                                                       'cv_split': split,
                                                       'fold': i + 1,
-                                                      'score': score}
+                                                      'test_score': score}
                                         fold_scores.append(scoresheet)
 
                                 # clean up tensors on gpu
@@ -812,22 +810,26 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                             # calculate the best of the folds
                             rsa_df = pd.DataFrame(fold_scores)
                             rsa_scores = rsa_df[rsa_df['cv_split'] == 'test'].groupby(
-                                ['region', 'subj_id', 'cv_split']).mean().reset_index()
-                            target_row['test_set'] = 'test'
-                            target_row['score'] = rsa_scores['score']
+                                ['roi_name', 'subj_id', 'cv_split']).mean().reset_index()
+                            target_row['test_score'] = rsa_scores['test_score']
                             test_results[metric].append(target_row)
 
         test_results[metric] = pd.concat(test_results[metric])
 
     print('Combining results...')
-    # combine and return results
+    # combine metrics and return results
     results_list = []
-    for metric, result in train_results.items():
-        result.insert(0, 'metric', metric)
-        results_list.append(result)
-    if test_eval:
-        for metric, result in test_results.items():
-            result.insert(0, 'metric', metric)
-            results_list.append(result)
 
-    return pd.concat(results_list)
+    # train set results
+    if not test_eval:
+        for metric, result in train_results.items():
+            result['metric'] = metric
+            results_list.append(result)
+        return pd.concat(results_list)
+
+    # use test set results
+    else:
+        for metric, result in test_results.items():
+            result['metric'] = metric
+            results_list.append(result)
+        return pd.concat(results_list)
