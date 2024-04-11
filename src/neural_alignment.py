@@ -9,20 +9,12 @@ import pandas as pd
 import gc 
 from src import stats
 from src.stats import feature_scaler
-from deepjuice.extraction import FeatureExtractor
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
-from deepjuice.procedural import pandas_query
-from deepjuice.model_zoo.options import get_deepjuice_model
-from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
-from deepjuice.procedural.cv_ops import CVIndexer
 from deepjuice.alignment import TorchRidgeGCV
-from deepjuice.tensorops import convert_to_tensor
+from deepjuice.tensorops import tensorize
 from deepjuice.alignment import compute_rdm, compare_rdms
-
-from deepjuice.reduction import compute_srp
-from deepjuice.alignment import compute_score
 
 
 def get_benchmarking_results(benchmark, model, dataloader,
@@ -539,7 +531,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
         for i, indices in enumerate(ind_splits):
             data_split = {'train': {}, 'test': {}}
             # model splits
-            feature_map = convert_to_tensor(feature_map, lambda x: x.to('cpu'))
+            feature_map = tensorize(feature_map, dtype=torch.float32, device='cpu')
             xtrain_scaled = scaling.fit_transform(feature_map[indices['train']])
             xtest_scaled = scaling.transform(feature_map[indices['test']])
             data_split['train']['X'] = xtrain_scaled
@@ -587,7 +579,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
     print(cuda_device_report())
 
     # Send the neural data to the GPU
-    Y = (convert_to_tensor(benchmark.response_data.to_numpy()).to(dtype=torch.float32, device=device))
+    Y = tensorize(benchmark.response_data.to_numpy(), dtype=torch.float32, device=device)
 
     # initialize an empty list to record scores over layers
     scoresheet_lists = {metric: [] for metric in metrics}
@@ -636,8 +628,8 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             for i, fold in enumerate(xy_folds):
 
                 # now, our X Variable that we push onto the gpu:
-                X = {'train': convert_to_tensor(fold['train']['X']).to(dtype=torch.float32, device='cuda'),
-                     'test': convert_to_tensor(fold['test']['X']).to(dtype=torch.float32, device='cuda')}
+                X = {'train': tensorize(fold['train']['X'], dtype=torch.float32, device='cuda'),
+                     'test': tensorize(fold['test']['X'], dtype=torch.float32, device='cuda')}
 
                 y = {'train': fold['train']['y'],
                       'test': fold['test']['y']}
@@ -752,8 +744,8 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                             # loop over each fold in the kfold
                             for i, fold in enumerate(xy_folds):
                                 # now, our X Variable that we push onto the gpu:
-                                X = {'train': convert_to_tensor(fold['train']['X']).to(dtype=torch.float32, device='cuda'),
-                                     'test': convert_to_tensor(fold['test']['X']).to(dtype=torch.float32, device='cuda')}
+                                X = {'train': tensorize(fold['train']['X'], dtype=torch.float32, device='cuda'),
+                                     'test': tensorize(fold['test']['X'], dtype=torch.float32, device='cuda')}
 
                                 y = {'train': fold['train']['y'],
                                      'test': fold['test']['y']}

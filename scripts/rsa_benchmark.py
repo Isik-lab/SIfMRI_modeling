@@ -154,7 +154,7 @@ class RSABenchmark:
             except Exception as err:
                 print(f'Error: {self.process} {self.model_uid}: Error Msg = {err}')
                 tools.send_slack(f'Error: {self.process} {self.model_uid}: Error Msg = {err}', channel=self.user)
-
+                raise err
 
 def main():
     parser = argparse.ArgumentParser()
