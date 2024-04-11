@@ -5,7 +5,8 @@ import pandas as pd
 import os
 from src.mri import Benchmark
 from src.neural_alignment import get_benchmarking_results
-from src.language_ops import parse_caption_data, get_model, tokenize_captions
+from src.language_ops import parse_caption_data, get_model
+from src.language_ablation import strip_sentence, Masking
 from src import tools
 import time
 import torch
@@ -15,18 +16,26 @@ from deepjuice.extraction import FeatureExtractor
 
 def perturb_captions(df, func_name='none'):
     if func_name == 'mask_nouns': 
-        from src.language_ablation import mask_all_nouns as mask_func
+        mask_func = Masking('nouns', mask_else=False)
     elif func_name == 'mask_verbs':
-        from src.language_ablation import mask_all_verbs as mask_func
-    elif func_name == 'mask_nonnouns':
-        from src.language_ablation import mask_nonnouns as mask_func
-    elif func_name == 'mask_nonverbs':
-        from src.language_ablation import mask_nonverbs as mask_func
+        mask_func = Masking('verbs', mask_else=False)
+    elif func_name = 'mask_adjectives':
+        mask_func = Masking('adjectives', mask_else=False)
+    elif func_name = 'mask_prepositions':
+        mask_func = Masking('prepositions', mask_else=False)
+    elif func_name = 'mask_nonnouns':
+        mask_func = Masking('nouns', mask_else=True)
+    elif func_name = 'mask_nonverbs':
+        mask_func = Masking('verbs', mask_else=True)
+    elif func_name = 'mask_nonadjectives':
+        mask_func = Masking('adjectives', mask_else=True)
+    elif func_name = 'mask_nonprepositions':
+        mask_func = Masking('prepositions', mask_else=True)
 
     df.reset_index(drop=True, inplace=True)
     df['caption'] = df['caption'].astype(object)
     if func_name != 'none':
-        df['caption'] = df['caption'].progress_apply(lambda x: mask_func(strip_sentence(x)))
+        df['caption'] = df['caption'].progress_apply(lambda x: mask_func.run(strip_sentence(x)))
     else:
         df['caption'] = df['caption'].progress_apply(strip_sentence)
 

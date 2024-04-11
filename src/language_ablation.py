@@ -10,38 +10,49 @@ def strip_sentence(sentence):
     return out.replace('[mask]', '[MASK]')
 
 
+class Masking: 
+    def __init__(self, pos, mask_else, model_name='en_core_web_sm'):
+        self.pos = pos 
+        self.mask_else = mask_else 
+        self.nlp = spacy.load(model_name)
+        self.spacy_pos_lookup = {"nouns": ["NOUN", "PROPN"],
+                                 "prepositions": ["ADP"],
+                                 "verbs": ["VERB", "AUX"],
+                                 "adjectives": ["ADJ"]}
+        self.pos_search_list = self.spacy_pos_lookup(pos)
+        self.filler = '[MASK]'
+    
+    def main(self, text): 
+        # Load the SpaCy model
+        doc = self.nlp(text)
+
+        masked_text = text
+        spans_to_mask = []
+        for token in doc:
+            if not self.mask_else: 
+                bool_check = token.pos_ in self.pos_search_list
+            else: 
+                bool_check = token.pos_ not in self.pos_search_list
+
+            if token.pos_ in self.pos_search_list:
+                spans_to_mask.append((token.idx, token.idx + len(token.text)))
+
+        # Sort spans in reverse order to avoid indexing issues during replacement
+        spans_to_mask.sort(key=lambda span: span[0], reverse=True)
+
+        for start, end in spans_to_mask:
+            if not self.mask_else: 
+                masked_text = masked_text[:start] + self.filler + masked_text[end:]
+            else:
+                masked_text = masked_text[:start] + self.filler * (end - start) + masked_text[end:]
+
+        return strip_sentence(masked_text)
+
+
 def shuffle_sentence(sentence):
     words = strip_sentence(sentence).split()  # Split sentence into words
     random.shuffle(words)  # Shuffle the words
     return ' '.join(words)  # Join the words back into a sentence
-
-
-def mask_prep_phrases(text, filler='[MASK]', model_name='en_core_web_sm'):
-    nlp = spacy.load(model_name)
-    doc = nlp(text)
-    
-    masked_text = text
-    spans_to_mask = []
-    try: 
-        for token in doc:
-            # Check for prepositions
-            if token.dep_ == 'prep':
-                # Extend the span to include the prepositional object and any modifiers
-                span_start = token.idx
-                if token.children:
-                    last_child = max(token.children, key=lambda x: x.i)
-                    span_end = last_child.idx + len(last_child.text)
-                    spans_to_mask.append((span_start, span_end))
-
-        # Sort spans in reverse order to avoid indexing issues
-        spans_to_mask.sort(key=lambda span: span[0], reverse=True)
-
-        for start, end in spans_to_mask:
-            masked_text = masked_text[:start] + filler + masked_text[end:]
-
-        return strip_sentence(masked_text)
-    except:
-        return strip_sentence(masked_text)
 
 
 def mask_direct_objects(text, filler='[MASK]', model_name='en_core_web_sm'):
@@ -123,100 +134,6 @@ def mask_adverbial_clauses(text, filler='[MASK]', model_name='en_core_web_sm'):
     for span_start, span_end in spans_to_mask:
         start = doc[span_start].idx
         end = doc[span_end].idx + len(doc[span_end].text)
-        masked_text = masked_text[:start] + filler + masked_text[end:]
-
-    return strip_sentence(masked_text)
-
-
-def mask_nonnouns(text, filler='[MASK]', model_name='en_core_web_sm'):
-    nlp = spacy.load(model_name)
-    doc = nlp(text)
-
-    masked_text = text
-    spans_to_mask = []
-
-    # Iterate over all tokens in the text
-    for token in doc:
-        # If the token is not a noun or proper noun, add it to the spans to mask
-        if token.pos_ not in ["NOUN", "PROPN"]:
-            spans_to_mask.append((token.idx, token.idx + len(token.text)))
-
-    # Sort spans in reverse order to avoid indexing issues during replacement
-    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
-
-    # Replace spans with the filler
-    for start, end in spans_to_mask:
-        masked_text = masked_text[:start] + filler * (end - start) + masked_text[end:]
-
-    return masked_text
-
-
-def mask_all_nouns(text, filler='[MASK]', model_name='en_core_web_sm'):
-    nlp = spacy.load(model_name)
-    doc = nlp(text)
-
-    masked_text = text
-    spans_to_mask = []
-
-    for token in doc:
-        if token.pos_ in ["NOUN", "PROPN"]:
-            spans_to_mask.append((token.idx, token.idx + len(token.text)))
-
-    # Sort spans in reverse order
-    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
-
-    for start, end in spans_to_mask:
-        masked_text = masked_text[:start] + filler + masked_text[end:]
-
-    return strip_sentence(masked_text)
-
-
-def mask_nonverbs(text, filler='[MASK]', model_name='en_core_web_sm'):
-    nlp = spacy.load(model_name)
-    doc = nlp(text)
-
-    masked_text = text
-    spans_to_mask = []
-
-    for token in doc:
-        # If the token is not a verb, mark it for masking
-        if token.pos_ not in ["VERB", "AUX"]:
-            spans_to_mask.append((token.idx, token.idx + len(token.text)))
-
-    # Sort spans in reverse order to avoid indexing issues during masking
-    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
-
-    for start, end in spans_to_mask:
-        # Use filler * (end - start) to maintain the length of the text being replaced
-        masked_text = masked_text[:start] + filler * (end - start) + masked_text[end:]
-
-    return masked_text
-
-
-def mask_all_verbs(text, filler='[MASK]', model_name='en_core_web_sm'):
-    nlp = spacy.load(model_name)
-    doc = nlp(text)
-
-    masked_text = text
-    spans_to_mask = []
-
-    for token in doc:
-        # Check for main verbs and auxiliary verbs
-        if token.pos_ == "VERB" or token.pos_ == "AUX":
-            spans_to_mask.append((token.idx, token.idx + len(token.text)))
-        # Check for "to" in infinitives
-        if token.text == "to" and token.dep_ == "aux":
-            # Find the main verb of the infinitive
-            main_verb = next((child for child in token.head.children if child.dep_ == "xcomp"), None)
-            if main_verb:
-                start = token.idx
-                end = main_verb.idx + len(main_verb.text)
-                spans_to_mask.append((start, end))
-
-    # Sort spans in reverse order
-    spans_to_mask.sort(key=lambda span: span[0], reverse=True)
-
-    for start, end in spans_to_mask:
         masked_text = masked_text[:start] + filler + masked_text[end:]
 
     return strip_sentence(masked_text)
