@@ -539,7 +539,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
         for i, indices in enumerate(ind_splits):
             data_split = {'train': {}, 'test': {}}
             # model splits
-            feature_map = apply_tensor_op(feature_map, lambda x: x.to('cpu'))
+            feature_map = convert_to_tensor(feature_map, lambda x: x.to('cpu'))
             xtrain_scaled = scaling.fit_transform(feature_map[indices['train']])
             xtest_scaled = scaling.transform(feature_map[indices['test']])
             data_split['train']['X'] = xtrain_scaled
