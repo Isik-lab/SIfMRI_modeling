@@ -597,10 +597,12 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
     train_rdm_splits = get_rdm_splits(benchmark.train_rdms, train_ind_splits)
     test_rdm_splits = get_rdm_splits(benchmark.test_rdms, test_ind_splits)
 
+    print('Running rsa in the train set...')
     #### Start with training ####
     # now, we iterate over our extractor
     layer_index = 0  # keeps track of depth
     feature_maps_device = None
+    print('Starting feature_maps batches...')
     for feature_maps in feature_extractor:
         # dimensionality reduction of feature maps
         feature_maps = get_feature_map_srps(feature_maps, device='cuda')
@@ -610,6 +612,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
         feature_map_iterator = tqdm(feature_maps.items(), desc='Training Brain Mapping (Layer)')
 
         for feature_map_uid, feature_map in feature_map_iterator:
+            print(f'Running for layer: {feature_map_uid}...')
             # index the 5 fold splits for this layer
             xy_folds = get_kfold_xy_rdms(feature_map, Y, train_ind_splits)
 
@@ -707,6 +710,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             crsa_df = crsa_df[crsa_df['cv_split'] == 'test'].groupby(['region', 'subj_id', 'cv_split']).mean().reset_index()
             crsa_scores = crsa_df.assign(**feature_map_info)
             scoresheet_lists['crsa'].append(crsa_scores)
+            print(f'Finished results for layer: {feature_map_uid}')
 
     ##### END OF FEATURE MAPS BATCHES #####
     all_layers = {}
@@ -723,6 +727,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             row['test_set'] = 'train'
             best_layers.append(pd.DataFrame(row).T)
         train_results[metric] = pd.concat(best_layers)
+    print("Finished training results")
 
     ##### START TEST SET #####
     if test_eval:
@@ -814,6 +819,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
 
         test_results[metric] = pd.concat(test_results[metric])
 
+    print('Combining results...')
     # combine and return results
     results_list = []
     for metric, result in train_results.items():
