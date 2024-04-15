@@ -21,7 +21,12 @@ class VisionBehaviorEncoding:
         self.user = args.user
         self.overwrite = args.overwrite
         self.model_uid = args.model_uid
-        self.grouping_func = args.grouping_func
+        self.memory_limit = args.memory_limit
+        frame_opts = ['first_frame', 'grouped_average', 'grouped_stack']
+        if args.frame_handling not in frame_opts:
+            raise ValueError("Invalid frame handling. Expected one of: %s" % frame_opts)
+        else: 
+            self.frame_handling = args.frame_handling
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
@@ -32,12 +37,19 @@ class VisionBehaviorEncoding:
         print("HF_DATASETS_CACHE is set to:", os.environ['HF_DATASETS_CACHE'])
 
         self.video_path = f'{self.data_dir}/raw/videos/'
-        self.frame_path = f'{self.cache}/frames/'
+        if self.frame_handling != 'first_frame':
+            self.frame_path = f'{self.cache}/frames/'
+            self.frames = [0, 15, 30, 45, 60, 75, 89]
+            self.grouping_func = self.frame_handling
+        else:
+            self.frame_path = f'{self.cache}/first_frame/'
+            self.frames = [0]
+            self.grouping_func = None
+
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
-        Path(f'{self.data_dir}/interim/{self.process}/{self.grouping_func}').mkdir(parents=True, exist_ok=True)
-        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.grouping_func}/model-{self.model_name}.pkl.gz'
-        self.frames = [0, 15, 30, 45, 60, 75, 89]
+        Path(f'{self.data_dir}/interim/{self.process}/{self.frame_handling}').mkdir(parents=True, exist_ok=True)
+        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.frame_handling}/model-{self.model_name}.pkl.gz'
     
     def load_data(self):
         return Benchmark(stimulus_data=f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
@@ -69,12 +81,14 @@ class VisionBehaviorEncoding:
                 benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
                                                                        categories=videos, ordered=True)
                 benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
+                print(dataloader.batch_data.head(20))
 
                 # Perform all the regressions
                 results = get_benchmarking_results(benchmark, model, dataloader,
                                                    target_features=target_features,
                                                    model_name=self.model_name,
-                                                   grouping_func=self.grouping_func)
+                                                   grouping_func=self.grouping_func,
+                                                   memory_limit=self.memory_limit)
 
                 # Save
                 print('saving results')
@@ -101,7 +115,8 @@ def main():
     user = args.user  # Get the user from the parsed known args
 
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
-    parser.add_argument('--grouping_func', type=str, default='grouped_average')
+    parser.add_argument('--memory_limit', type=str, default='30GB')
+    parser.add_argument('--frame_handling', type=str, default='grouped_average')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--top_dir', '-data', type=str,
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')

@@ -1,6 +1,7 @@
 #!/bin/bash -l
 
 model=${1:-torchvision_alexnet_imagenet1k_v1}
+func=${1:-mask_nouns}
 echo "model name= $model"
 
 user=$(whoami)
@@ -15,4 +16,5 @@ ml anaconda
 conda activate deepjuice
 
 python language_behavior_encoding.py --model_uid $model --overwrite \
-    --top_dir $project_folder --user $user
+    --top_dir $project_folder --user $user --perturbation \
+    --perturb_func $func

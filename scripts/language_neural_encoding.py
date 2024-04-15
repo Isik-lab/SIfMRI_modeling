@@ -1,4 +1,4 @@
-#/Applications/anaconda3/envs/deepjuice/bin/python
+ #/Applications/anaconda3/envs/deepjuice/bin/python
 from pathlib import Path
 import argparse
 import pandas as pd
@@ -15,22 +15,17 @@ from deepjuice.extraction import FeatureExtractor
 
 
 def perturb_captions(df, func_name='none'):
-    if func_name == 'mask_nouns': 
-        mask_func = Masking('nouns', mask_else=False)
-    elif func_name == 'mask_verbs':
-        mask_func = Masking('verbs', mask_else=False)
-    elif func_name = 'mask_adjectives':
-        mask_func = Masking('adjectives', mask_else=False)
-    elif func_name = 'mask_prepositions':
-        mask_func = Masking('prepositions', mask_else=False)
-    elif func_name = 'mask_nonnouns':
-        mask_func = Masking('nouns', mask_else=True)
-    elif func_name = 'mask_nonverbs':
-        mask_func = Masking('verbs', mask_else=True)
-    elif func_name = 'mask_nonadjectives':
-        mask_func = Masking('adjectives', mask_else=True)
-    elif func_name = 'mask_nonprepositions':
-        mask_func = Masking('prepositions', mask_else=True)
+    name_to_params = {'mask_nouns': {'POS': 'nouns', 'mask_else': False}, 
+                    'mask_verbs': {'POS': 'verbs', 'mask_else': False}, 
+                    'mask_adjectives': {'POS': 'adjectives', 'mask_else': False}, 
+                    'mask_prepositions': {'POS': 'prepositions', 'mask_else': False}, 
+                    'mask_nonnouns': {'POS': 'nouns', 'mask_else': True},
+                    'mask_nonverbs': {'POS': 'verbs', 'mask_else': True}, 
+                    'mask_nonadjectives': {'POS': 'adjectives', 'mask_else': True}, 
+                    'mask_nonprepositions': {'POS': 'prepositions', 'mask_else': True}}
+    mask_params = name_to_func[func_name]
+    mask_func = Masking(mask_params['POS'],
+                        mask_else=mask_params['mask_else'])
 
     df.reset_index(drop=True, inplace=True)
     df['caption'] = df['caption'].astype(object)

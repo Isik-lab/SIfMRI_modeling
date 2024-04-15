@@ -1,6 +1,5 @@
 #!/bin/bash -l
 
-#SBATCH
 #SBATCH --time=4:30:00
 #SBATCH --partition=ica100
 #SBATCH --account=lisik3_gpu
@@ -8,24 +7,22 @@
 #SBATCH --mem-per-cpu=10G
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:2
-#SBATCH --output=slurm-%j.out
+#SBATCH --output=slurm-%A_%a.out
 
-file=${1:-"../data/raw/model_list/language_models.csv"}
+# Parameters
+file="../data/raw/model_list/language_models.csv"
+funcs=(mask_nouns mask_verbs mask_adjectives mask_prepositions mask_nonnouns mask_nonverbs mask_nonadjectives mask_nonprepositions)
+num_funcs=${#funcs[@]}
+num_models=$(($(wc -l < "$file") - 1))  # Subtract 1 for the header
 
-###To submit the job array
-# file="../data/raw/model_list/language_models.csv"; num_models=$(($(wc -l < "$file") - 1)); sbatch --array=1-$num_models%3 batch_lm-beh_encoding_array.sh $file
+# Calculate total number of tasks
+total_tasks=$((num_models * num_funcs))
 
-###To save unfinished tasks
-# for f in slurm*out; do if ! grep -q "Finished" "$f" && grep -q "LanguageBehaviorEncoding" "$f"; then echo "$(grep "model name=" "$f" | sed -n 's/.*model name= \(.*\)/\1/p'),$(echo $f | sed -n 's/slurm-\([0-9]*\).out/\1/p'),$(tail -n 1 "$f")" >> unfinished_lm-behavior_tasks.txt; fi; done
-# find . -name 'slurm*out' -exec grep -ql 'LanguageBehaviorEncoding' {} \; -delete
+# Determine the model and function for the current task
+model_index=$(( (SLURM_ARRAY_TASK_ID - 1) % num_models + 2 ))  # +2 to skip header and adjust index
+func_index=$(( (SLURM_ARRAY_TASK_ID - 1) / num_models ))
+model=$(sed -n "${model_index}p" "$file" | cut -d',' -f1)
+func=${funcs[$func_index]}
 
-# SLURM_ARRAY_TASK_ID corresponds to the line number starting from 1
-# Adjust by adding 1 to skip the header line
-model_line=$((SLURM_ARRAY_TASK_ID + 1))
-
-# Extract the model name from the specified line
-model=$(sed -n "${model_line}p" "$file" | cut -d',' -f1)
-
-# Your sbatch command, using the extracted model name
-source batch_lm-beh_encoding.sh "$model" 
-
+# Execute the task
+source batch_lm-beh_encoding.sh "$model" "$func"

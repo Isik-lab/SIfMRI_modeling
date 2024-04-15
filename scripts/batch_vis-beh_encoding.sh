@@ -17,5 +17,5 @@ conda activate deepjuice
 
 python vision_behavior_encoding.py --model_uid $model --overwrite \
     --top_dir $project_folder \
-    --grouping_func $grouping \
+    --frame_handling $grouping \
     --user $user

@@ -22,14 +22,14 @@ from deepjuice.reduction import compute_srp
 
 
 def get_benchmarking_results(benchmark, model, dataloader,
-                                 target_features,
-                                 layer_index_offset=0,
-                                 devices=['cuda:0', 'cuda:1'],
-                                 n_splits=4, random_seed=0,
-                                 model_name=None,
-                                 scale_y=True, memory_limit='30GB',
-                                 grouping_func='grouped_average',
-                                 alphas=[10.**power for power in np.arange(-5, 2)]):
+                            target_features,
+                            layer_index_offset=0,
+                            devices=['cuda:0', 'cuda:1'],
+                            n_splits=4, random_seed=0,
+                            model_name=None,
+                            scale_y=True, memory_limit='30GB',
+                            grouping_func='grouped_average',
+                            alphas=[10.**power for power in np.arange(-5, 2)]):
 
     # Define a grouping function to average across the different captions
     def grouped_average(tensor, batch_iter=None, **kwargs):
@@ -81,15 +81,17 @@ def get_benchmarking_results(benchmark, model, dataloader,
 
     # define the feature extractor object
     if grouping_func == 'grouped_average':
-        extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 'output_device': devices[0]},
+        extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 
+                                    'output_device': devices[0]},
                                     tensor_fn=grouped_average,
                                     memory_limit=memory_limit,
                                     batch_strategy='stack')
     elif grouping_func == 'grouped_stack':
-        extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 'output_device': devices[0]},
-                            tensor_fn=grouped_stack,
-                            memory_limit=memory_limit,
-                            batch_strategy='stack')
+        extractor = FeatureExtractor(model, dataloader, **{'device': devices[0],
+                                     'output_device': devices[0]},
+                                     tensor_fn=grouped_stack,
+                                     memory_limit=memory_limit,
+                                     batch_strategy='stack')
     else:
         extractor = FeatureExtractor(model, dataloader,
                                      **{'device': devices[0],
@@ -117,21 +119,23 @@ def get_benchmarking_results(benchmark, model, dataloader,
         feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1 # one layer deeper in feature_maps
-
-            # reduce dimensionality of feature_maps by sparse random projection
-            feature_map = get_feature_map_srps(feature_map, device=devices[-1])
-            feature_map_info = {'model_uid': model_name,
-                                'model_layer': feature_map_uid,
-                                'model_layer_index': layer_index + layer_index_offset}
             
-            X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
-            X = {'train': X[indices['train']], 'test': X[indices['test']]}
-            del feature_map
-            torch.cuda.empty_cache()
-
             # Memory saving
             pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True, 
                                  device=devices[-1], scale_X=False)
+            try: 
+                # reduce dimensionality of feature_maps by sparse random projection
+                feature_map = get_feature_map_srps(feature_map, device=devices[-1])
+                feature_map_info = {'model_uid': model_name,
+                                    'model_layer': feature_map_uid,
+                                    'model_layer_index': layer_index + layer_index_offset}
+                
+                X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
+                X = {'train': X[indices['train']], 'test': X[indices['test']]}
+                del feature_map
+                torch.cuda.empty_cache()
+            except: 
+                print(f'\nSRP memory too large {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
 
             try:
                 #### Fit CV in the train set ####

@@ -21,6 +21,7 @@ class VisionNeuralEncoding:
         self.overwrite = args.overwrite
         self.test_eval = args.test_eval
         self.model_uid = args.model_uid
+        self.memory_limit = args.memory_limit
         self.frame_handling = args.frame_handling
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
@@ -40,6 +41,7 @@ class VisionNeuralEncoding:
             self.frame_path = f'{self.cache}/first_frame/'
             self.frames = [0]
             self.grouping_func = None
+
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
         Path(f'{self.data_dir}/interim/{self.process}/{self.frame_handling}').mkdir(parents=True, exist_ok=True)
@@ -69,7 +71,7 @@ class VisionNeuralEncoding:
                 model, preprocess = get_deepjuice_model(self.model_name)
                 dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
                                              batch_size=16, data_key='images', group_keys='video_name')
-                print(dataloader.batch_data.head())
+                print(dataloader.batch_data.head(20))
 
                 # Reorganize the benchmark to the dataloader
                 videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
@@ -86,7 +88,7 @@ class VisionNeuralEncoding:
                                                    test_eval=self.test_eval,
                                                    grouping_func=self.grouping_func,
                                                    devices=['cuda:0'],
-                                                   memory_limit='30GB')
+                                                   memory_limit=self.memory_limit)
                 print('saving results')
                 results.to_pickle(self.out_file, compression='gzip')
                 print('Finished!')
@@ -110,6 +112,7 @@ def main():
     user = args.user  # Get the user from the parsed known args
 
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
+    parser.add_argument('--memory_limit', type=str, default='40GB')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--frame_handling', type=str, default='first_frame')
