@@ -45,8 +45,6 @@ class Benchmark:
         self.train_row_indices = None
         self.test_row_indices = None
 
-
-
     def add_stimulus_path(self, data_dir, extension='png'):
         if extension != 'mp4': 
             self.stimulus_data['stimulus_path'] = data_dir + self.stimulus_data.video_name.str.replace('mp4', 'png')
@@ -144,7 +142,6 @@ class Benchmark:
                 df_beta = pd.DataFrame(betas)
                 df_pearson = 1 - df_beta.corr(method='pearson')
                 sub_rdm = df_pearson.to_numpy()
-                sub_dict[sub] = sub_rdm
                 sub_rdm = (convert_to_tensor(sub_rdm).to(torch.float64).to('cpu'))
                 sub_dict[sub] = sub_rdm
 
@@ -178,7 +175,6 @@ class Benchmark:
                 df_beta = pd.DataFrame(betas)
                 df_pearson = 1 - df_beta.corr(method='pearson')
                 sub_rdm = df_pearson.to_numpy()
-                sub_dict[sub] = sub_rdm
                 sub_rdm = (convert_to_tensor(sub_rdm).to(torch.float64).to('cpu'))
                 sub_dict[sub] = sub_rdm
 

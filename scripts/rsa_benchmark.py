@@ -17,6 +17,7 @@ from deepjuice.extraction import FeatureExtractor, get_feature_map_metadata
 from deepjuice.model_zoo import get_model_options
 from src import tools
 import time
+import gc
 from deepjuice.systemops.devices import cuda_device_report
 
 
@@ -32,10 +33,7 @@ class RSABenchmark:
         model_input (str): Type of input data for the model ('images' or 'videos').
         data_dir (str): Directory path where the data is stored.
         extension (str): File extension of the stimulus data.
-        crsa_out_file (str): Path for saving CRSA results.
-        ersa_out_file (str): Path for saving ERSA results.
-        fmt_crsa_out_file (str): Path for saving formatted CRSA results.
-        fmt_ersa_out_file (str): Path for saving formatted ERSA results.
+        fmt_out_file (str): Path for saving formatted results.
         raw_out_file (str): Path for saving the raw un-aggregated kfold results.
 
     Methods:
@@ -66,7 +64,7 @@ class RSABenchmark:
         hub.set_dir(self.cache)
         print(vars(self))
         model_name = self.model_uid.replace('/', '_')
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}.csv'
+        self.raw_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_raw.csv'
         self.fmt_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_fmt.csv'
 
     def load_fmri(self) -> Benchmark:
@@ -81,13 +79,24 @@ class RSABenchmark:
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
+    def get_model_layer_depth(self, results, model, dataloader) -> pd.DataFrame:
+        feature_map_metadata = get_feature_map_metadata(model, dataloader, input_dim=0)
+        results = results.merge(
+            feature_map_metadata[['output_uid', 'output_depth']].rename(
+                columns={'output_uid': 'model_layer', 'output_depth': 'Layer Depth'}),
+            on=['model_layer'],
+            how='left')
+        del feature_map_metadata
+        gc.collect()
+        return results
+
     def run(self):
         """
         Executes the RSA benchmarking process. This includes loading fMRI data, preparing stimulus data,
         loading and preparing the model for feature extraction, running RSA metrics, and saving the results.
         """
         start_time = time.time()
-        if os.path.exists(self.out_file) and not self.overwrite:
+        if os.path.exists(self.raw_out_file) and not self.overwrite:
             print('Output file already exists. To run again pass --overwrite.')
             return
         else:
@@ -98,7 +107,6 @@ class RSABenchmark:
                 benchmark = self.load_fmri()
                 stimulus_path = f'{self.data_dir}/raw/{self.model_input}/',
                 benchmark.add_stimulus_path(data_dir=stimulus_path, extension=self.extension)
-
                 # benchmark.filter_stimulus(stimulus_set='train')
                 benchmark.generate_rdms()  # generates both train and test rdms and filters responses
 
@@ -120,32 +128,14 @@ class RSABenchmark:
                                                          exclude_oversize=True)
                 print('Model loaded!')
                 print('Running rsa...')
-                results = neural_alignment.get_rsa_benchmark_results(benchmark, feature_map_extractor, model_uid=self.model_uid, test_eval=True)
+                results = neural_alignment.get_rsa_benchmark_results(benchmark, feature_map_extractor, model_name=self.model_uid, test_eval=True, raw_output_file=self.raw_out_file)
                 print('Finished RSA scoring!')
-                results.to_csv(self.out_file, index=False)
 
-                print('Formatting results for plotting format...')
-                df_all_models = get_model_options()
-
-                df_result = results.copy()
-                df_result.rename(columns={'model_uid': 'Model UID'}, inplace=True)
-                df_result['Model Name'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['display_name'].values[0]
-                df_result['Model Name Short'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['model_name'].values[0]
-                df_result['Architecture Type'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['architecture_type'].values[0]
-                df_result['Architecture'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['architecture'].values[0]
-                df_result['Train Task'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['train_task_display'].values[0]
-                df_result['Train Data'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['train_data_display'].values[0]
-                df_result['Task Cluster'] = df_all_models[df_all_models['model_uid'] == self.model_uid]['task_cluster'].values[0]
-                df_result['region'] = df_result['region'].str.lower()
-                custom_order = ['evc', 'mt', 'loc', 'eba', 'psts', 'face-psts', 'asts', 'ffa', 'ppa']
-                df_result['region'] = pd.Categorical(df_result['region'], categories=custom_order, ordered=True)
-                df_result = df_result.sort_values(by='region')
-                df_result = df_result.reset_index(drop=True)
-                df_result['region'] = df_result['region'].str.upper()
+                print('Adding layer depths')
+                results = self.get_model_layer_depth(results, model, dataloader)
                 print('Saving formatted results...')
-                df_result.to_csv(self.fmt_out_file, index=False)
+                results.to_csv(self.fmt_out_file, index=False)
                 print('Finished formatted results!')
-
                 end_time = time.time()
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))

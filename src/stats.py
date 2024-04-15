@@ -82,3 +82,36 @@ def bootstrap_gpu(a, b, n_perm=int(5e3), verbose=False):
         a_sample, b_sample = a[inds], b[inds]
         r_var[i, :] = corr2d_gpu(a_sample, b_sample)
     return r_var
+
+def spearman_corr_rdm(rdm1, rdm2):
+    # Flatten the upper triangle of each RDM, excluding the diagonal
+    triu_indices = np.triu_indices(rdm1.shape[0], k=1)
+    rdm1_vector = rdm1[triu_indices]
+    rdm2_vector = rdm2[triu_indices]
+
+    # Convert to ranks
+    rdm1_rank = torch.tensor(rdm1_vector.argsort().argsort(), dtype=torch.float)
+    rdm2_rank = torch.tensor(rdm2_vector.argsort().argsort(), dtype=torch.float)
+
+    # Compute Spearman correlation
+    return corr2d_gpu(rdm1_rank, rdm2_rank)
+
+def perm_test_rdm(rdm_neural, rdm_model, n_perm=1000):
+    # Initial correlation
+    original_corr = spearman_corr_rdm(rdm_neural, rdm_model).item()
+    # Store permutation correlations
+    perm_corrs = torch.zeros(n_perm)
+    # Number of elements along one side of the RDM
+    n = rdm_neural.shape[0]
+    # Generate random permutations and compute correlations
+    for i in range(n_perm):
+        # Random permutation
+        perm = torch.randperm(n)
+        # Permuted RDM
+        rdm_perm = rdm_neural[perm][:, perm]
+        # Compute Spearman correlation for permuted RDM
+        perm_corrs[i] = spearman_corr_rdm(rdm_perm, rdm_model)
+
+    # Compute p-value
+    p_value = (perm_corrs >= original_corr).float().mean().item()
+    return original_corr, perm_corrs, p_value
