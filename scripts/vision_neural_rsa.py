@@ -81,17 +81,6 @@ class VisionNeuralRSA:
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
-    def get_model_layer_depth(self, results, model, dataloader) -> pd.DataFrame:
-        feature_map_metadata = get_feature_map_metadata(model, dataloader, input_dim=0)
-        results = results.merge(
-            feature_map_metadata[['output_uid', 'output_depth']].rename(
-                columns={'output_uid': 'model_layer', 'output_depth': 'Layer Depth'}),
-            on=['model_layer'],
-            how='left')
-        del feature_map_metadata
-        gc.collect()
-        return results
-
     def run(self):
         """
         Executes the RSA benchmarking process. This includes loading fMRI data, preparing stimulus data,
@@ -133,8 +122,6 @@ class VisionNeuralRSA:
                 results = neural_alignment.get_rsa_benchmark_results(benchmark, feature_map_extractor, model_name=self.model_uid, test_eval=True, raw_output_file=self.raw_out_file)
                 print('Finished RSA scoring!')
 
-                print('Adding layer depths')
-                results = self.get_model_layer_depth(results, model, dataloader)
                 print('Saving formatted results...')
                 results.to_csv(self.fmt_out_file, index=False)
                 print('Finished formatted results!')

@@ -471,7 +471,8 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                                  alpha_values=np.logspace(-1, 5, 7).tolist(),
                                  device='cuda:0',
                                  k_folds=4,
-                                 test_eval=True):
+                                 test_eval=True,
+                                 input_modal='images'):
     """
     Benchmarks the performance of neural network feature extractors against brain response data,
     using Representational Similarity Analysis (RSA) metrics. This involves cross-validated comparison
@@ -704,10 +705,6 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                 y = {'train': fold['train']['y'],
                      'test': fold['test']['y']}
 
-                # here, we calculate auxiliary stats on our feature_maps
-                # aux_stats = {split: {stat: stat_func(Xi) for stat, stat_func
-                #                    in feature_map_stats.items()} for split, Xi in X.items()}
-
                 # initialize the regression, in this case ridge regression with LOOCV over alphas
                 regression = TorchRidgeGCV(alphas=alpha_values, device='cuda:0', scale_X=True)
                 regression.fit(X['train'], y['train'])  # fit the regression on the train split
@@ -792,7 +789,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
 
     if format_final_results:
         print('Formatting results...')
-        df_all_models = get_model_options()
+        df_all_models = get_model_options() if input_modal == 'images' else None
         formatted_results = []
         for metric in results['metric'].unique():
             df_metric = results[results['metric'] == metric]
@@ -818,14 +815,17 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             # Populate more columns
             df_metric['model_uid'] = results['model_name'].unique()[0]
             df_metric['metric'] = metric
-            # Grab model metadata from deepjuice
-            model_metadata = df_all_models[df_all_models['model_uid'] == results['model_name'].unique()[0]][
-                ['model_uid', 'architecture_type', 'train_task', 'train_data', 'task_cluster', 'modality',
-                 'display_name']]
-            df_metric = df_metric.merge(model_metadata, on='model_uid', how='left')
+            # Grab model metadata from deepjuice if images
+            if input_modal == 'images':
+                model_metadata = df_all_models[df_all_models['model_uid'] == results['model_name'].unique()[0]][
+                    ['model_uid', 'architecture_type', 'train_task', 'train_data', 'task_cluster', 'modality',
+                     'display_name']]
+                df_metric = df_metric.merge(model_metadata, on='model_uid', how='left')
             # add to the greater frame
             formatted_results.append(df_metric)
         formatted_results = pd.concat(formatted_results)
+        formatted_results['layer_relative_depth'] = formatted_results['model_layer_index'] / layer_index
+        formatted_results = formatted_results[formatted_results['roi_name'] != 'FACE=PSTS']
         # If we want to run results for the test set
         if test_eval:
             formatted_results.rename(columns={'score': 'train_score'}, inplace=True)

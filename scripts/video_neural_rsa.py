@@ -66,17 +66,6 @@ class VideoNeuralRSA:
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
-    def get_model_layer_depth(self, results, model, dataloader) -> pd.DataFrame:
-        feature_map_metadata = get_feature_map_metadata(model, dataloader, input_dim=0)
-        results = results.merge(
-            feature_map_metadata[['output_uid', 'output_depth']].rename(
-                columns={'output_uid': 'model_layer', 'output_depth': 'Layer Depth'}),
-            on=['model_layer'],
-            how='left')
-        del feature_map_metadata
-        gc.collect()
-        return results
-
     def run(self):
         """
         Executes the RSA benchmarking process. This includes loading fMRI data, preparing stimulus data,
