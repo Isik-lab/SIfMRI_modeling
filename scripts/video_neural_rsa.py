@@ -127,7 +127,7 @@ class VideoNeuralRSA:
                                                          flatten=True, progress=True, **kwargs)
 
                 print('Running rsa...')
-                results = neural_alignment.get_video_rsa_benchmark_results(benchmark, feature_map_extractor, model_name=self.model_uid, test_eval=True, raw_output_file=self.raw_out_file)
+                results = neural_alignment.get_video_rsa_benchmark_results(benchmark, feature_map_extractor, model_name=self.model_uid, test_eval=True, raw_output_file=self.raw_out_file, input_modal=self.model_input)
                 print('Finished RSA scoring!')
 
                 print(f'Saving formatted results to {self.fmt_out_file}...')
