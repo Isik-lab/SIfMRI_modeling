@@ -776,30 +776,22 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                 gc.collect()
                 torch.cuda.empty_cache()
 
-    # if we don't format, results are a dictionary of dataframes...
-    results = {metric: pd.DataFrame(scores) for metric, scores
-               in scoresheet_lists.items()}
+    results = {metric: pd.DataFrame(scores) for metric, scores in scoresheet_lists.items()}
+    result_columns = pd.unique([col for results in results.values() for col in results.columns]).tolist()
+    common_columns = [col for col in result_columns if all(col in result.columns for result in results.values())]
+    common_columns = ['metric'] + common_columns  # indicator
+    results_list = []
+    for metric, result in results.items():
+        result.insert(0, 'metric', metric)
+        results_list.append(result[common_columns])
+    results = pd.concat(results_list)
+
     if save_raw_results and raw_output_file:
         print(f'Saving raw results to {raw_output_file}...')
-        results['crsa'] = results['crsa']['metric'] = 'crsa'
-        results['ersa'] = results['ersa']['metric'] = 'ersa'
-        results = pd.concat([results['crsa'], results['ersa']])
         results.to_csv(raw_output_file, index=False)
 
     if format_final_results:
         print('Formatting results...')
-        # if we do stack, results are a single concatenated dataframe
-        # with only the common_columns of each (excluding method data)
-        result_columns = pd.unique([col for results in results.values() for col in results.columns]).tolist()
-        common_columns = [col for col in result_columns if all(col in result.columns for result in results.values())]
-        common_columns = ['metric'] + common_columns  # indicator
-        results_list = []
-        for metric, result in results.items():
-            result.insert(0, 'metric', metric)
-            results_list.append(result[common_columns])
-            # ...if we do stack, results are a single dataframe
-        results = pd.concat(results_list)
-
         df_all_models = get_model_options()
         formatted_results = []
         for metric in results['metric'].unique():

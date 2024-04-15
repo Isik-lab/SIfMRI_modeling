@@ -23,4 +23,4 @@ export HF_DATASETS_CACHE="${project_folder}/.cache/huggingface/hub"
 ml anaconda
 conda activate /home/kgarci18/miniconda3/envs/deepjuice
 
-~/miniconda3/envs/deepjuice/bin/python vision_neural_rsa.py --model_uid $model --data_dir "$project_folder/data" --overwrite --user $user
+~/miniconda3/envs/deepjuice/bin/python video_neural_rsa.py --model_uid $model --data_dir "$project_folder/data" --overwrite --user $user

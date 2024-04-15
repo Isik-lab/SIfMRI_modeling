@@ -21,7 +21,7 @@ import gc
 from deepjuice.systemops.devices import cuda_device_report
 
 
-class RSABenchmark:
+class VisionNeuralRSA:
     """
     A class for conducting Representational Similarity Analysis (RSA) benchmarking
     of neural network models against fMRI data.
@@ -48,7 +48,7 @@ class RSABenchmark:
          Parameters:
              args: Argument parser outputs containing model UID, data directory, overwrite flag, and model input type.
         """
-        self.process = 'RSABenchmark'
+        self.process = 'VisionNeuralRSA'
         print(f'Starting process {self.process} with args:')
         self.overwrite = args.overwrite
         self.user = args.user
@@ -66,6 +66,7 @@ class RSABenchmark:
         model_name = self.model_uid.replace('/', '_')
         self.raw_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_raw.csv'
         self.fmt_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_fmt.csv'
+        Path(self.raw_out_file).mkdir(parents=True, exist_ok=True)
 
     def load_fmri(self) -> Benchmark:
         """
@@ -161,7 +162,7 @@ def main():
                         default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')
     parser.add_argument('--top_dir', type=str, default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
     args = parser.parse_args()
-    RSABenchmark(args).run()
+    VisionNeuralRSA(args).run()
 
 if __name__ == '__main__':
     main()
