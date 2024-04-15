@@ -575,8 +575,6 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                     regression.fit(X['train'], y['train'])
                     y_pred = {'train': regression.cv_y_pred_, 'test': regression.predict(X['test'])}
 
-                    benchmark.test_rdms = {k.upper(): v for k, v in benchmark.test_rdms.items()}
-
                     # loop over cRSA, eRSA...
                     for metric in scoresheet_lists:
                         # encoding RSA score
@@ -810,8 +808,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             df_metric = pd.DataFrame(best_layers).T.reset_index()
             # Sort and order the dataframe
             df_metric.rename(columns={'index': 'roi_name'}, inplace=True)
-            df_metric['roi_name'] = df_metric['roi_name'].str.upper()
-            custom_order = ['EVC', 'MT', 'LOC', 'EBA', 'PSTS', 'FACE-PSTS', 'ASTS', 'FFA', 'PPA']
+            custom_order = ['EVC', 'MT', 'LOC', 'EBA', 'pSTS', 'face-pSTS', 'aSTS', 'FFA', 'PPA']
             df_metric['roi_name'] = pd.Categorical(df_metric['roi_name'], categories=custom_order, ordered=True)
             df_metric = df_metric.sort_values(by='roi_name')
             # Populate more columns
