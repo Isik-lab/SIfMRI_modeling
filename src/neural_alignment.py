@@ -570,7 +570,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                                                 'test': test_rdm}
         return split_rdm
 
-    def run_for_test_set(df_results, benchmark, feature_maps_pointer):
+    def run_for_test_set(df_results):
         test_sheets = {metric: [] for metric in ['ersa', 'crsa']}
         scaling = StandardScaler()
 
