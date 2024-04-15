@@ -119,7 +119,7 @@ class VisionNeuralRSA:
                                                          exclude_oversize=True)
                 print('Model loaded!')
                 print('Running rsa...')
-                results = neural_alignment.get_rsa_benchmark_results(benchmark, feature_map_extractor, model_name=self.model_uid, test_eval=True, raw_output_file=self.raw_out_file)
+                results = neural_alignment.get_rsa_benchmark_results(benchmark, feature_map_extractor, model_uid=self.model_uid, test_eval=True, raw_output_file=self.raw_out_file)
                 print('Finished RSA scoring!')
 
                 print('Saving formatted results...')

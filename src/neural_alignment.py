@@ -467,7 +467,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                                  save_raw_results=True,
                                  raw_output_file=None,
                                  feature_map_stats={},
-                                 model_name=None,
+                                 model_uid=None,
                                  alpha_values=np.logspace(-1, 5, 7).tolist(),
                                  device='cuda:0',
                                  k_folds=4,
@@ -487,7 +487,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
         save_raw_results (bool): Defaults to True, if results pre-formatting should be saved.
         raw_out_file (string, optional): The path to save the raw unformatted results
         feature_map_stats (dict, optional): Precomputed statistics of feature maps for normalization. Defaults to None.
-        model_name (str, optional): UID of the neural network model being benchmarked. Defaults to None.
+        model_uid (str, optional): UID of the neural network model being benchmarked. Defaults to None.
         alpha_values (list, optional): List of alpha values for Ridge regression cross-validation.
         device (str, optional): Computation device ('cuda' or 'cpu'). Defaults to 'cuda'.
         k_folds (int, optional): Number of splits for k-fold cross-validation. Defaults to 5.
@@ -499,14 +499,20 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
     """
 
     # HELPER FUNCTIONS #
-    def generate_fold_indices(k=4, n_inds=200):
-        blank_map = np.ones((n_inds, 5000))
-        ind_splits = []
+    def generate_fold_indices(k=4, benchmark=None):
+        indices = {'train_set': benchmark.stimulus_data[benchmark.stimulus_data['stimulus_set'] == 'train'].index,
+                   'test_set': benchmark.stimulus_data[benchmark.stimulus_data['stimulus_set'] == 'test'].index}
+        train_ind_splits = []
+        test_ind_splits = []
         kf = KFold(n_splits=k, shuffle=True, random_state=1)
-        for i, (train_index, test_index) in enumerate(kf.split(blank_map)):
-            ind_split = {'train': train_index, 'test': test_index}
-            ind_splits.append(ind_split)
-        return ind_splits
+        for i, (train_index, test_index) in enumerate(kf.split(indices['train_set'])):
+            ind_split = {'train': indices['train_set'][train_index], 'test': indices['train_set'][test_index]}
+            train_ind_splits.append(ind_split)
+
+        for i, (train_index, test_index) in enumerate(kf.split(indices['test_set'])):
+            ind_split = {'train': indices['test_set'][train_index], 'test': indices['test_set'][test_index]}
+            test_ind_splits.append(ind_split)
+        return train_ind_splits, test_ind_splits
 
     def get_kfold_xy_rdms(feature_map, responses, ind_splits):
         scaling = StandardScaler()
@@ -547,113 +553,113 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             rdm_splits.append(split_rdm)
         return rdm_splits
 
+    def get_rdm_set_splits(rdms, set_indices):
+        split_rdm = {}
+        for roi_name in rdms:
+            split_rdm[roi_name] = {}
+            for subj_id in rdms[roi_name]:
+                empty_train = []
+                for row in rdms[roi_name][subj_id][set_indices['train']]:
+                    empty_train.append(row[set_indices['train']])
+                train_rdm = torch.stack(empty_train, dim=0)
+                empty_test = []
+                for row in rdms[roi_name][subj_id][set_indices['test']]:
+                    empty_test.append(row[set_indices['test']])
+                test_rdm = torch.stack(empty_test, dim=0)
+                split_rdm[roi_name][subj_id] = {'train': train_rdm,
+                                                'test': test_rdm}
+        return split_rdm
+
     def run_for_test_set(df_results, benchmark, feature_maps_pointer):
-        Y = (convert_to_tensor(benchmark.test_response_data.to_numpy()).to(dtype=torch.float32, device=device))
-        # get the voxel (neuroid) indices for each specified roi
-        roi_indices = benchmark.test_row_indices
-        layer_index = 0  # keeps track of depth
         test_sheets = {metric: [] for metric in ['ersa', 'crsa']}
-        ind_splits = generate_fold_indices(k=k_folds, n_inds=50)
-        rdm_splits = get_rdm_splits(benchmark.test_rdms, ind_splits)
+        scaling = StandardScaler()
 
-        feature_map_iterator = tqdm(feature_maps_pointer.items(), desc='Test Brain Mapping (Layer)')
-        for feature_map_uid, feature_map in feature_map_iterator:
-            if feature_map_uid in df_results['model_layer'].unique():
-                xy_folds = get_kfold_xy_rdms(feature_map, Y, ind_splits)
-                layer_index += 1  # one layer deeper in feature_maps
+        for i, row in df_results.iterrows():
+            feature_map_uid = row['model_layer']
+            feature_map = feature_maps_pointer[feature_map_uid]
+            # Create X and y
+            feature_map = apply_tensor_op(feature_map, lambda x: x.to('cpu'))
+            x_train = scaling.fit_transform(feature_map[set_indices['train']])
+            x_test = scaling.transform(feature_map[set_indices['test']])
+            # responses splits
+            y_train = Y.T[set_indices['train']]
+            y_test = Y.T[set_indices['test']]
+            # get the overall rdms sets
+            set_rdms = get_rdm_set_splits(benchmark.rdms, set_indices)
+            # now, our X Variable that we push onto the gpu:
+            X = {'train': convert_to_tensor(x_train).to(dtype=torch.float32, device='cuda:0'),
+                 'test': convert_to_tensor(x_test).to(dtype=torch.float32, device='cuda:0')}
+            # create the y object
+            y = {'train': y_train,
+                 'test': y_test}
+            # perform regression
+            regression = TorchRidgeGCV(alphas=alpha_values, device='cuda:0', scale_X=True)
+            regression.fit(X['train'], y['train'])
+            y_pred = {'train': regression.cv_y_pred_, 'test': regression.predict(X['test'])}
 
-                # loop over each fold in the kfold
-                for i, fold in enumerate(xy_folds):
-                    # now, our X Variable that we push onto the gpu:
-                    X = {'train': convert_to_tensor(fold['train']['X']).to(dtype=torch.float32, device='cuda:0'),
-                         'test': convert_to_tensor(fold['test']['X']).to(dtype=torch.float32, device='cuda:0')}
+            # loop over cRSA, eRSA...
+            metric = row['metric']
+            region = row['roi_name']
+            # encoding RSA score
+            if metric == 'ersa':
+                sub_scores = []
+                for subj_id in benchmark.rdms[region]:
+                    target_rdm = set_rdms[region][subj_id]['test']
+                    # get the response_indices for current ROI group
+                    response_indices = roi_indices[region][subj_id]
+                    # get predicted values for each response_index...
+                    y_pred_i = y_pred['test'][:, response_indices]
+                    # ... and use them to calculate the weighted RDM
+                    model_rdm = compute_rdm(y_pred_i, rdm_distance)
+                    # compare brain-reweighted model RDM to brain RDM
+                    # with our specified 2nd-order distance metric...
+                    score = compare_rdms(model_rdm, target_rdm, method=rsa_distance)
+                    sub_scores.append(score)
+                score = np.mean(sub_scores)
+                # add the scores to a "scoresheet"
+                scoresheet = {'model_layer': feature_map_uid,
+                              'region': region,
+                              'test_score': score}
+                # append the scoresheet to our running list
+                test_sheets['ersa'].append(scoresheet)
 
-                    y = {'train': fold['train']['y'],
-                         'test': fold['test']['y']}
+            # classic RSA score
+            elif metric == 'crsa':
+                # get the relevant train-test split of the model RDM
+                model_rdm = compute_rdm(X['test'], method=rdm_distance, device=device)
+                for subj_id in benchmark.rdms[region]:
+                    # get the relevant train-test split of the brain RDM
+                    target_rdm = set_rdms[region][subj_id]['test']
+                    # compare lower triangles of model + brain RDM
+                    # with our specified 2nd-order distance metric
+                    score = compare_rdms(model_rdm, target_rdm, method=rsa_distance)
+                    sub_scores.append(score)
+                score = np.mean(sub_scores)
+                # add the scores to a "scoresheet"
+                scoresheet = {'model_layer': feature_map_uid,
+                              'region': region,
+                              'test_score': score}
+                # append the scoresheet to our running list
+                test_sheets['crsa'].append(scoresheet)
 
-                    regression = TorchRidgeGCV(alphas=alpha_values, device='cuda:0', scale_X=True)
-                    regression.fit(X['train'], y['train'])
-                    y_pred = {'train': regression.cv_y_pred_, 'test': regression.predict(X['test'])}
+        # clean up tensors on gpu
+        X = {key: tensor.to('cpu') for key, tensor in X.items()}
+        del regression
+        gc.collect()
+        torch.cuda.empty_cache()
 
-                    # loop over cRSA, eRSA...
-                    for metric in scoresheet_lists:
-                        # encoding RSA score
-                        if metric == 'ersa':
-                            for split in ['train', 'test']:
-                                for region in df_results[df_results['model_layer'] == feature_map_uid]['roi_name'].values:
-                                    for subj_id in benchmark.test_rdms[region]:
-                                        # get the relevant train-test split of the brain RDM
-                                        target_rdm = rdm_splits[i][region][subj_id][split]
-                                        # get the response_indices for current ROI group
-                                        response_indices = roi_indices[region][subj_id]
-                                        # get predicted values for each response_index...
-                                        y_pred_i = y_pred[split][:, response_indices]
-                                        # ... and use them to calculate the weighted RDM
-                                        model_rdm = compute_rdm(y_pred_i, rdm_distance)
-                                        # compare brain-reweighted model RDM to brain RDM
-                                        # with our specified 2nd-order distance metric...
-                                        score = compare_rdms(model_rdm, target_rdm, method=rsa_distance)
-                                        # add the scores to a "scoresheet"
-                                        scoresheet = {'model_layer': feature_map_uid,
-                                                      'region': region,
-                                                      'subj_id': subj_id,
-                                                      'cv_split': split,
-                                                      'score': score}
-                                        # append the scoresheet to our running list
-                                        test_sheets['ersa'].append(scoresheet)
-
-                        # classic RSA score
-                        elif metric == 'crsa':
-                            for split in ['train', 'test']:
-                                # get the relevant train-test split of the model RDM
-                                model_rdm = compute_rdm(X[split], method=rdm_distance, device=device)
-                                for region in df_results[df_results['model_layer'] == feature_map_uid]['roi_name'].values:
-                                    for subj_id in benchmark.test_rdms[region]:
-                                        # get the relevant train-test split of the brain RDM
-                                        target_rdm = rdm_splits[i][region][subj_id][split]
-                                        # compare lower triangles of model + brain RDM
-                                        # with our specified 2nd-order distance metric
-                                        score = compare_rdms(model_rdm, target_rdm, method=rsa_distance)
-                                        # add the scores to a "scoresheet"
-                                        scoresheet = {'model_layer': feature_map_uid,
-                                                      'region': region,
-                                                      'subj_id': subj_id,
-                                                      'cv_split': split,
-                                                      'score': score}
-                                        # append the scoresheet to our running list
-                                        test_sheets['crsa'].append(scoresheet)
-
-                    # clean up tensors on gpu
-                    X = {key: tensor.to('cpu') for key, tensor in X.items()}
-                    del regression
-                    gc.collect()
-                    torch.cuda.empty_cache()
-
-        test_results = {metric: pd.DataFrame(scores) for metric, scores in test_sheets.items()}
-        result_columns = pd.unique([col for results in test_results.values() for col in results.columns]).tolist()
-        common_columns = [col for col in result_columns if all(col in result.columns for result in test_results.values())]
-        common_columns = ['metric'] + common_columns  # indicator
+        results = {metric: pd.DataFrame(scores) for metric, scores in test_sheets.items()}
         results_list = []
-        for metric, result in test_results.items():
+        for metric, result in results.items():
             result.insert(0, 'metric', metric)
-            results_list.append(result[common_columns])
-        test_results = pd.concat(results_list)
-        test_column = []
-        for metric in test_results['metric'].unique():
-            df_metric = test_results[test_results['metric'] == metric]
-            df_metric = df_metric[df_metric['cv_split'] == 'test']
-            # avg subject score in each fold
-            df_metric = df_metric.groupby(['model_layer', 'region', 'subj_id']).mean(numeric_only=True).reset_index()
-            # avg subject
-            df_metric = df_metric.groupby(['model_layer', 'region']).mean(numeric_only=True).reset_index()[['model_layer', 'region', 'score']]
-            test_column.append(df_metric)
-        test_column = pd.concat(test_column)
-        test_column.rename(columns={'score': 'test_score', 'region': 'roi_name'}, inplace=True)
-        df_results = df_results.merge(test_column, on=['roi_name', 'model_layer'], how='left')
+            results_list.append(result)
+        results = pd.concat(results_list)
+
+        df_results = df_results.merge(results, on=['model_layer', 'region', 'metric'], how='left')
         return df_results
 
     feature_maps_device = None
-    Y = (convert_to_tensor(benchmark.train_response_data.to_numpy()).to(dtype=torch.float32, device=device))
+    Y = (convert_to_tensor(benchmark.response_data.to_numpy()).to(dtype=torch.float32, device=device))
 
     # record key information about each method for reference
     method_info = {'regression': {'encoding_model': 'ridge'},
@@ -664,35 +670,40 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
     scoresheet_lists = {metric: [] for metric in metrics}
 
     # get the voxel (neuroid) indices for each specified roi
-    roi_indices = benchmark.train_row_indices
+    roi_indices = benchmark.row_indices
 
     # initialize a dictionary of scoring metrics to apply to the predicted outputs
     score_funcs = {score_type: get_scoring_method(score_type) for score_type in score_types}
     layer_index = 0  # keeps track of depth
 
-    ind_splits = generate_fold_indices(k=k_folds, n_inds=200)
-    rdm_splits = get_rdm_splits(benchmark.train_rdms, ind_splits)
+    set_indices = {'train': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'train'].index,
+                   'test': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'test'].index}
+
+    train_ind_splits, test_ind_splits = generate_fold_indices(k=k_folds, benchmark=benchmark)
+    train_rdm_splits = get_rdm_splits(benchmark.rdms, train_ind_splits)
+
+    feature_maps_pointer = []
 
     # now, we iterate over our extractor
     for feature_maps in feature_extractor:
         # dimensionality reduction of feature maps
         feature_maps = get_feature_map_srps(feature_maps, device='cuda:0')
         # save a pointer to the feature_maps
-        feature_maps_pointer = feature_maps
+        feature_maps_pointer.append(feature_maps)
         # now, we loop over our batch of feature_maps from the extractor...
         # ...starting by defining an iterator that will track our progress
         feature_map_iterator = tqdm(feature_maps.items(), desc='Train Brain Mapping (Layer)')
 
         for feature_map_uid, feature_map in feature_map_iterator:
             # index the 5 fold splits for this layer
-            xy_folds = get_kfold_xy_rdms(feature_map, Y, ind_splits)
+            xy_folds = get_kfold_xy_rdms(feature_map, Y, train_ind_splits)
 
             layer_index += 1  # one layer deeper in feature_maps
 
             # loop over each fold in the kfold
             for i, fold in enumerate(xy_folds):
                 # main data to add to our scoresheet per feature_map
-                feature_map_info = {'model_name': model_name,
+                feature_map_info = {'model_uid': model_uid,
                                     'model_layer': feature_map_uid,
                                     # layer_index_offset is used here in case of subsetting
                                     'model_layer_index': layer_index + layer_index_offset,
@@ -718,10 +729,10 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                     # encoding RSA score
                     if metric == 'ersa':
                         for split in ['train', 'test']:
-                            for region in benchmark.train_rdms:
-                                for subj_id in benchmark.train_rdms[region]:
+                            for region in benchmark.rdms:
+                                for subj_id in benchmark.rdms[region]:
                                     # get the relevant train-test split of the brain RDM
-                                    target_rdm = rdm_splits[i][region][subj_id][split]
+                                    target_rdm = train_rdm_splits[i][region][subj_id][split]
                                     # get the response_indices for current ROI group
                                     response_indices = roi_indices[region][subj_id]
                                     # get predicted values for each response_index...
@@ -748,10 +759,10 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                         for split in ['train', 'test']:
                             # get the relevant train-test split of the model RDM
                             model_rdm = compute_rdm(X[split], method=rdm_distance, device=device)
-                            for region in benchmark.train_rdms:
-                                for subj_id in benchmark.train_rdms[region]:
+                            for region in benchmark.rdms:
+                                for subj_id in benchmark.rdms[region]:
                                     # get the relevant train-test split of the brain RDM
-                                    target_rdm = rdm_splits[i][region][subj_id][split]
+                                    target_rdm = train_rdm_splits[i][region][subj_id][split]
                                     # compare lower triangles of model + brain RDM
                                     # with our specified 2nd-order distance metric
                                     score = compare_rdms(model_rdm, target_rdm,
@@ -801,8 +812,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             best_layers = {region: {} for region in df_metric['region'].unique()}
             for region in df_metric['region'].unique():
                 df_region = df_metric[df_metric['region'] == region]
-                best_layers[region]['model_layer_index'] = df_region.loc[df_region['score'].idxmax()][
-                    'model_layer_index']
+                best_layers[region]['model_layer_index'] = df_region.loc[df_region['score'].idxmax()]['model_layer_index']
                 best_layers[region]['model_layer'] = df_region.loc[df_region['score'].idxmax()]['model_layer']
                 best_layers[region]['score'] = df_region.loc[df_region['score'].idxmax()]['score']
             df_metric = pd.DataFrame(best_layers).T.reset_index()
@@ -812,23 +822,22 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             df_metric['roi_name'] = pd.Categorical(df_metric['roi_name'], categories=custom_order, ordered=True)
             df_metric = df_metric.sort_values(by='roi_name')
             # Populate more columns
-            df_metric['model_uid'] = results['model_name'].unique()[0]
+            df_metric['model_uid'] = results['model_uid'].unique()[0]
             df_metric['metric'] = metric
             # Grab model metadata from deepjuice if images
             if input_modal == 'images':
-                model_metadata = df_all_models[df_all_models['model_uid'] == results['model_name'].unique()[0]][
-                    ['model_uid', 'architecture_type', 'train_task', 'train_data', 'task_cluster', 'modality',
-                     'display_name']]
+                model_metadata = df_all_models[df_all_models['model_uid'] == results['model_uid'].unique()[0]][['model_uid', 'architecture_type', 'train_task', 'train_data', 'task_cluster', 'modality','display_name']]
                 df_metric = df_metric.merge(model_metadata, on='model_uid', how='left')
             # add to the greater frame
             formatted_results.append(df_metric)
         formatted_results = pd.concat(formatted_results)
         formatted_results['layer_relative_depth'] = formatted_results['model_layer_index'] / layer_index
-        # If we want to run results for the test set
         if test_eval:
+            print('Running test set...')
             formatted_results.rename(columns={'score': 'train_score'}, inplace=True)
-            formatted_results = run_for_test_set(formatted_results, benchmark, feature_maps_pointer)
+            formatted_results = run_for_test_set(formatted_results)
+            print('Finished test set')
         return formatted_results
     else:
-        # return the raw results in a dictionary
+        # return the raw results
         return results
