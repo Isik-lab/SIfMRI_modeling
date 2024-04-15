@@ -457,7 +457,7 @@ def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device=
 
     return pd.DataFrame(results)
 
-def get_rsa_benchmarking_results(benchmark, feature_extractor,
+def get_rsa_benchmark_results(benchmark, feature_extractor,
                                  layer_index_offset=0,
                                  metrics=['ersa', 'crsa'],
                                  rdm_distance='pearson',
