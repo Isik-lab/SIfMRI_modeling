@@ -13,7 +13,8 @@ from pytorchvideo.transforms import (
     UniformCropVideo
 )
 from torch.utils.data import DataLoader
-from transformers import AutoImageProcessor, AutoProcessor
+from transformers import AutoImageProcessor, AutoProcessor, XCLIPVisionModel, VideoMAEModel, \
+    TimesformerForVideoClassification
 import transformers
 
 
@@ -394,3 +395,16 @@ def xclip_transform():
 ####################
 def timesformer_transform():
     return AutoImageProcessor.from_pretrained("facebook/timesformer-base-finetuned-k400")
+
+def get_model(model_name):
+    if model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
+        model = torch.hub.load("facebookresearch/pytorchvideo", model=model_name, pretrained=True).to("cuda").eval()
+    elif model_name.lower() == 'xclip-base-patch32':
+        model = XCLIPVisionModel.from_pretrained("microsoft/xclip-base-patch32")
+    elif model_name.lower() == 'videomae_base_short':
+        model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
+    elif model_name.lower() == 'timesformer-base-finetuned-k400':
+        model = TimesformerForVideoClassification.from_pretrained("facebook/timesformer-base-finetuned-k400")
+    else:
+        raise Exception(f"{model_name} is not implemented!")
+    return model

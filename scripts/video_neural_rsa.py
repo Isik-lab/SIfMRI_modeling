@@ -60,6 +60,7 @@ class VideoNeuralRSA:
             self.extension = 'png'
         print(vars(self))
         model_name = self.model_uid.replace('/', '_')
+        self.out_path = f'{self.data_dir}/interim/{self.process}'
         self.raw_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_raw.csv'
         self.fmt_out_file = f'{self.data_dir}/interim/{self.process}/model-{model_name}_fmt.csv'
         Path(self.out_path).mkdir(parents=True, exist_ok=True)

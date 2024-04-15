@@ -39,20 +39,6 @@ class VideoNeuralEncoding:
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
-
-    def get_model(self, model_name):
-        if model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
-            model = torch.hub.load("facebookresearch/pytorchvideo",
-                                   model=self.model_name, pretrained=True).to(self.device).eval()
-        elif model_name.lower() == 'xclip-base-patch32':
-            model = XCLIPVisionModel.from_pretrained("microsoft/xclip-base-patch32")
-        elif model_name.lower() == 'videomae_base_short':
-            model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
-        elif model_name.lower() == 'timesformer-base-finetuned-k400':
-            model = TimesformerForVideoClassification.from_pretrained("facebook/timesformer-base-finetuned-k400")
-        else:
-            raise Exception(f"{model_name} is not implemented!")
-        return model
     
     def run(self):
         try:
@@ -68,7 +54,7 @@ class VideoNeuralEncoding:
                 # benchmark.filter_stimulus(stimulus_set='train')
 
                 print(f'Loading model {self.model_name}...')
-                model = self.get_model(self.model_name)
+                model = video_ops.get_model(self.model_name)
                 if self.model_name == 'xclip-base-patch32':
                     batch_size = 1
                 else:
