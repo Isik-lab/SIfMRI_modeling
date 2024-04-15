@@ -25,7 +25,7 @@ def perturb_captions(df, func_name='none'):
                     'mask_nonverbs': {'POS': 'verbs', 'mask_else': True}, 
                     'mask_nonadjectives': {'POS': 'adjectives', 'mask_else': True}, 
                     'mask_nonprepositions': {'POS': 'prepositions', 'mask_else': True}}
-    mask_params = name_to_func[func_name]
+    mask_params = name_to_params[func_name]
     mask_func = Masking(mask_params['POS'],
                         mask_else=mask_params['mask_else'])
     
@@ -40,10 +40,9 @@ def perturb_captions(df, func_name='none'):
 class LanguageBehaviorEncoding:
     def __init__(self, args):
         self.process = 'LanguageBehaviorEncoding'
-        print('working')
+        print('Update function Apr 15 1:11 PM')
         self.user = args.user
         self.overwrite = args.overwrite
-        self.perturbation = args.perturbation
         self.perturb_func = args.perturb_func
         self.model_uid = args.model_uid
         self.memory_limit = args.memory_limit
@@ -52,7 +51,7 @@ class LanguageBehaviorEncoding:
         torch.hub.set_dir(self.cache)
         self.model_name = self.model_uid.replace('/', '_')
 
-        if not self.perturbation: 
+        if self.perturb_func == 'none': 
             self.out_file = f'{self.data_dir}/interim/{self.process}/no_perturbation/model-{self.model_name}.pkl.gz'
             self.input_file = f'{self.data_dir}/interim/{self.process}/no_perturbation/captions.csv'
         else:
@@ -74,7 +73,7 @@ class LanguageBehaviorEncoding:
         if not os.path.exists(self.input_file): 
             file = f'{self.data_dir}/interim/CaptionData/captions.csv'
             df = parse_caption_data(file)
-            if self.perturbation:
+            if self.perturb_func != 'none':
                 perturb_captions(df, func_name=self.perturb_func)
             df.to_csv(self.input_file, index=False)
             return df 
@@ -82,45 +81,45 @@ class LanguageBehaviorEncoding:
             return pd.read_csv(self.input_file)
 
     def run(self):
-        try:
-            if os.path.exists(self.out_file) and not self.overwrite:
-                # results = pd.read_csv(self.out_file)
-                print('Output file already exists. To run again pass --overwrite.')
-            else:
-                start_time = time.time()
-                tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
-                benchmark = self.load_data()
-                target_features = [col for col in benchmark.stimulus_data.columns if ('rating-' in col) and ('indoor' not in col)]
-                captions = self.load_captions()
+        # try:
+        if os.path.exists(self.out_file) and not self.overwrite:
+            # results = pd.read_csv(self.out_file)
+            print('Output file already exists. To run again pass --overwrite.')
+        else:
+            start_time = time.time()
+            tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
+            benchmark = self.load_data()
+            target_features = [col for col in benchmark.stimulus_data.columns if ('rating-' in col) and ('indoor' not in col)]
+            captions = self.load_captions()
 
-                # Get the model and dataloader
-                model, tokenizer = get_model(self.model_uid)
-                dataloader = get_data_loader(captions, tokenizer, input_modality='text',
-                                             batch_size=16, data_key='caption', group_keys='video_name')
+            # Get the model and dataloader
+            model, tokenizer = get_model(self.model_uid)
+            dataloader = get_data_loader(captions, tokenizer, input_modality='text',
+                                            batch_size=16, data_key='caption', group_keys='video_name')
 
-                # Reorganize the benchmark to the dataloader
-                videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
-                benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
-                                                                       categories=videos, ordered=True)
-                benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name').reset_index(drop=True)
+            # Reorganize the benchmark to the dataloader
+            videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
+            benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
+                                                                    categories=videos, ordered=True)
+            benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name').reset_index(drop=True)
 
-                print('running regressions')
-                results = get_benchmarking_results(benchmark, model, dataloader,
-                                                   target_features=target_features,
-                                                   memory_limit=self.memory_limit,
-                                                   model_name=self.model_name)
-                print('saving results')
-                results.to_pickle(self.out_file, compression='gzip')
-                print('Finished!')
+            print('running regressions')
+            results = get_benchmarking_results(benchmark, model, dataloader,
+                                                target_features=target_features,
+                                                memory_limit=self.memory_limit,
+                                                model_name=self.model_name)
+            print('saving results')
+            results.to_pickle(self.out_file, compression='gzip')
+            print('Finished!')
 
-                end_time = time.time()
-                elapsed = end_time - start_time
-                elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
-                print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
-        except Exception as err:
-            print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
-            tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
+            end_time = time.time()
+            elapsed = end_time - start_time
+            elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+            print(f'Finished in {elapsed}!')
+            tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
+        # except Exception as err:
+        #     print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
+        #     tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
 
 
 def main():

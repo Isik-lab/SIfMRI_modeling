@@ -171,11 +171,12 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 r_null = stats.perm_gpu(y_test, y_hat)
                 r_var = stats.bootstrap_gpu(y_test, y_hat)
                 # Add performance to the score sheet
-                for target_feature, score_train, score_test, null, var in zip(target_features,
-                                                                            scores_train.cpu().detach().numpy(),
-                                                                            scores_test.cpu().detach().numpy(),
-                                                                            r_null.cpu().detach().numpy().T,
-                                                                            r_var.cpu().detach().numpy().T):
+                zip_iter = zip(target_features, scores_train.cpu().detach().numpy(),
+                                scores_test.cpu().detach().numpy(),
+                                r_null.cpu().detach().numpy().T,
+                                r_var.cpu().detach().numpy().T)
+                tqdm_iter = tqdm(zip_iter, total=len(target_features), desc="Reorg loop")
+                for target_feature, score_train, score_test, null, var in tqdm_iter:
                     # add the scores to a "scoresheet"
                     results.append({**feature_map_info,
                                     'feature': target_feature,

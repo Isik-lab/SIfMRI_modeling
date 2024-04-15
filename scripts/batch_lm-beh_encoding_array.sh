@@ -11,7 +11,7 @@
 
 # Parameters
 file="../data/raw/model_list/language_models.csv"
-funcs=(mask_nouns mask_verbs mask_adjectives mask_prepositions mask_nonnouns mask_nonverbs mask_nonadjectives mask_nonprepositions)
+funcs=(mask_nouns mask_verbs mask_adjectives mask_prepositions mask_nonnouns mask_nonverbs mask_nonadjectives mask_nonprepositions none)
 num_funcs=${#funcs[@]}
 num_models=$(($(wc -l < "$file") - 1))  # Subtract 1 for the header
 
@@ -23,6 +23,8 @@ model_index=$(( (SLURM_ARRAY_TASK_ID - 1) % num_models + 2 ))  # +2 to skip head
 func_index=$(( (SLURM_ARRAY_TASK_ID - 1) / num_models ))
 model=$(sed -n "${model_index}p" "$file" | cut -d',' -f1)
 func=${funcs[$func_index]}
+echo "model name = $model"
+echo "function = $func"
 
 # Execute the task
 source batch_lm-beh_encoding.sh "$model" "$func"
