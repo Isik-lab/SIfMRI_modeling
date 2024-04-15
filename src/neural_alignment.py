@@ -648,8 +648,8 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             df_metric = df_metric.groupby(['model_layer', 'region']).mean(numeric_only=True).reset_index()[['model_layer', 'region', 'score']]
             test_column.append(df_metric)
         test_column = pd.concat(test_column)
-        test_column.rename(columns={'score': 'test_score'}, inplace=True)
-        df_results = df_results.merge(test_column, on=['region', 'model_layer'], how='left')
+        test_column.rename(columns={'score': 'test_score', 'region': 'roi_name'}, inplace=True)
+        df_results = df_results.merge(test_column, on=['roi_name', 'model_layer'], how='left')
         return df_results
 
     feature_maps_device = None
