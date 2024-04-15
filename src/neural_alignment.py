@@ -457,21 +457,21 @@ def get_lm_encoded_training_benchmarking_results(benchmark, feature_map, device=
 
     return pd.DataFrame(results)
 
-def get_benchmarking_results(benchmark, feature_extractor,
-                             layer_index_offset=0,
-                             metrics=['ersa', 'crsa'],
-                             rdm_distance='pearson',
-                             rsa_distance='spearman',
-                             score_types=['spearmanr'],
-                             format_final_results=True,
-                             save_raw_results=True,
-                             raw_output_file=None,
-                             feature_map_stats={},
-                             model_name=None,
-                             alpha_values=np.logspace(-1, 5, 7).tolist(),
-                             device='cuda:0',
-                             k_folds=4,
-                             test_eval=True):
+def get_rsa_benchmarking_results(benchmark, feature_extractor,
+                                 layer_index_offset=0,
+                                 metrics=['ersa', 'crsa'],
+                                 rdm_distance='pearson',
+                                 rsa_distance='spearman',
+                                 score_types=['spearmanr'],
+                                 format_final_results=True,
+                                 save_raw_results=True,
+                                 raw_output_file=None,
+                                 feature_map_stats={},
+                                 model_name=None,
+                                 alpha_values=np.logspace(-1, 5, 7).tolist(),
+                                 device='cuda:0',
+                                 k_folds=4,
+                                 test_eval=True):
     """
     Benchmarks the performance of neural network feature extractors against brain response data,
     using Representational Similarity Analysis (RSA) metrics. This involves cross-validated comparison
