@@ -1,24 +1,13 @@
 import argparse
-import sys
 from pathlib import Path
-from torch import hub
-# Calculate the path to the root of the project
-project_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(project_root))
 import pandas as pd
 import os
-import time
 from src.mri import Benchmark
-from src import neural_alignment
-from src import tools
-from deepjuice.model_zoo.options import get_deepjuice_model
-from deepjuice.procedural.datasets import get_image_loader
 from deepjuice.extraction import FeatureExtractor, get_feature_map_metadata
-from src import tools
+from src import neural_alignment, tools, video_ops
 import time
 import gc
 from deepjuice.systemops.devices import cuda_device_report
-
 
 class VideoNeuralRSA:
     """
@@ -108,32 +97,53 @@ class VideoNeuralRSA:
                 # benchmark.filter_stimulus(stimulus_set='train')
                 benchmark.generate_rdms()  # generates both train and test rdms and filters responses
 
-                print('Loading model...')
-                model, preprocess = get_deepjuice_model(self.model_uid)
-                dataloader = get_image_loader(benchmark.stimulus_data['stimulus_path'], preprocess)
+                print(f'Loading model {self.model_uid}...')
+                model = video_ops.get_model(self.model_uid)
+                if self.model_uid == 'xclip-base-patch32':
+                    batch_size = 1
+                else:
+                    batch_size = 5
+                print('Model loaded!')
+
+                preprocess, clip_duration = video_ops.get_transform(self.model_uid)
+                print(f'{preprocess}')
+                print(f"Loading dataloader...")
+                dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
+                                                        clip_duration, preprocess, batch_size=batch_size)
+
+                def custom_forward(model, x):
+                    return model(x)
+
+                def xclip_forward(model, x):
+                    return model(*x)
+
+                def transform_forward(model, x):
+                    return model(**x)
+
+                if self.model_uid == 'timesformer-base-finetuned-k400':
+                    kwargs = {"forward_fn": transform_forward}
+                elif self.model_uid == 'xclip-base-patch32':
+                    kwargs = {"forward_fn": xclip_forward}
+                else:
+                    kwargs = {"forward_fn": custom_forward}
 
                 # Calculate the memory limit and generate the feature_extractor
                 total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
                 total_memory = int(float(total_memory_string.split()[0]))
                 memory_limit = int(total_memory * 0.75)
                 memory_limit_string = f'{memory_limit}GB'
-                print('Extracting model features...')
-                feature_map_extractor = FeatureExtractor(model, dataloader,
-                                                         memory_limit=memory_limit_string,
-                                                         flatten=True,
-                                                         output_device='cuda',
-                                                         show_progress=False,
-                                                         exclude_oversize=True)
-                print('Model loaded!')
+
+                print(f"Creating feature extractor with {memory_limit_string} batches...")
+                feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
+                                                         flatten=True, progress=True, **kwargs)
+
                 print('Running rsa...')
-                results = neural_alignment.get_rsa_benchmark_results(benchmark, feature_map_extractor, model_name=self.model_uid, test_eval=True, raw_output_file=self.raw_out_file)
+                results = neural_alignment.get_video_rsa_benchmark_results(benchmark, feature_map_extractor, model_name=self.model_uid, test_eval=True, raw_output_file=self.raw_out_file)
                 print('Finished RSA scoring!')
 
-                print('Adding layer depths')
-                results = self.get_model_layer_depth(results, model, dataloader)
-                print('Saving formatted results...')
+                print(f'Saving formatted results to {self.fmt_out_file}...')
                 results.to_csv(self.fmt_out_file, index=False)
-                print('Finished formatted results!')
+
                 end_time = time.time()
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
@@ -157,7 +167,7 @@ def main():
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')
-    parser.add_argument('--top_dir', type=str, default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
+
     args = parser.parse_args()
     VideoNeuralRSA(args).run()
 
