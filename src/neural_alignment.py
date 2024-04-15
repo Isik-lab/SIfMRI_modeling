@@ -825,7 +825,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             formatted_results.append(df_metric)
         formatted_results = pd.concat(formatted_results)
         formatted_results['layer_relative_depth'] = formatted_results['model_layer_index'] / layer_index
-        formatted_results = formatted_results[formatted_results['roi_name'] != 'FACE=PSTS']
+        formatted_results = formatted_results[formatted_results['roi_name'] != 'FACE-PSTS']
         # If we want to run results for the test set
         if test_eval:
             formatted_results.rename(columns={'score': 'train_score'}, inplace=True)
