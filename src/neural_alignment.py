@@ -575,6 +575,8 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                     regression.fit(X['train'], y['train'])
                     y_pred = {'train': regression.cv_y_pred_, 'test': regression.predict(X['test'])}
 
+                    benchmark.test_rdms = {k.upper(): v for k, v in benchmark.test_rdms.items()}
+
                     # loop over cRSA, eRSA...
                     for metric in scoresheet_lists:
                         # encoding RSA score
@@ -825,7 +827,6 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             formatted_results.append(df_metric)
         formatted_results = pd.concat(formatted_results)
         formatted_results['layer_relative_depth'] = formatted_results['model_layer_index'] / layer_index
-        formatted_results = formatted_results[formatted_results['roi_name'] != 'FACE-PSTS']
         # If we want to run results for the test set
         if test_eval:
             formatted_results.rename(columns={'score': 'train_score'}, inplace=True)
