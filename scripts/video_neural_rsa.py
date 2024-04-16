@@ -97,8 +97,7 @@ class VideoNeuralRSA:
                 preprocess, clip_duration = video_ops.get_transform(self.model_uid)
                 print(f'{preprocess}')
                 print(f"Loading dataloader...")
-                dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
-                                                        clip_duration, preprocess, batch_size=batch_size)
+                dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'], clip_duration, preprocess, batch_size=batch_size)
 
                 def custom_forward(model, x):
                     return model(x)
@@ -119,7 +118,7 @@ class VideoNeuralRSA:
                 # Calculate the memory limit and generate the feature_extractor
                 total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
                 total_memory = int(float(total_memory_string.split()[0]))
-                memory_limit = int(total_memory * 0.75)
+                memory_limit = int(total_memory * 0.50)
                 memory_limit_string = f'{memory_limit}GB'
 
                 print(f"Creating feature extractor with {memory_limit_string} batches...")
