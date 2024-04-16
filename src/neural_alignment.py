@@ -784,6 +784,8 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                 gc.collect()
                 torch.cuda.empty_cache()
 
+    feature_maps_pointer = {k: v for d in feature_maps_pointer for k, v in d.items()}
+
     results = {metric: pd.DataFrame(scores) for metric, scores in scoresheet_lists.items()}
     result_columns = pd.unique([col for results in results.values() for col in results.columns]).tolist()
     common_columns = [col for col in result_columns if all(col in result.columns for result in results.values())]
