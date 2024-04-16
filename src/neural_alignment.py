@@ -618,7 +618,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                 score = np.mean(sub_scores)
                 # add the scores to a "scoresheet"
                 scoresheet = {'model_layer': feature_map_uid,
-                              'region': region,
+                              'roi_name': region,
                               'test_score': score}
                 # append the scoresheet to our running list
                 test_sheets['ersa'].append(scoresheet)
@@ -637,7 +637,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
                 score = np.mean(sub_scores)
                 # add the scores to a "scoresheet"
                 scoresheet = {'model_layer': feature_map_uid,
-                              'region': region,
+                              'roi_name': region,
                               'test_score': score}
                 # append the scoresheet to our running list
                 test_sheets['crsa'].append(scoresheet)
@@ -655,7 +655,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             results_list.append(result)
         results = pd.concat(results_list)
 
-        df_results = df_results.merge(results, on=['model_layer', 'region', 'metric'], how='left')
+        df_results = df_results.merge(results, on=['model_layer', 'roi_name', 'metric'], how='left')
         return df_results
 
     feature_maps_device = None
