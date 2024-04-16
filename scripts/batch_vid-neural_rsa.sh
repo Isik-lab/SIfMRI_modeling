@@ -1,3 +1,4 @@
+#!/bin/sh
 #SBATCH
 #SBATCH --time=6:00:00
 #SBATCH --partition=ica100
