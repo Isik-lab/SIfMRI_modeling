@@ -824,6 +824,7 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             df_metric['roi_name'] = pd.Categorical(df_metric['roi_name'], categories=custom_order, ordered=True)
             df_metric = df_metric.sort_values(by='roi_name')
             # Populate more columns
+            df_metric['layer_relative_depth'] = df_metric['model_layer_index'] / results['model_layer_index'].max()
             df_metric['model_uid'] = results['model_uid'].unique()[0]
             df_metric['metric'] = metric
             # Grab model metadata from deepjuice if images
@@ -833,7 +834,6 @@ def get_rsa_benchmark_results(benchmark, feature_extractor,
             # add to the greater frame
             formatted_results.append(df_metric)
         formatted_results = pd.concat(formatted_results)
-        formatted_results['layer_relative_depth'] = formatted_results['model_layer_index'] / layer_index
         if test_eval:
             print('Running test set...')
             formatted_results.rename(columns={'score': 'train_score'}, inplace=True)
