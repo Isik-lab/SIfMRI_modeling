@@ -20,9 +20,19 @@ from deepjuice.procedural.cv_ops import CVIndexer
 from deepjuice.alignment import TorchRidgeGCV
 from deepjuice.tensorops import apply_tensor_op
 from deepjuice.alignment import compute_rdm, compare_rdms
-
 from deepjuice.reduction import compute_srp
 from deepjuice.alignment import compute_score
+
+
+def memory_stats(devices):
+    def bit_to_gb(bit_):
+        return bit_ / (8 * 1024**3)
+
+    for device in devices: 
+        memory_allocated = bit_to_gb(torch.cuda.memory_allocated(device))
+        memory_cached = bit_to_gb(torch.cuda.memory_cached(device))
+        print(f'{device} allocated = {memory_allocated:.2f} GB')
+        print(f'{device} cached = {memory_cached:.2f} GB')
 
 
 def get_benchmarking_results(benchmark, model, dataloader,
@@ -84,23 +94,18 @@ def get_benchmarking_results(benchmark, model, dataloader,
     print(cuda_device_report())
 
     # define the feature extractor object
-    if grouping_func == 'grouped_average':
-        extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 'output_device': devices[0]},
-                                    tensor_fn=grouped_average,
-                                    memory_limit=memory_limit,
-                                    batch_strategy='stack')
-    elif grouping_func == 'grouped_stack':
-        extractor = FeatureExtractor(model, dataloader, **{'device': devices[0], 'output_device': devices[0]},
-                            tensor_fn=grouped_stack,
-                            memory_limit=memory_limit,
-                            batch_strategy='stack')
-    else:
+    if grouping_func == 'grouped_stack':
         extractor = FeatureExtractor(model, dataloader,
-                                     **{'device': devices[0],
-                                         'output_device': devices[0]},
+                                     tensor_fn=grouped_stack,
                                      memory_limit=memory_limit,
-                                     batch_strategy='stack')
-    extractor.modify_settings(flatten=True)
+                                     batch_strategy='stack', flatten=True,
+                                     **{'device': devices[0], 'output_device': devices[0]})
+    else:# grouping_func == 'grouped_average':
+        extractor = FeatureExtractor(model, dataloader,
+                                     tensor_fn=grouped_average,
+                                     memory_limit=memory_limit,
+                                     batch_strategy='stack', flatten=True,
+                                     **{'device': devices[0], 'output_device': devices[0]})
 
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
@@ -109,10 +114,9 @@ def get_benchmarking_results(benchmark, model, dataloader,
     # divide responses
     indices = {'train': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'train'].index,
                'test': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'test'].index}
-    y = {'train': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1]),
-         'test': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(devices[-1])}
+    y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1])
 
-    print('Starting CV in the training set')
+    print('\n\n\n\n\nStarting CV in the training set')
     layer_index = 0 # keeps track of depth
     scores_train_max = None
     results = []
@@ -120,29 +124,28 @@ def get_benchmarking_results(benchmark, model, dataloader,
     for batched_feature_maps in extractor_iterator:
         print(batched_feature_maps)
         feature_maps = batched_feature_maps.join_batches()
-        feature_map_iterator = tqdm(feature_maps.items(), desc = 'Brain Mapping (Layer)', leave=False)
+        feature_map_iterator = tqdm(feature_maps.items(), desc = 'CV Mapping Layer', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1 # one layer deeper in feature_maps
 
             # reduce dimensionality of feature_maps by sparse random projection
-            feature_map = get_feature_map_srps(feature_map, device=devices[-1])
-            
-            X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
-            X = {'train': X[indices['train']], 'test': X[indices['test']]}
-            del feature_map
-            torch.cuda.empty_cache()
+            feature_map = get_feature_map_srps(feature_map[indices['train']], device=devices[-1])
+            X_train = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
 
             # Memory saving
+            del feature_map
+            gc.collect()
+            torch.cuda.empty_cache()
             pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True, 
                                  device=devices[-1], scale_X=False)
 
             try: 
                 #### Fit CV in the train set ####
                 y_cv_pred, y_cv_true = [], [] #Initialize lists
-                for i, (cv_train_index, cv_test_index) in enumerate(cv.split(X['train'])):
+                for i, (cv_train_index, cv_test_index) in enumerate(cv.split(X_train)):
                     # Split the training set
-                    X_cv_train, X_cv_test = X['train'][cv_train_index].detach().clone(), X['train'][cv_test_index].detach().clone()
-                    y_cv_train, y_cv_test = y['train'][cv_train_index].detach().clone(), y['train'][cv_test_index].detach().clone()
+                    X_cv_train, X_cv_test = X_train[cv_train_index], X_train[cv_test_index]
+                    y_cv_train, y_cv_test = y_train[cv_train_index], y_train[cv_test_index]
 
                     # Scale X and y
                     X_cv_train, X_cv_test = feature_scaler(X_cv_train, X_cv_test)
@@ -154,8 +157,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                     y_cv_hat = pipe.predict(X_cv_test)
                     y_cv_pred.append(y_cv_hat)
                     y_cv_true.append(y_cv_test)
-                scores_train = score_func(torch.cat(y_cv_pred), torch.cat(y_cv_true)) # Get the CV training scores 
-                scores_train = scores_train.cpu().detach().numpy()
+                scores_train = score_func(torch.cat(y_cv_pred), torch.cat(y_cv_true)).cpu().detach().numpy() # Get the CV training scores 
 
                 if scores_train_max is None:
                     scores_train_max = scores_train.copy()
@@ -171,7 +173,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
 
                 # Memory saving
                 del pipe, scores_train
-                del X, X_cv_train, X_cv_test, y_cv_pred, y_cv_true
+                del X_train, X_cv_train, X_cv_test
+                del y_cv_train, y_cv_test
                 gc.collect()
                 torch.cuda.empty_cache()
             except:
@@ -180,63 +183,80 @@ def get_benchmarking_results(benchmark, model, dataloader,
     # Add training data to a dataframe
     results = benchmark.metadata.copy()
     results['layer_index'] = model_layer_index_max
-    results['layer_relative_depth'] = model_layer_index_max/ (layer_index + layer_index_offset)
+    results['layer_relative_depth'] = model_layer_index_max / (layer_index + layer_index_offset)
     results['layer'] = model_layer_max
     results['train_score'] = scores_train_max
     results['model_uid'] = model_name
 
+    # Free up memory
+    memory_stats(devices)
+    y_hat_max = torch.zeros_like(y_cv_hat)
+    del y_train, y_cv_hat, extractor
+    gc.collect()
+    torch.cuda.empty_cache()
+    memory_stats(devices)
+
     if test_eval:
-        print('Running evaluation in the test set')
+        print('\n\n\n\n\nRunning evaluation in the test set')
+        print('resting extractor')
+        # define the feature extractor object
+        if grouping_func == 'grouped_stack':
+            extractor = FeatureExtractor(model, dataloader,
+                                        tensor_fn=grouped_stack,
+                                        memory_limit=memory_limit,
+                                        batch_strategy='stack', flatten=True,
+                                        **{'device': devices[0], 'output_device': devices[0]})
+        else:# grouping_func == 'grouped_average':
+            extractor = FeatureExtractor(model, dataloader,
+                                        tensor_fn=grouped_average,
+                                        memory_limit=memory_limit,
+                                        batch_strategy='stack', flatten=True,
+                                        **{'device': devices[0], 'output_device': devices[0]})
+
+        print('resetting y')
+        y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1])
+        y_test = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(devices[-1])
+        if scale_y: 
+            y_train, y_test = feature_scaler(y_train, y_test)
+
         scores_test_max = np.zeros_like(scores_train_max)
-        y_hat_max = torch.zeros_like(y_cv_hat)
         layer_index = 0
         extractor_iterator = tqdm(extractor, desc = 'Extractor Steps')
         for batched_feature_maps in extractor_iterator:
             print(batched_feature_maps)
             feature_maps = batched_feature_maps.join_batches()
-            feature_map_iterator = tqdm(feature_maps.items(), desc = 'Testing Mapping (Layer)', leave=False)
+            feature_map_iterator = tqdm(feature_maps.items(), desc = 'Testing Mapping Layer', leave=False)
             for feature_map_uid, feature_map in feature_map_iterator:
                 layer_index += 1 # one layer deeper in feature_maps
 
-                if np.sum(model_layer_index_max == layer_index) > 0: 
-                    # reduce dimensionality of feature_maps by sparse random projection
-                    feature_map = get_feature_map_srps(feature_map, device=devices[-1])
-                    
-                    X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
-                    X = {'train': X[indices['train']], 'test': X[indices['test']]}
-                    del feature_map
-                    torch.cuda.empty_cache()
+                # reduce dimensionality of feature_maps by sparse random projection
+                feature_map = get_feature_map_srps(feature_map, device=devices[-1])
+                X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
+                X_train, X_test = feature_scaler(X[indices['train']], X[indices['test']])
+
+                # Memory saving
+                del feature_map, X
+                torch.cuda.empty_cache()
+                pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True, 
+                                     device=devices[-1], scale_X=False)
+
+                try: 
+                    pipe.fit(X_train, y_train)
+                    y_hat = pipe.predict(X_test)
+                    scores_test = score_func(y_hat, y_test).cpu().detach().numpy()
+
+                    #Save the test set scores to an array only if it is where performance was maximum in the training set 
+                    idx = model_layer_index_max == (layer_index + layer_index_offset)
+                    scores_test_max[idx] = scores_test[idx]
+                    y_hat_max[:, idx] = y_hat[:, idx]
 
                     # Memory saving
-                    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True, 
-                                        device=devices[-1], scale_X=False)
-
-                    try: 
-                        X_train, X_test = feature_scaler(X['train'].detach().clone(), X['test'].detach().clone())
-                        if scale_y: 
-                            y_train, y_test = feature_scaler(y['train'].detach().clone(), y['test'].detach().clone())
-                        else:
-                            y_train, y_test = y['train'].detach().clone(), y['test'].detach().clone()
-
-                        pipe.fit(X_train, y['train'])
-                        y_hat = pipe.predict(X_test)
-                        scores_test = score_func(y_hat, y['test']).cpu().detach().numpy()
-
-                        #Save the test set scores to an array only if it is where performance was maximum in the training set 
-                        idx = model_layer_index_max == (layer_index + layer_index_offset)
-                        scores_test_max[idx] = scores_test[idx]
-                        y_hat_max[:, idx] = y_hat[:, idx]
-
-                        # Memory saving
-                        del pipe, scores_test
-                        del X, X_train, X_test, y_train
-                        gc.collect()
-                        torch.cuda.empty_cache()
-                    except: 
-                        print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
-                else: 
-                    print(f'{feature_map_uid} (layer {layer_index}) is not a max layer in train set')
-                    print('skipping test set regression')
+                    del pipe, scores_test
+                    del X_train, X_test
+                    gc.collect()
+                    torch.cuda.empty_cache()
+                except: 
+                    print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
 
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max

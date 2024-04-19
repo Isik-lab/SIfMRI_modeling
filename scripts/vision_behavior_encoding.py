@@ -55,55 +55,55 @@ class VisionBehaviorEncoding:
         return Benchmark(stimulus_data=f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
     
     def run(self):
-        try:
-            if os.path.exists(self.out_file) and not self.overwrite:
-                # results = pd.read_csv(self.out_file)
-                print('Output file already exists. To run again pass --overwrite.')
-            else:
-                start_time = time.time()
-                tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
-                # Load data and sort
-                benchmark = self.load_data()
-                target_features = [col for col in benchmark.stimulus_data.columns if ('rating-' in col) and ('indoor' not in col)]
-                # Break the videos into frames for averaging
-                frame_data = ops.visual_events(benchmark.stimulus_data,
-                                               self.video_path, self.frame_path,
-                                               frame_idx=self.frames)
+        # try:
+        if os.path.exists(self.out_file) and not self.overwrite:
+            # results = pd.read_csv(self.out_file)
+            print('Output file already exists. To run again pass --overwrite.')
+        else:
+            start_time = time.time()
+            tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
+            # Load data and sort
+            benchmark = self.load_data()
+            target_features = [col for col in benchmark.stimulus_data.columns if ('rating-' in col) and ('indoor' not in col)]
+            # Break the videos into frames for averaging
+            frame_data = ops.visual_events(benchmark.stimulus_data,
+                                            self.video_path, self.frame_path,
+                                            frame_idx=self.frames)
 
-                # Get the model and dataloader
-                model, preprocess = get_deepjuice_model(self.model_name)
-                dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
-                                             batch_size=16, data_key='images', group_keys='video_name')
+            # Get the model and dataloader
+            model, preprocess = get_deepjuice_model(self.model_name)
+            dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
+                                            batch_size=16, data_key='images', group_keys='video_name')
 
-                # Reorganize the benchmark to the dataloader
-                videos = dataloader.batch_data.groupby(by='video_name').groups.keys()
-                print(videos)
-                benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
-                                                                       categories=videos, ordered=True)
-                benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
-                print(dataloader.batch_data.head(20))
+            # Reorganize the benchmark to the dataloader
+            videos = dataloader.batch_data.groupby(by='video_name').groups.keys()
+            print(videos)
+            benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
+                                                                    categories=videos, ordered=True)
+            benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
+            print(dataloader.batch_data.head(20))
 
-                # Perform all the regressions
-                results = get_benchmarking_results(benchmark, model, dataloader,
-                                                   target_features=target_features,
-                                                   model_name=self.model_name,
-                                                   grouping_func=self.grouping_func,
-                                                   memory_limit=self.memory_limit)
+            # Perform all the regressions
+            results = get_benchmarking_results(benchmark, model, dataloader,
+                                                target_features=target_features,
+                                                model_name=self.model_name,
+                                                grouping_func=self.grouping_func,
+                                                memory_limit=self.memory_limit)
 
-                # Save
-                print('saving results')
-                results.to_pickle(self.out_file, compression='gzip')
-                print('Finished!')
+            # Save
+            print('saving results')
+            results.to_pickle(self.out_file, compression='gzip')
+            print('Finished!')
 
-                end_time = time.time()
-                elapsed = end_time - start_time
-                elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
-                print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
+            end_time = time.time()
+            elapsed = end_time - start_time
+            elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+            print(f'Finished in {elapsed}!')
+            tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
 
-        except Exception as err:
-            print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
-            tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
+        # except Exception as err:
+        #     print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
+        #     tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
 
 
 def main():

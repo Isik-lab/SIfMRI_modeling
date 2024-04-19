@@ -6,33 +6,12 @@ import os
 from src.mri import Benchmark
 from src.neural_alignment import get_benchmarking_results
 from src.language_ops import parse_caption_data, get_model
-from src.language_ablation import strip_sentence, Masking
+from src.language_ablation import strip_sentence, Masking, perturb_captions
 from src import tools
 import time
 import torch
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
-
-
-def perturb_captions(df, func_name='none'):
-    name_to_params = {'mask_nouns': {'POS': 'nouns', 'mask_else': False}, 
-                    'mask_verbs': {'POS': 'verbs', 'mask_else': False}, 
-                    'mask_adjectives': {'POS': 'adjectives', 'mask_else': False}, 
-                    'mask_prepositions': {'POS': 'prepositions', 'mask_else': False}, 
-                    'mask_nonnouns': {'POS': 'nouns', 'mask_else': True},
-                    'mask_nonverbs': {'POS': 'verbs', 'mask_else': True}, 
-                    'mask_nonadjectives': {'POS': 'adjectives', 'mask_else': True}, 
-                    'mask_nonprepositions': {'POS': 'prepositions', 'mask_else': True}}
-    mask_params = name_to_func[func_name]
-    mask_func = Masking(mask_params['POS'],
-                        mask_else=mask_params['mask_else'])
-
-    df.reset_index(drop=True, inplace=True)
-    df['caption'] = df['caption'].astype(object)
-    if func_name != 'none':
-        df['caption'] = df['caption'].progress_apply(lambda x: mask_func.run(strip_sentence(x)))
-    else:
-        df['caption'] = df['caption'].progress_apply(strip_sentence)
 
 
 class LanguageNeuralEncoding:

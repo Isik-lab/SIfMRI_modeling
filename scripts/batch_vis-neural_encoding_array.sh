@@ -8,14 +8,13 @@
 #SBATCH --mem-per-cpu=10G
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:2
-#SBATCH --output=slurm-%j.out
+#SBATCH --output=slurm-%A_%a.out
 
 file=${1:-"../data/raw/model_list/vision_models.csv"}
 grouping=${2:-grouped_average}
 
 ###To submit the job array
-#  file="../data/raw/model_list/vision_models.csv"; num_models=$(($(wc -l < "$file") - 1)); sbatch --array=1-$num_models%5 batch_vis-neural_encoding_array.sh $file
-#  file="../data/raw/model_list/vision_models.csv"; num_models=10; sbatch --array=1-$num_models%2 batch_vis-neural_encoding_array.sh $file 
+#  file="../data/raw/model_list/vision_models.csv"; num_models=$(($(wc -l < "$file") - 1)); sbatch --array=1-$num_models%5 batch_vis-neural_encoding_array.sh $file $grouping
 
 ###To save unfinished tasks
 # for f in slurm*out; do if ! grep -q "Finished" "$f" && grep -q "VisionNeuralEncoding" "$f"; then echo "$(grep "model name=" "$f" | sed -n 's/.*model name= \(.*\)/\1/p'),$(echo $f | sed -n 's/slurm-\([0-9]*\).out/\1/p'),$(tail -n 1 "$f")" >> unfinished_neural_tasks.txt; fi; done

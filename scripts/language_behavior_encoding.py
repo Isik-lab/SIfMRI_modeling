@@ -6,7 +6,7 @@ import os
 from src.mri import Benchmark
 from src.behavior_alignment import get_benchmarking_results
 from src.language_ops import parse_caption_data, get_model
-from src.language_ablation import strip_sentence, Masking
+from src.language_ablation import strip_sentence, Masking, perturb_captions
 from src import tools
 import time
 import torch
@@ -16,31 +16,10 @@ from tqdm import tqdm
 tqdm.pandas()
 
 
-def perturb_captions(df, func_name='none'):
-    name_to_params = {'mask_nouns': {'POS': 'nouns', 'mask_else': False}, 
-                    'mask_verbs': {'POS': 'verbs', 'mask_else': False}, 
-                    'mask_adjectives': {'POS': 'adjectives', 'mask_else': False}, 
-                    'mask_prepositions': {'POS': 'prepositions', 'mask_else': False}, 
-                    'mask_nonnouns': {'POS': 'nouns', 'mask_else': True},
-                    'mask_nonverbs': {'POS': 'verbs', 'mask_else': True}, 
-                    'mask_nonadjectives': {'POS': 'adjectives', 'mask_else': True}, 
-                    'mask_nonprepositions': {'POS': 'prepositions', 'mask_else': True}}
-    mask_params = name_to_params[func_name]
-    mask_func = Masking(mask_params['POS'],
-                        mask_else=mask_params['mask_else'])
-    
-    df.reset_index(drop=True, inplace=True)
-    df['caption'] = df['caption'].astype(object)
-    if func_name != 'none':
-        df['caption'] = df['caption'].progress_apply(lambda x: mask_func.run(strip_sentence(x)))
-    else:
-        df['caption'] = df['caption'].progress_apply(strip_sentence)
-
-
 class LanguageBehaviorEncoding:
     def __init__(self, args):
         self.process = 'LanguageBehaviorEncoding'
-        print('Update function Apr 15 1:11 PM')
+        print('Update function Apr 19 12:36 PM')
         self.user = args.user
         self.overwrite = args.overwrite
         self.perturb_func = args.perturb_func
@@ -57,6 +36,15 @@ class LanguageBehaviorEncoding:
         else:
             self.out_file = f'{self.data_dir}/interim/{self.process}/perturbation/{self.perturb_func}/model-{self.model_name}_perturb-{self.perturb_func}.pkl.gz'
             self.input_file = f'{self.data_dir}/interim/{self.process}/perturbation/{self.perturb_func}/{self.perturb_func}.csv'
+
+        # Memory limit
+        if self.memory_limit == 'none':
+            # Calculate the memory limit and generate the feature_extractor
+            total_memory_string = cuda_device_report(to_pandas=True).iloc[0]['Total Memory']
+            total_memory = int(float(total_memory_string.split()[0]))
+            memory_limit_int = int(total_memory * 0.75)
+            self.memory_limit = f'{memory_limit_int}GB'
+        
         print(vars(self))
         # check hugging face cache location
         print("HF_HOME is set to:", os.environ['HF_HOME'])
@@ -130,7 +118,7 @@ def main():
     args, remaining_argv = parser.parse_known_args()
     user = args.user  # Get the user from the parsed known args
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/paraphrase-MiniLM-L6-v2')
-    parser.add_argument('--memory_limit', type=str, default='70GB')
+    parser.add_argument('--memory_limit', type=str, default='none')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--perturbation', action=argparse.BooleanOptionalAction, default=False) 
     parser.add_argument('--perturb_func', type=str, default='none')

@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#SBATCH --time=4:30:00
+#SBATCH --time=45:00
 #SBATCH --partition=ica100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
@@ -11,7 +11,7 @@
 
 # Parameters
 file="../data/raw/model_list/language_models.csv"
-funcs=(mask_nouns mask_verbs mask_adjectives mask_prepositions mask_nonnouns mask_nonverbs mask_nonadjectives mask_nonprepositions none)
+funcs=(mask_adjectives mask_prepositions mask_nonadjectives mask_nonprepositions)
 num_funcs=${#funcs[@]}
 num_models=$(($(wc -l < "$file") - 1))  # Subtract 1 for the header
 

@@ -10,6 +10,28 @@ def strip_sentence(sentence):
     return out.replace('[mask]', '[MASK]')
 
 
+def perturb_captions(df, func_name='none'):
+    name_to_params = {'mask_nouns': {'POS': 'nouns', 'mask_else': False}, 
+                    'mask_verbs': {'POS': 'verbs', 'mask_else': False}, 
+                    'mask_adjectives': {'POS': 'adjectives', 'mask_else': False}, 
+                    'mask_prepositions': {'POS': 'prepositions', 'mask_else': False}, 
+                    'mask_nonnouns': {'POS': 'nouns', 'mask_else': True},
+                    'mask_nonverbs': {'POS': 'verbs', 'mask_else': True}, 
+                    'mask_nonadjectives': {'POS': 'adjectives', 'mask_else': True}, 
+                    'mask_nonprepositions': {'POS': 'prepositions', 'mask_else': True}}
+    mask_params = name_to_params[func_name]
+    print(f'{mask_params=}')
+    mask_func = Masking(mask_params['POS'],
+                        mask_else=mask_params['mask_else'])
+    
+    df.reset_index(drop=True, inplace=True)
+    df['caption'] = df['caption'].astype(object)
+    if func_name != 'none':
+        df['caption'] = df['caption'].progress_apply(lambda x: mask_func.mask(strip_sentence(x)))
+    else:
+        df['caption'] = df['caption'].progress_apply(strip_sentence)
+
+
 class Masking: 
     def __init__(self, pos, mask_else, model_name='en_core_web_sm'):
         self.pos = pos 
@@ -19,10 +41,10 @@ class Masking:
                                  "prepositions": ["ADP"],
                                  "verbs": ["VERB", "AUX"],
                                  "adjectives": ["ADJ"]}
-        self.pos_search_list = self.spacy_pos_lookup(pos)
+        self.pos_search_list = self.spacy_pos_lookup[pos]
         self.filler = '[MASK]'
     
-    def main(self, text): 
+    def mask(self, text): 
         # Load the SpaCy model
         doc = self.nlp(text)
 

@@ -8,7 +8,7 @@
 #SBATCH --mem-per-cpu=10G
 #SBATCH --cpus-per-task=8
 #SBATCH --gres=gpu:2
-#SBATCH --output=slurm-%j.out
+#SBATCH --output=slurm-%A_%a.out
 
 file=${1:-"../data/raw/model_list/vision_models.csv"}
 grouping=${2:-grouped_average}
