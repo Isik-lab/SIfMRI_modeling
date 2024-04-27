@@ -16,7 +16,7 @@ ml anaconda
 conda activate deepjuice
 
 python vision_neural_encoding.py --model_uid $model \
-    --overwrite --test_eval \
+    --test_eval \
     --top_dir $project_folder \
     --frame_handling $grouping \
     --user $user

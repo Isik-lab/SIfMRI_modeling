@@ -22,7 +22,6 @@ scripts/batch_lm-beh_encoding.sh
 scripts/batch_lm-beh_encoding_array.sh
 scripts/batch_lm-neural_encoding.sh
 scripts/batch_lm-neural_encoding_array.sh
-scripts/batch_sentence_decomposition.sh
 scripts/batch_vid-beh_encoding.sh
 scripts/batch_vid-neural_encoding.sh
 scripts/batch_vis-beh_encoding.sh
@@ -36,7 +35,6 @@ scripts/language_behavior_encoding.py
 scripts/language_neural_encoding.py
 scripts/reorganize_fmri.py
 scripts/rsa_benchmark.py
-scripts/sentence_decomposition.py
 scripts/video_behavior_encoding.py
 scripts/video_neural_encoding.py
 scripts/vision_behavior_encoding.py

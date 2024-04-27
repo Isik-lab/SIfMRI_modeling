@@ -6,30 +6,27 @@ from tqdm import tqdm
 
 
 def strip_sentence(sentence):
-    out = sentence.lower().rstrip('.').replace(',', '')
+    out = sentence.lower().rstrip('.').replace(',', '').replace('.', '').replace(';', '')
     return out.replace('[mask]', '[MASK]')
 
 
 def perturb_captions(df, func_name='none'):
-    name_to_params = {'mask_nouns': {'POS': 'nouns', 'mask_else': False}, 
-                    'mask_verbs': {'POS': 'verbs', 'mask_else': False}, 
-                    'mask_adjectives': {'POS': 'adjectives', 'mask_else': False}, 
-                    'mask_prepositions': {'POS': 'prepositions', 'mask_else': False}, 
-                    'mask_nonnouns': {'POS': 'nouns', 'mask_else': True},
-                    'mask_nonverbs': {'POS': 'verbs', 'mask_else': True}, 
-                    'mask_nonadjectives': {'POS': 'adjectives', 'mask_else': True}, 
-                    'mask_nonprepositions': {'POS': 'prepositions', 'mask_else': True}}
-    mask_params = name_to_params[func_name]
-    print(f'{mask_params=}')
-    mask_func = Masking(mask_params['POS'],
-                        mask_else=mask_params['mask_else'])
-    
     df.reset_index(drop=True, inplace=True)
     df['caption'] = df['caption'].astype(object)
-    if func_name != 'none':
-        df['caption'] = df['caption'].progress_apply(lambda x: mask_func.mask(strip_sentence(x)))
-    else:
+    if func_name == 'none':
         df['caption'] = df['caption'].progress_apply(strip_sentence)
+    elif func_name == 'shuffle':
+        df['caption'] = df['caption'].progress_apply(shuffle_sentence)
+    else:
+        name_to_params = {'mask_nouns': {'part_of_speech': 'nouns', 'mask_else': False}, 
+                          'mask_verbs': {'part_of_speech': 'verbs', 'mask_else': False}, 
+                          'mask_nonnouns': {'part_of_speech': 'nouns', 'mask_else': True},
+                          'mask_nonverbs': {'part_of_speech': 'verbs', 'mask_else': True}}
+        mask_params = name_to_params[func_name]
+        print(f'{mask_params=}')
+        mask_func = Masking(mask_params['part_of_speech'],
+                            mask_else=mask_params['mask_else'])
+        df['caption'] = df['caption'].progress_apply(lambda x: mask_func.mask(strip_sentence(x)))
 
 
 class Masking: 
@@ -38,35 +35,26 @@ class Masking:
         self.mask_else = mask_else 
         self.nlp = spacy.load(model_name)
         self.spacy_pos_lookup = {"nouns": ["NOUN", "PROPN"],
-                                 "prepositions": ["ADP"],
-                                 "verbs": ["VERB", "AUX"],
-                                 "adjectives": ["ADJ"]}
+                                 "verbs": ["VERB", "AUX"]}
         self.pos_search_list = self.spacy_pos_lookup[pos]
         self.filler = '[MASK]'
     
-    def mask(self, text): 
+    def mask(self, text):
         # Load the SpaCy model
         doc = self.nlp(text)
 
         masked_text = text
         spans_to_mask = []
         for token in doc:
-            if not self.mask_else: 
-                bool_check = token.pos_ in self.pos_search_list
-            else: 
-                bool_check = token.pos_ not in self.pos_search_list
-
-            if token.pos_ in self.pos_search_list:
+            if (self.mask_else and token.pos_ not in self.pos_search_list) or (not self.mask_else and token.pos_ in self.pos_search_list):
                 spans_to_mask.append((token.idx, token.idx + len(token.text)))
 
         # Sort spans in reverse order to avoid indexing issues during replacement
         spans_to_mask.sort(key=lambda span: span[0], reverse=True)
 
         for start, end in spans_to_mask:
-            if not self.mask_else: 
-                masked_text = masked_text[:start] + self.filler + masked_text[end:]
-            else:
-                masked_text = masked_text[:start] + self.filler * (end - start) + masked_text[end:]
+            # Replace the span with a single [MASK] token
+            masked_text = masked_text[:start] + self.filler + masked_text[end:]
 
         return strip_sentence(masked_text)
 

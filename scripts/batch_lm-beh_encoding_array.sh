@@ -11,7 +11,7 @@
 
 # Parameters
 file="../data/raw/model_list/language_models.csv"
-funcs=(mask_adjectives mask_prepositions mask_nonadjectives mask_nonprepositions)
+funcs=(none shuffle mask_nouns mask_verbs mask_nonnouns mask_nonverbs)
 num_funcs=${#funcs[@]}
 num_models=$(($(wc -l < "$file") - 1))  # Subtract 1 for the header
 

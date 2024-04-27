@@ -25,6 +25,11 @@ class VisionNeuralEncoding:
         self.memory_limit = args.memory_limit
         self.memory_limit_ratio = args.memory_limit_ratio
         self.frame_handling = args.frame_handling
+        frame_opts = ['first_frame', 'grouped_average', 'grouped_stack']
+        if args.frame_handling not in frame_opts:
+            raise ValueError("Invalid frame handling. Expected one of: %s" % frame_opts)
+        else: 
+            self.frame_handling = args.frame_handling
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
@@ -123,7 +128,7 @@ def main():
 
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--memory_limit', type=str, default='none')
-    parser.add_argument('--memory_limit_ratio', type=float, default=.6)
+    parser.add_argument('--memory_limit_ratio', type=float, default=.8)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--frame_handling', type=str, default='first_frame')
