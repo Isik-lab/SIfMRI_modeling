@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#SBATCH --time=45:00
+#SBATCH --time=4:00:00
 #SBATCH --partition=ica100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1

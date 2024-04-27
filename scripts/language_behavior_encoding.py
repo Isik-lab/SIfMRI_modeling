@@ -43,7 +43,7 @@ class LanguageBehaviorEncoding:
             # Calculate the memory limit and generate the feature_extractor
             total_memory_string = cuda_device_report(to_pandas=True).iloc[0]['Total Memory']
             total_memory = int(float(total_memory_string.split()[0]))
-            memory_limit_int = int(total_memory self.memory_limit_ratio)
+            memory_limit_int = int(total_memory * self.memory_limit_ratio)
             self.memory_limit = f'{memory_limit_int}GB'
         
         print(vars(self))
