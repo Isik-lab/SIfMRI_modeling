@@ -12,6 +12,7 @@ import torch
 from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
+from deepjuice.systemops.devices import cuda_device_report
 
 
 class VisionNeuralEncoding:
@@ -21,7 +22,14 @@ class VisionNeuralEncoding:
         self.overwrite = args.overwrite
         self.test_eval = args.test_eval
         self.model_uid = args.model_uid
+        self.memory_limit = args.memory_limit
+        self.memory_limit_ratio = args.memory_limit_ratio
         self.frame_handling = args.frame_handling
+        frame_opts = ['first_frame', 'grouped_average', 'grouped_stack']
+        if args.frame_handling not in frame_opts:
+            raise ValueError("Invalid frame handling. Expected one of: %s" % frame_opts)
+        else: 
+            self.frame_handling = args.frame_handling
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
@@ -40,6 +48,15 @@ class VisionNeuralEncoding:
             self.frame_path = f'{self.cache}/first_frame/'
             self.frames = [0]
             self.grouping_func = None
+
+        # Memory limit
+        if self.memory_limit == 'none':
+            # Calculate the memory limit and generate the feature_extractor
+            total_memory_string = cuda_device_report(to_pandas=True).iloc[0]['Total Memory']
+            total_memory = int(float(total_memory_string.split()[0]))
+            memory_limit_int = int(total_memory * self.memory_limit_ratio)
+            self.memory_limit = f'{memory_limit_int}GB'
+
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
         Path(f'{self.data_dir}/interim/{self.process}/{self.frame_handling}').mkdir(parents=True, exist_ok=True)
@@ -62,19 +79,19 @@ class VisionNeuralEncoding:
                 benchmark = self.load_fmri()
                 # Break the videos into frames for averaging
                 frame_data = ops.visual_events(benchmark.stimulus_data,
-                                               self.video_path, self.frame_path,
-                                               frame_idx=self.frames)
+                                                self.video_path, self.frame_path,
+                                                frame_idx=self.frames)
 
                 # Get the model and dataloader
                 model, preprocess = get_deepjuice_model(self.model_name)
                 dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
-                                             batch_size=16, data_key='images', group_keys='video_name')
-                print(dataloader.batch_data.head())
+                                                batch_size=16, data_key='images', group_keys='video_name')
+                print(dataloader.batch_data.head(20))
 
                 # Reorganize the benchmark to the dataloader
                 videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
                 benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
-                                                                       categories=videos, ordered=True)
+                                                                        categories=videos, ordered=True)
                 benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
                 stim_idx = list(benchmark.stimulus_data.index.to_numpy().astype('str'))
                 benchmark.stimulus_data.reset_index(drop=True, inplace=True)
@@ -82,11 +99,11 @@ class VisionNeuralEncoding:
 
                 print('running regressions')
                 results = get_benchmarking_results(benchmark, model, dataloader,
-                                                   model_name=self.model_name,
-                                                   test_eval=self.test_eval,
-                                                   grouping_func=self.grouping_func,
-                                                   devices=['cuda:0'],
-                                                   memory_limit='30GB')
+                                                    model_name=self.model_name,
+                                                    test_eval=self.test_eval,
+                                                    grouping_func=self.grouping_func,
+                                                    devices=['cuda:0'],
+                                                    memory_limit=self.memory_limit)
                 print('saving results')
                 results.to_pickle(self.out_file, compression='gzip')
                 print('Finished!')
@@ -110,6 +127,8 @@ def main():
     user = args.user  # Get the user from the parsed known args
 
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
+    parser.add_argument('--memory_limit', type=str, default='none')
+    parser.add_argument('--memory_limit_ratio', type=float, default=.8)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--frame_handling', type=str, default='first_frame')

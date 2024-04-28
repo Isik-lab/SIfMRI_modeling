@@ -1,16 +1,20 @@
-#/Applications/anaconda3/envs/deepjuice/bin/python
+ #/Applications/anaconda3/envs/deepjuice/bin/python
 from pathlib import Path
 import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
 from src.neural_alignment import get_benchmarking_results
-from src.language_ops import parse_caption_data, get_model, tokenize_captions
+from src.language_ops import parse_caption_data, get_model
+from src.language_ablation import perturb_captions
 from src import tools
 import time
 import torch
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
+from deepjuice.systemops.devices import cuda_device_report
+from tqdm import tqdm
+tqdm.pandas()
 
 
 class LanguageNeuralEncoding:
@@ -19,20 +23,39 @@ class LanguageNeuralEncoding:
         print('working')
         self.user = args.user
         self.overwrite = args.overwrite
+        self.perturb_func = args.perturb_func
         self.model_uid = args.model_uid
         self.test_eval = args.test_eval
         self.memory_limit = args.memory_limit
+        self.memory_limit_ratio = args.memory_limit_ratio
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
         torch.hub.set_dir(self.cache)
         self.model_name = self.model_uid.replace('/', '_')
-        Path(f'{self.data_dir}/interim/{self.process}').mkdir(parents=True, exist_ok=True)
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.pkl.gz'
+
+        perturb_opts = ['none', 'shuffle',
+                        'mask_nouns', 'mask_nonnouns',
+                        'mask_verbs', 'mask_nonverbs',]
+        if self.perturb_func not in perturb_opts:
+            raise ValueError("Invalid sentence perturbation. Expected one of: %s" % perturb_opts)
+        
+        # Memory limit
+        if self.memory_limit == 'none':
+            # Calculate the memory limit and generate the feature_extractor
+            total_memory_string = cuda_device_report(to_pandas=True).iloc[0]['Total Memory']
+            total_memory = int(float(total_memory_string.split()[0]))
+            memory_limit_int = int(total_memory * self.memory_limit_ratio)
+            self.memory_limit = f'{memory_limit_int}GB'
+        
+        print(vars(self))
         # check hugging face cache location
         print("HF_HOME is set to:", os.environ['HF_HOME'])
         print("HUGGINGFACE_HUB_CACHE is set to:", os.environ['HUGGINGFACE_HUB_CACHE'])
         print("HF_DATASETS_CACHE is set to:", os.environ['HF_DATASETS_CACHE'])
-        print(vars(self))
+
+        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.perturb_func}/model-{self.model_name}_perturb-{self.perturb_func}.pkl.gz'
+        self.input_file = f'{self.data_dir}/interim/{self.process}/{self.perturb_func}/{self.perturb_func}.csv'
+        Path(f'{self.data_dir}/interim/{self.process}/{self.perturb_func}').mkdir(parents=True, exist_ok=True)
     
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
@@ -41,8 +64,14 @@ class LanguageNeuralEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
     def load_captions(self):
-        file = f'{self.data_dir}/interim/CaptionData/captions.csv'
-        return parse_caption_data(file)
+        if not os.path.exists(self.input_file): 
+            file = f'{self.data_dir}/interim/CaptionData/captions.csv'
+            df = parse_caption_data(file)
+            perturb_captions(df, func_name=self.perturb_func)
+            df.to_csv(self.input_file, index=False)
+            return df 
+        else:
+            return pd.read_csv(self.input_file)
     
     def run(self):
         try:
@@ -88,6 +117,7 @@ class LanguageNeuralEncoding:
             print(f'Error: {self.process} {self.model_name} Error Msg = {err}')
             tools.send_slack(f'Error: {self.process} {self.model_name} Error Msg = {err}', channel=self.user)
 
+
 def main():
     parser = argparse.ArgumentParser()
     # Add arguments that are needed before setting the default for data_dir
@@ -96,8 +126,10 @@ def main():
     args, remaining_argv = parser.parse_known_args()
     user = args.user  # Get the user from the parsed known args
     parser.add_argument('--model_uid', type=str, default='sentence-transformers/all-MiniLM-L6-v2')
-    parser.add_argument('--memory_limit', type=str, default='70GB')
+    parser.add_argument('--memory_limit', type=str, default='none')
+    parser.add_argument('--memory_limit_ratio', type=float, default=.88)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--perturb_func', type=str, default='none')
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--top_dir', '-data', type=str,
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
