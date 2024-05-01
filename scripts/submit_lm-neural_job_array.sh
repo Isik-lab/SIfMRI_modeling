@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Parameters
-file="../data/raw/model_list/language_models.csv"
-funcs=(none shuffle mask_nouns mask_verbs mask_nonnouns mask_nonverbs)
-num_funcs=${#funcs[@]}
-num_models=$(($(wc -l < "$file") - 1))  # Subtract 1 for the header
+model_file="../data/raw/model_list/language_models.csv"
+func_file="../data/raw/model_list/perturbations.csv"
+num_funcs=$(($(wc -l < "$func_file") - 1))  # Subtract 1 for the header
+num_models=$(($(wc -l < "$model_file") - 1))  # Subtract 1 for the header
 echo "number of functions: $num_funcs" 
 echo "number of models: $num_models" 
 

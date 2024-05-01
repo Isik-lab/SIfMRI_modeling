@@ -408,9 +408,9 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
                     else:
                         y_train, y_test = y['train'].detach().clone(), y['test'].detach().clone()
 
-                    pipe.fit(X_train, y['train'])
+                    pipe.fit(X_train, y_train)
                     y_hat = pipe.predict(X_test)
-                    scores_test = score_func(y_hat, y['test']).cpu().detach().numpy()
+                    scores_test = score_func(y_hat, y_test).cpu().detach().numpy()
 
                     # Save the test set scores to an array only if it is where performance was maximum in the training set
                     idx = model_layer_index_max == (layer_index + layer_index_offset)
@@ -430,18 +430,20 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
         results['test_score'] = scores_test_max
 
         # Run permutation testing and bootstapping
-        results['r_null_dist'] = np.nan
-        results['r_var_dist'] = np.nan
-
+        # Do permutation testing on voxels in ROIs
         roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
         print(type(roi_indices))
-        print(len(roi_indices))
         print(f'{y_test.shape=}')
         print(f'{y_hat_max.shape=}')
-        r_null = stats.perm_gpu(y_test[:, roi_indices], y_hat_max[:, roi_indices], verbose=True)
-        r_var = stats.bootstrap_gpu(y_test[:, roi_indices], y_hat[:, roi_indices], verbose=True)
-        results.iloc[roi_indices]['r_null_dist'] = r_null.cpu().detach().numpy().T.tolist()
-        results.iloc[roi_indices]['r_var_dist'] = r_var.cpu().detach().numpy().T.tolist()
+        r_null = stats.perm_gpu(y_test[:, roi_indices],
+                                y_hat_max[:, roi_indices],
+                                verbose=True).cpu().detach().numpy().T.tolist()
+        r_var = stats.bootstrap_gpu(y_test[:, roi_indices], 
+                                    y_hat[:, roi_indices],
+                                    verbose=True).cpu().detach().numpy().T.tolist()
+        for idx, (r_null_val, r_var_val) in zip(roi_indices, zip(r_null, r_var)):
+            results.at[idx, 'r_null_dist'] = r_null_val
+            results.at[idx, 'r_var_dist'] = r_var_val
     print(results.head(20))
     return results
 

@@ -47,6 +47,7 @@ def divide_df(df, n):
 class ModelAveraging:
     def __init__(self, args):
         self.process = 'ModelAveraging'
+        print('updated 11:01 AM 1 May 2024')
         self.user = args.user
         self.model_class = args.model_class
         self.model_subpath = args.model_subpath
@@ -55,9 +56,10 @@ class ModelAveraging:
 
         self.out_path = f'{self.top_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
-        self.cols2keep = ['voxel_id', 'layer_relative_depth',
+        self.cols2keep = ['voxel_id', 'roi_name', 'layer_relative_depth',
                           'train_score', 'test_score',
                           'r_null_dist', 'r_var_dist']
+        print(vars(self))
     
     def load_files(self, files):
         # Load the files and sum them up 
@@ -70,7 +72,8 @@ class ModelAveraging:
 
                 # remove voxels not in roi
                 if 'roi_name' in pkl.columns: 
-                    pkl = pkl.loc[pkl.roi_name != 'none'].reset_index()
+                    pkl = pkl.loc[pkl.roi_name != 'none'].reset_index(drop=True)
+                pkl.drop(columns=['roi_name'], inplace=True)
 
                 if df is None: 
                     df = pkl
@@ -84,17 +87,19 @@ class ModelAveraging:
                                                     'r_null_dist': sum_of_arrays,
                                                     'r_var_dist': sum_of_arrays
                                                     }).reset_index()
+                    break
             except:
-                print(f'could not load {file}')
+                print(f'{self.process} could not load {file.split('/')[-1]}')
         return df, n_final_files
 
     def run(self): 
         try:
+            start_time = time.time()
             if self.model_subpath is not None: 
                 file_path = f'{self.top_dir}/{self.model_class}/{self.model_subpath}/'
             else: 
                 file_path = f'{self.top_dir}/{self.model_class}'
-    
+
             files = glob(f'{file_path}/*.pkl.gz')
             n_files = len(files)
             print(f'{len(files)} files found')
@@ -103,6 +108,7 @@ class ModelAveraging:
             print(df.loc[df.voxel_id == self.voxel_id])
 
             df = divide_df(df, n_files)
+            df['n_models'] = n_files # Add number info to the data
             print(df.loc[df.voxel_id == self.voxel_id])
 
             # calculate the confidence interval

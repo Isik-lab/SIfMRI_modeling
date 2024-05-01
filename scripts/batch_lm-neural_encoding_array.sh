@@ -12,7 +12,11 @@
 
 # Parameters
 file="../data/raw/model_list/language_models.csv"
-funcs=(none shuffle mask_nouns mask_verbs mask_nonnouns mask_nonverbs)
+funcs_file="../data/raw/model_list/perturbations.csv"
+
+# Read function names from CSV, skipping the header
+mapfile -t funcs < <(tail -n +2 "$funcs_file")
+
 num_funcs=${#funcs[@]}
 num_models=$(($(wc -l < "$file") - 1))  # Subtract 1 for the header
 
