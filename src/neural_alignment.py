@@ -46,7 +46,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              scale_y=True,
                              test_eval=False,
                              grouping_func='grouped_average',
-                             stats=True,
+                             run_stats=True,
                              alphas=[10. ** power for power in np.arange(-5, 2)]):
     # Define a grouping function to average across the different captions
     def grouped_average(tensor, batch_iter=None, **kwargs):
@@ -276,7 +276,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
         results['r_null_dist'] = results['r_null_dist'].astype('object')
         results['r_var_dist'] = results['r_var_dist'].astype('object')
 
-        if stats:
+        if run_stats:
             # Do permutation testing on voxels in ROIs
             roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
             print(type(roi_indices))
