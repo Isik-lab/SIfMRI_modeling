@@ -10,10 +10,16 @@
 #SBATCH --output=slurm-%A.out
 
 model_class=${1:-"VisionNeuralEncoding"}
-model_subpath=${2:-grouped_average}
+model_subpath=$2
 
 ml anaconda 
 conda activate deepjuice
 
-# Your sbatch command, using the extracted model name
-python model_averaging.py --model_class $model_class --model_subpath $model_subpath
+command="python model_averaging.py --model_class $model_class"
+if [[ -n $model_subpath ]]; then
+  command+=" --model_subpath $model_subpath"
+fi
+
+echo $command
+# Execute the command
+eval $command
