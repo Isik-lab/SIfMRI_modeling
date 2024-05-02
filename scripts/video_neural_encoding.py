@@ -44,7 +44,7 @@ class VideoNeuralEncoding:
                 print('Output file already exists. To run again pass --overwrite.')
             else:
                 start_time = time.time()
-                tools.send_slack(f'Started: {self.process} {self.model_name} on Rockfish...', channel=self.user)
+                tools.send_slack(f'Started: :video_camera: {self.process} - {self.model_name}...', channel=self.user)
                 print('Loading data...')
                 benchmark = self.load_fmri()
                 benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
@@ -99,10 +99,10 @@ class VideoNeuralEncoding:
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed} :baby-yoda:', channel=self.user)
+                tools.send_slack(f'Finished: :video_camera: {self.process} - {self.model_name} in {elapsed} :white_check_mark:', channel=self.user)
         except Exception as err:
             print(err)
-            tools.send_slack(f'Error: {self.process} {self.model_name} Error = {err}', channel=self.user)
+            tools.send_slack(f'Error: :video_camera: {self.process} - {self.model_name} :x: Error = {err}', channel=self.user)
             raise err
 
 
