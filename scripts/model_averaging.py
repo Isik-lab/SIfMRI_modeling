@@ -28,13 +28,12 @@ def calculate_p_df(row):
     return calculate_p(r_null_array, r_value, n_perm_=len(r_null_array), H0_='greater')
 
 
-def divide_df(df, n): 
+def divide_df(df, cols, n): 
     def divide_array(arr):
         return arr / n
 
     # Get the mean by averaging by the total number of models
-    columns_to_divide = ['train_score', 'test_score', 'layer_relative_depth', 'r_null_dist', 'r_var_dist']
-    for col in columns_to_divide:
+    for col in cols:
         if isinstance(df[col][0], np.ndarray):
             # Apply division to arrays
             df[col] = df[col].apply(divide_array)
@@ -42,6 +41,14 @@ def divide_df(df, n):
             # Apply division to numeric columns
             df[col] = df[col] / n
     return df
+
+
+def get_max_score(group, col='train_score'):
+    return group.loc[group[col].idxmax()]
+
+
+def behavior_max(df_):
+    return df_.groupby(['feature', 'model_uid']).apply(get_max_score).reset_index(drop=True)
 
 
 class ModelAveraging:
@@ -53,12 +60,24 @@ class ModelAveraging:
         self.model_subpath = args.model_subpath
         self.voxel_id = 9539 #test voxel in EVC
         self.top_dir = f'{args.top_dir}/data/interim'
+        if 'Neural' in self.model_class:
+            self.neural = True
+            self.cols2keep = ['voxel_id', 'roi_name', 'layer_relative_depth',
+                            'train_score', 'test_score',
+                            'r_null_dist', 'r_var_dist']
+            self.cols2divide = ['layer_relative_depth',
+                                'train_score', 'test_score',
+                                'r_null_dist', 'r_var_dist']
+        else:
+            self.neural = False
+            self.cols2keep = ['feature', 'train_score', 'test_score',
+                              'r_null_dist', 'r_var_dist']
+            self.cols2divide = ['train_score', 'test_score',
+                                'r_null_dist', 'r_var_dist']
 
         self.out_path = f'{self.top_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
-        self.cols2keep = ['voxel_id', 'roi_name', 'layer_relative_depth',
-                          'train_score', 'test_score',
-                          'r_null_dist', 'r_var_dist']
+
         print(vars(self))
     
     def load_files(self, files):
@@ -67,29 +86,42 @@ class ModelAveraging:
         n_final_files = 0
         for file in tqdm(files, total=len(files), desc='Loading files'): 
             try: 
-                pkl = pd.read_pickle(file)[self.cols2keep]
+                pkl = pd.read_pickle(file)
+                if not self.neural: 
+                    pkl = behavior_max(pkl)
+                pkl = pkl[self.cols2keep]
                 n_final_files += 1
 
                 # remove voxels not in roi
                 if 'roi_name' in pkl.columns: 
                     pkl = pkl.loc[pkl.roi_name != 'none'].reset_index(drop=True)
-                pkl.drop(columns=['roi_name'], inplace=True)
+                    pkl.drop(columns=['roi_name'], inplace=True)
 
                 if df is None: 
                     df = pkl
                 else:
                     #After the first file has been loaded, concatenate the data and add it together
                     df = pd.concat([df, pkl])
-                    df = df.groupby('voxel_id').agg({
-                                                    'train_score': 'sum',
-                                                    'test_score': 'sum',
-                                                    'layer_relative_depth': 'sum',
-                                                    'r_null_dist': sum_of_arrays,
-                                                    'r_var_dist': sum_of_arrays
-                                                    }).reset_index()
-                    break
-            except:
-                print(f'{self.process} could not load {file.split('/')[-1]}')
+                    if self.neural: 
+                        df = df.groupby('voxel_id').agg({
+                                                        'train_score': 'sum',
+                                                        'test_score': 'sum',
+                                                        'layer_relative_depth': 'sum',
+                                                        'r_null_dist': sum_of_arrays,
+                                                        'r_var_dist': sum_of_arrays
+                                                        }).reset_index()
+                    else:
+                        df = df.groupby('feature').agg({
+                                                        'train_score': 'sum',
+                                                        'test_score': 'sum',
+                                                        'r_null_dist': sum_of_arrays,
+                                                        'r_var_dist': sum_of_arrays
+                                                        }).reset_index()
+            except KeyboardInterrupt:
+                break
+                print("Program was stopped by user.")
+            except Exception as e:
+                print(f"An unexpected error occurred loading {file.split('/')[-1]}: {e}")
         return df, n_final_files
 
     def run(self): 
@@ -105,19 +137,16 @@ class ModelAveraging:
             print(f'{len(files)} files found')
 
             df, n_files = self.load_files(files)
-            print(df.loc[df.voxel_id == self.voxel_id])
 
-            df = divide_df(df, n_files)
+            df = divide_df(df, self.cols2divide, n_files)
             df['n_models'] = n_files # Add number info to the data
-            print(df.loc[df.voxel_id == self.voxel_id])
 
             # calculate the confidence interval
             df[['lower_ci', 'upper_ci']] = df['r_var_dist'].apply(lambda arr: pd.Series(compute_confidence_intervals(arr)))
-            print(df.loc[df.voxel_id == self.voxel_id])
 
             # calculate the p value
             df['p'] = df.apply(calculate_p_df, axis=1)
-            print(df.loc[df.voxel_id == self.voxel_id])
+            print(f'{df.head()=}')
 
             save_start = time.time()
             df.to_pickle(f'{self.out_path}/{self.model_class}_{self.model_subpath}.pkl.gz')

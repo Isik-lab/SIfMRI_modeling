@@ -76,7 +76,6 @@ class LanguageNeuralEncoding:
     def run(self):
         try:
             if os.path.exists(self.out_file) and not self.overwrite:
-                # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')
             else:
                 start_time = time.time()
@@ -87,7 +86,8 @@ class LanguageNeuralEncoding:
                 # Get the model and dataloader
                 model, tokenizer = get_model(self.model_uid)
                 dataloader = get_data_loader(captions, tokenizer, input_modality='text',
-                                             batch_size=16, data_key='caption', group_keys='video_name')
+                                             batch_size=16, data_key='caption',
+                                             group_keys='video_name')
 
 
                 # Reorganize the benchmark to the dataloader
@@ -105,6 +105,7 @@ class LanguageNeuralEncoding:
                                                    memory_limit=self.memory_limit,
                                                    test_eval=self.test_eval)
                 print('saving results')
+                results.to_csv(self.out_file.replace('.pkl', 'nodist.csv'), index=False, compression='gzip')
                 results.to_pickle(self.out_file, compression='gzip')
                 print('Finished!')
 

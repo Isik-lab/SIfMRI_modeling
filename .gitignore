@@ -2,7 +2,6 @@
 data/*
 reports/presentations/*
 reports/writing/*
-reports/figures/*
 scripts/slurm*out
 scripts/model_uid.csv
 scripts/*/slurm*out
