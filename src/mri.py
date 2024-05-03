@@ -35,7 +35,6 @@ class Benchmark:
         else:
             self.response_data = response_data
 
-
     def add_stimulus_path(self, data_dir, extension='png'):
         if extension != 'mp4': 
             self.stimulus_data['stimulus_path'] = data_dir + self.stimulus_data.video_name.str.replace('mp4', 'png')
@@ -137,7 +136,6 @@ class Benchmark:
         self.rdms = custom_rdms
         self.rdm_indices = custom_rdm_indices
         self.row_indices = custom_row_indices
-        self.video_set = 'train'
 
     def update(self, iterable):
         """

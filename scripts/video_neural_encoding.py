@@ -5,12 +5,9 @@ import pandas as pd
 import os
 import time
 from src.mri import Benchmark
-from src import neural_alignment
-from src import tools
+from src import neural_alignment, tools, video_ops
 import torch
 from deepjuice.extraction import FeatureExtractor
-from src import video_ops
-from transformers import AutoModel, VideoMAEModel, TimesformerForVideoClassification, XCLIPVisionModel
 from deepjuice.systemops.devices import cuda_device_report
 
 class VideoNeuralEncoding:
@@ -39,20 +36,6 @@ class VideoNeuralEncoding:
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
-
-    def get_model(self, model_name):
-        if model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
-            model = torch.hub.load("facebookresearch/pytorchvideo",
-                                   model=self.model_name, pretrained=True).to(self.device).eval()
-        elif model_name.lower() == 'xclip-base-patch32':
-            model = XCLIPVisionModel.from_pretrained("microsoft/xclip-base-patch32")
-        elif model_name.lower() == 'videomae_base_short':
-            model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
-        elif model_name.lower() == 'timesformer-base-finetuned-k400':
-            model = TimesformerForVideoClassification.from_pretrained("facebook/timesformer-base-finetuned-k400")
-        else:
-            raise Exception(f"{model_name} is not implemented!")
-        return model
     
     def run(self):
         try:
@@ -61,14 +44,14 @@ class VideoNeuralEncoding:
                 print('Output file already exists. To run again pass --overwrite.')
             else:
                 start_time = time.time()
-                tools.send_slack(f'Started: {self.process} {self.model_name} on Rockfish...', channel=self.user)
+                tools.send_slack(f'Started: :video_camera: {self.process} - {self.model_name}...', channel=self.user)
                 print('Loading data...')
                 benchmark = self.load_fmri()
                 benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
                 # benchmark.filter_stimulus(stimulus_set='train')
 
                 print(f'Loading model {self.model_name}...')
-                model = self.get_model(self.model_name)
+                model = video_ops.get_model(self.model_name)
                 if self.model_name == 'xclip-base-patch32':
                     batch_size = 1
                 else:
@@ -116,10 +99,10 @@ class VideoNeuralEncoding:
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed} :baby-yoda:', channel=self.user)
+                tools.send_slack(f'Finished: :video_camera: {self.process} - {self.model_name} in {elapsed} :white_check_mark:', channel=self.user)
         except Exception as err:
             print(err)
-            tools.send_slack(f'Error: {self.process} {self.model_name} Error = {err}', channel=self.user)
+            tools.send_slack(f'Error: :video_camera: {self.process} - {self.model_name} :x: Error = {err}', channel=self.user)
             raise err
 
 

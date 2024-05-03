@@ -14,55 +14,7 @@ import numpy as np
 import pandas as pd
 
 gpt_list = ['gpt2']
-llama_list = ['Open-Llama']
-
-######SLIP###########
-
-def slip_language_model(model_filepath, device='cuda'):
-    from slip import models #SLIP models downloaded from https://github.com/facebookresearch/SLIP/blob/main/models.py
-    from slip.tokenizer import SimpleTokenizer#custom tokenizer for SLIP https://github.com/facebookresearch/SLIP/blob/main/tokenizer.py
-    from slip import utils #https://github.com/facebookresearch/SLIP/blob/main/utils.py
-    from collections import OrderedDict
-
-    ### following code is taken from https://github.com/facebookresearch/SLIP/blob/main/eval_zeroshot.py
-    #load model information (weights + metadata)
-    ckpt = torch.load(model_filepath, map_location=device)
-    state_dict = OrderedDict()
-    for k, v in ckpt['state_dict'].items():
-        state_dict[k.replace('module.', '')] = v
-
-    # create model architecture and load weights
-    old_args = ckpt['args']
-    print("=> creating model: {}".format(old_args.model))
-    model = getattr(models, old_args.model)(rand_embed=False,
-        ssl_mlp_dim=old_args.ssl_mlp_dim, ssl_emb_dim=old_args.ssl_emb_dim)
-    #put model in evaluation mode
-    if 'cuda' in device:
-        model.cuda()    
-    model.load_state_dict(state_dict, strict=True)
-    print("=> loaded epoch {}".format(ckpt['epoch']))
-    
-    model.eval()
-    return model, SimpleTokenizer()
-
-
-def slip_feature_extraction(model_filepath, captions, device):
-    from slip import utils
-    model, tokenizer = slip_language_model(model_filepath, device=device)
-    print('encoding captions...')
-
-    features = []
-    caption_iterator = tqdm(captions, desc='Encoding captions', total=len(captions))
-    with torch.no_grad():
-        for caption in caption_iterator:
-            tokenized_caption = tokenizer(caption)
-            if 'cuda' in device:
-                tokenized_caption = tokenized_caption.cuda(non_blocking=True)
-            tokenized_caption = tokenized_caption.view(-1, 77).contiguous()
-            encoded_caption = utils.get_model(model).encode_text(tokenized_caption)
-            features.append(encoded_caption.detach().numpy().squeeze())
-  
-    return np.vstack(features)
+llama_list = ['meta-llama/Llama-2-7b-hf']
 
 
 ######GLOVE###########
@@ -88,7 +40,7 @@ def get_model(model_uid):
     if model_uid in gpt_list:
         return load_gpt2(model_uid)
     elif model_uid in llama_list: 
-        return load_llama()
+        return load_llama(model_uid)
     else:
         try:
             return load_llm(model_uid)
@@ -96,11 +48,11 @@ def get_model(model_uid):
             print('model configuration not specified')
 
 
-def load_llama():
+def load_llama(model_uid):
     print('loading LlaMa')
-    from transformers import OpenLlamaForCausalLM
-    model_ = OpenLlamaForCausalLM.from_pretrained("openlm-research/open_llama_7b")
-    tokenizer_ = AutoTokenizer.from_pretrained("openlm-research/open_llama_7b")
+    from transformers import LlamaForCausalLM
+    tokenizer_ = AutoTokenizer.from_pretrained(model_uid)
+    model_ = LlamaForCausalLM.from_pretrained(model_uid)
     tokenizer_.add_special_tokens({'pad_token': '[PAD]'})
     model_.resize_token_embeddings(len(tokenizer_))
     return model_, tokenizer_
