@@ -60,6 +60,8 @@ class ModelAveraging:
         self.model_subpath = args.model_subpath
         self.voxel_id = 9539 #test voxel in EVC
         self.top_dir = f'{args.top_dir}/data/interim'
+        print(vars(self))
+        
         if 'Neural' in self.model_class:
             self.neural = True
             self.cols2keep = ['voxel_id', 'roi_name', 'layer_relative_depth',
@@ -77,8 +79,6 @@ class ModelAveraging:
 
         self.out_path = f'{self.top_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
-
-        print(vars(self))
     
     def load_files(self, files):
         # Load the files and sum them up 
@@ -91,11 +91,6 @@ class ModelAveraging:
                     pkl = behavior_max(pkl)
                 pkl = pkl[self.cols2keep]
                 n_final_files += 1
-
-                # remove voxels not in roi
-                if 'roi_name' in pkl.columns: 
-                    pkl = pkl.loc[pkl.roi_name != 'none'].reset_index(drop=True)
-                    pkl.drop(columns=['roi_name'], inplace=True)
 
                 if df is None: 
                     df = pkl
@@ -110,6 +105,7 @@ class ModelAveraging:
                                                         'r_null_dist': sum_of_arrays,
                                                         'r_var_dist': sum_of_arrays
                                                         }).reset_index()
+                        break
                     else:
                         df = df.groupby('feature').agg({
                                                         'train_score': 'sum',
@@ -140,6 +136,16 @@ class ModelAveraging:
 
             df = divide_df(df, self.cols2divide, n_files)
             df['n_models'] = n_files # Add number info to the data
+
+            # Save the model average without the distributions in the whole brain
+            df_nodist = df.drop(columns=['r_null_dist', 'r_var_dist'])
+            df_nodist.to_csv(f'{self.out_path}/{self.model_class}_{self.model_subpath}_all-voxels.csv.gz', index=False)
+            del df_nodist
+
+            # remove the voxels not in rois for statistics
+            if 'roi_name' in df.columns: 
+                df = df.loc[df.roi_name != 'none'].reset_index(drop=True)
+                df.drop(columns=['roi_name'], inplace=True)
 
             # calculate the confidence interval
             df[['lower_ci', 'upper_ci']] = df['r_var_dist'].apply(lambda arr: pd.Series(compute_confidence_intervals(arr)))
