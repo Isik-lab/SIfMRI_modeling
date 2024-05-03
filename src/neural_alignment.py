@@ -363,27 +363,26 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
                     y_cv_true.append(y_cv_test)
                 scores_train = score_func(torch.cat(y_cv_pred), torch.cat(y_cv_true))  # Get the CV training scores
                 scores_train = scores_train.cpu().detach().numpy()
+
+                if scores_train_max is None:
+                    scores_train_max = scores_train.copy()
+                    model_layer_index_max = np.ones_like(scores_train_max, dtype='int') + layer_index_offset
+                    model_layer_max = np.zeros_like(scores_train_max, dtype='object')
+                    model_layer_max.fill(feature_map_uid)
+                else:
+                    # replace the value in the output if the previous value is less than the current value
+                    idx = scores_train_max < scores_train
+                    scores_train_max[idx] = scores_train[idx]
+                    model_layer_index_max[idx] = layer_index + layer_index_offset
+                    model_layer_max[idx] = feature_map_uid
+
+                # Memory saving
+                del pipe, scores_train
+                del X, X_cv_train, X_cv_test, y_cv_pred, y_cv_true
+                gc.collect()
+                torch.cuda.empty_cache()
             except:
                 print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
-
-
-            if scores_train_max is None:
-                scores_train_max = scores_train.copy()
-                model_layer_index_max = np.ones_like(scores_train_max, dtype='int') + layer_index_offset
-                model_layer_max = np.zeros_like(scores_train_max, dtype='object')
-                model_layer_max.fill(feature_map_uid)
-            else:
-                # replace the value in the output if the previous value is less than the current value
-                idx = scores_train_max < scores_train
-                scores_train_max[idx] = scores_train[idx]
-                model_layer_index_max[idx] = layer_index + layer_index_offset
-                model_layer_max[idx] = feature_map_uid
-
-            # Memory saving
-            del pipe, scores_train
-            del X, X_cv_train, X_cv_test, y_cv_pred, y_cv_true
-            gc.collect()
-            torch.cuda.empty_cache()
 
     # Add training data to a dataframe
     results = benchmark.metadata.copy()
