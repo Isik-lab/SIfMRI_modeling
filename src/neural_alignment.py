@@ -341,27 +341,31 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
             pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
                                  device=devices[-1], scale_X=False)
 
-            #### Fit CV in the train set ####
-            y_cv_pred, y_cv_true = [], []  # Initialize lists
-            for i, (cv_train_index, cv_test_index) in enumerate(cv.split(X['train'])):
-                # Split the training set
-                X_cv_train, X_cv_test = X['train'][cv_train_index].detach().clone(), X['train'][
-                    cv_test_index].detach().clone()
-                y_cv_train, y_cv_test = y['train'][cv_train_index].detach().clone(), y['train'][
-                    cv_test_index].detach().clone()
+            try:
+                #### Fit CV in the train set ####
+                y_cv_pred, y_cv_true = [], []  # Initialize lists
+                for i, (cv_train_index, cv_test_index) in enumerate(cv.split(X['train'])):
+                    # Split the training set
+                    X_cv_train, X_cv_test = X['train'][cv_train_index].detach().clone(), X['train'][
+                        cv_test_index].detach().clone()
+                    y_cv_train, y_cv_test = y['train'][cv_train_index].detach().clone(), y['train'][
+                        cv_test_index].detach().clone()
 
-                # Scale X and y
-                X_cv_train, X_cv_test = feature_scaler(X_cv_train, X_cv_test)
-                if scale_y:
-                    y_cv_train, y_cv_test = feature_scaler(y_cv_train, y_cv_test)
+                    # Scale X and y
+                    X_cv_train, X_cv_test = feature_scaler(X_cv_train, X_cv_test)
+                    if scale_y:
+                        y_cv_train, y_cv_test = feature_scaler(y_cv_train, y_cv_test)
 
-                # Fit the regression
-                pipe.fit(X_cv_train, y_cv_train)
-                y_cv_hat = pipe.predict(X_cv_test)
-                y_cv_pred.append(y_cv_hat)
-                y_cv_true.append(y_cv_test)
-            scores_train = score_func(torch.cat(y_cv_pred), torch.cat(y_cv_true))  # Get the CV training scores
-            scores_train = scores_train.cpu().detach().numpy()
+                    # Fit the regression
+                    pipe.fit(X_cv_train, y_cv_train)
+                    y_cv_hat = pipe.predict(X_cv_test)
+                    y_cv_pred.append(y_cv_hat)
+                    y_cv_true.append(y_cv_test)
+                scores_train = score_func(torch.cat(y_cv_pred), torch.cat(y_cv_true))  # Get the CV training scores
+                scores_train = scores_train.cpu().detach().numpy()
+            except:
+                print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
+
 
             if scores_train_max is None:
                 scores_train_max = scores_train.copy()
@@ -419,20 +423,23 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
                     else:
                         y_train, y_test = y['train'].detach().clone(), y['test'].detach().clone()
 
-                    pipe.fit(X_train, y_train)
-                    y_hat = pipe.predict(X_test)
-                    scores_test = score_func(y_hat, y_test).cpu().detach().numpy()
+                    try:
+                        pipe.fit(X_train, y_train)
+                        y_hat = pipe.predict(X_test)
+                        scores_test = score_func(y_hat, y_test).cpu().detach().numpy()
 
-                    # Save the test set scores to an array only if it is where performance was maximum in the training set
-                    idx = model_layer_index_max == (layer_index + layer_index_offset)
-                    scores_test_max[idx] = scores_test[idx]
-                    y_hat_max[:, idx] = y_hat[:, idx]
+                        # Save the test set scores to an array only if it is where performance was maximum in the training set
+                        idx = model_layer_index_max == (layer_index + layer_index_offset)
+                        scores_test_max[idx] = scores_test[idx]
+                        y_hat_max[:, idx] = y_hat[:, idx]
 
-                    # Memory saving
-                    del pipe, scores_test
-                    del X, X_train, X_test, y_train
-                    gc.collect()
-                    torch.cuda.empty_cache()
+                        # Memory saving
+                        del pipe, scores_test
+                        del X, X_train, X_test, y_train
+                        gc.collect()
+                        torch.cuda.empty_cache()
+                    except:
+                        print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
                 else:
                     print(f'{feature_map_uid} (layer {layer_index}) is not a max layer in train set')
                     print('skipping test set regression')
