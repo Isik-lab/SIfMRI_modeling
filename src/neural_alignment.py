@@ -303,6 +303,7 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
                                    model_name=None,
                                    scale_y=True,
                                    test_eval=False,
+                                   run_stats=True,
                                    alphas=[10. ** power for power in np.arange(-5, 2)]):
     # use a CUDA-capable device, if available, else: CPU
     print(cuda_device_report())
@@ -314,42 +315,38 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
     # divide responses
     indices = {'train': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'train'].index,
                'test': benchmark.stimulus_data[benchmark.stimulus_data.stimulus_set == 'test'].index}
-    y = {'train': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(
-        devices[-1]),
-        'test': torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(
-            devices[-1])}
+    y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1])
 
-    print('Starting CV in the training set')
+    print('\n\n\n\n\nStarting CV in the training set')
     layer_index = 0  # keeps track of depth
     scores_train_max = None
     results = []
-    for batch, feature_maps in enumerate(feature_extractor):
-        print(f"Running batch: {batch + 1}")
-        feature_map_iterator = tqdm(feature_maps.items(), desc='Training Mapping (Layer)', leave=False)
+    extractor_iterator = tqdm(feature_extractor, desc='Extractor Steps')
+    for batched_feature_maps in extractor_iterator:
+        print(batched_feature_maps)
+        feature_maps = batched_feature_maps.join_batches()
+        feature_map_iterator = tqdm(feature_maps.items(), desc='CV Mapping Layer', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1  # one layer deeper in feature_maps
 
             # reduce dimensionality of feature_maps by sparse random projection
-            feature_map = get_feature_map_srps(feature_map, device=devices[-1])
-
-            X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
-            X = {'train': X[indices['train']], 'test': X[indices['test']]}
-            del feature_map
-            torch.cuda.empty_cache()
+            feature_map = get_feature_map_srps(feature_map[indices['train']], device=devices[-1])
+            X_train = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
 
             # Memory saving
+            del feature_map
+            gc.collect()
+            torch.cuda.empty_cache()
             pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
                                  device=devices[-1], scale_X=False)
 
             try:
                 #### Fit CV in the train set ####
                 y_cv_pred, y_cv_true = [], []  # Initialize lists
-                for i, (cv_train_index, cv_test_index) in enumerate(cv.split(X['train'])):
+                for i, (cv_train_index, cv_test_index) in enumerate(cv.split(X_train)):
                     # Split the training set
-                    X_cv_train, X_cv_test = X['train'][cv_train_index].detach().clone(), X['train'][
-                        cv_test_index].detach().clone()
-                    y_cv_train, y_cv_test = y['train'][cv_train_index].detach().clone(), y['train'][
-                        cv_test_index].detach().clone()
+                    X_cv_train, X_cv_test = X_train[cv_train_index], X_train[cv_test_index]
+                    y_cv_train, y_cv_test = y_train[cv_train_index], y_train[cv_test_index]
 
                     # Scale X and y
                     X_cv_train, X_cv_test = feature_scaler(X_cv_train, X_cv_test)
@@ -378,11 +375,13 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
 
                 # Memory saving
                 del pipe, scores_train
-                del X, X_cv_train, X_cv_test, y_cv_pred, y_cv_true
+                del X_train, X_cv_train, X_cv_test
+                del y_cv_train, y_cv_test
                 gc.collect()
                 torch.cuda.empty_cache()
             except:
-                print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
+                print(
+                    f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
 
     # Add training data to a dataframe
     results = benchmark.metadata.copy()
@@ -392,75 +391,86 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
     results['train_score'] = scores_train_max
     results['model_uid'] = model_name
 
+    # Free up memory
+    memory_stats(devices)
+    y_hat_max = torch.zeros_like(y_cv_hat)
+    del y_train, y_cv_hat, feature_extractor
+    gc.collect()
+    torch.cuda.empty_cache()
+    memory_stats(devices)
+
     if test_eval:
-        print('Running evaluation in the test set')
+        print('\n\n\n\n\nRunning evaluation in the test set')
+        print('resetting y')
+        y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(
+            devices[-1])
+        y_test = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(
+            devices[-1])
+        if scale_y:
+            y_train, y_test = feature_scaler(y_train, y_test)
+
         scores_test_max = np.zeros_like(scores_train_max)
-        y_hat_max = torch.zeros_like(y_cv_hat)
         layer_index = 0
-        for batch, feature_maps in enumerate(feature_extractor):
-            print(f"Running batch: {batch + 1}")
-            feature_map_iterator = tqdm(feature_maps.items(), desc='Testing Mapping (Layer)', leave=False)
+        extractor_iterator = tqdm(feature_extractor, desc='Extractor Steps')
+        for batched_feature_maps in extractor_iterator:
+            print(batched_feature_maps)
+            feature_maps = batched_feature_maps.join_batches()
+            feature_map_iterator = tqdm(feature_maps.items(), desc='Testing Mapping Layer', leave=False)
             for feature_map_uid, feature_map in feature_map_iterator:
                 layer_index += 1  # one layer deeper in feature_maps
 
-                if np.sum(model_layer_index_max == layer_index) > 0:
-                    # reduce dimensionality of feature_maps by sparse random projection
-                    feature_map = get_feature_map_srps(feature_map, device=devices[-1])
+                # reduce dimensionality of feature_maps by sparse random projection
+                feature_map = get_feature_map_srps(feature_map, device=devices[-1])
+                X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
+                X_train, X_test = feature_scaler(X[indices['train']], X[indices['test']])
 
-                    X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
-                    X = {'train': X[indices['train']], 'test': X[indices['test']]}
-                    del feature_map
-                    torch.cuda.empty_cache()
+                # Memory saving
+                del feature_map, X
+                torch.cuda.empty_cache()
+                pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
+                                     device=devices[-1], scale_X=False)
+
+                try:
+                    pipe.fit(X_train, y_train)
+                    y_hat = pipe.predict(X_test)
+                    scores_test = score_func(y_hat, y_test).cpu().detach().numpy()
+
+                    # Save the test set scores to an array only if it is where performance was maximum in the training set
+                    idx = model_layer_index_max == (layer_index + layer_index_offset)
+                    scores_test_max[idx] = scores_test[idx]
+                    y_hat_max[:, idx] = y_hat[:, idx]
 
                     # Memory saving
-                    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
-                                         device=devices[-1], scale_X=False)
-
-                    X_train, X_test = feature_scaler(X['train'].detach().clone(), X['test'].detach().clone())
-                    if scale_y:
-                        y_train, y_test = feature_scaler(y['train'].detach().clone(), y['test'].detach().clone())
-                    else:
-                        y_train, y_test = y['train'].detach().clone(), y['test'].detach().clone()
-
-                    try:
-                        pipe.fit(X_train, y_train)
-                        y_hat = pipe.predict(X_test)
-                        scores_test = score_func(y_hat, y_test).cpu().detach().numpy()
-
-                        # Save the test set scores to an array only if it is where performance was maximum in the training set
-                        idx = model_layer_index_max == (layer_index + layer_index_offset)
-                        scores_test_max[idx] = scores_test[idx]
-                        y_hat_max[:, idx] = y_hat[:, idx]
-
-                        # Memory saving
-                        del pipe, scores_test
-                        del X, X_train, X_test, y_train
-                        gc.collect()
-                        torch.cuda.empty_cache()
-                    except:
-                        print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
-                else:
-                    print(f'{feature_map_uid} (layer {layer_index}) is not a max layer in train set')
-                    print('skipping test set regression')
+                    del pipe, scores_test
+                    del X_train, X_test
+                    gc.collect()
+                    torch.cuda.empty_cache()
+                except:
+                    print(
+                        f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
 
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max
+        results['r_null_dist'] = np.nan
+        results['r_var_dist'] = np.nan
+        results['r_null_dist'] = results['r_null_dist'].astype('object')
+        results['r_var_dist'] = results['r_var_dist'].astype('object')
 
-        # Run permutation testing and bootstapping
-        # Do permutation testing on voxels in ROIs
-        roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
-        print(type(roi_indices))
-        print(f'{y_test.shape=}')
-        print(f'{y_hat_max.shape=}')
-        r_null = stats.perm_gpu(y_test[:, roi_indices],
-                                y_hat_max[:, roi_indices],
-                                verbose=True).cpu().detach().numpy().T.tolist()
-        r_var = stats.bootstrap_gpu(y_test[:, roi_indices], 
-                                    y_hat[:, roi_indices],
+        if run_stats:
+            # Do permutation testing on voxels in ROIs
+            roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
+            print(type(roi_indices))
+            print(f'{y_test.shape=}')
+            print(f'{y_hat_max.shape=}')
+            r_null = stats.perm_gpu(y_test[:, roi_indices],
+                                    y_hat_max[:, roi_indices],
                                     verbose=True).cpu().detach().numpy().T.tolist()
-        for idx, (r_null_val, r_var_val) in zip(roi_indices, zip(r_null, r_var)):
-            results.at[idx, 'r_null_dist'] = r_null_val
-            results.at[idx, 'r_var_dist'] = r_var_val
+            r_var = stats.bootstrap_gpu(y_test[:, roi_indices],
+                                        y_hat[:, roi_indices],
+                                        verbose=True).cpu().detach().numpy().T.tolist()
+            for idx, (r_null_val, r_var_val) in zip(roi_indices, zip(r_null, r_var)):
+                results.at[idx, 'r_null_dist'] = r_null_val
+                results.at[idx, 'r_var_dist'] = r_var_val
     print(results.head(20))
     return results
 
