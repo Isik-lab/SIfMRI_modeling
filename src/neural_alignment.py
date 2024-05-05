@@ -392,7 +392,7 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
     # Free up memory
     memory_stats(devices)
     y_hat_max = torch.zeros_like(y_cv_hat)
-    del y_train, y_cv_hat, feature_extractor
+    del y_train, y_cv_hat
     gc.collect()
     torch.cuda.empty_cache()
     memory_stats(devices)
