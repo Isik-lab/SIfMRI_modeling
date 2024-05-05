@@ -322,9 +322,7 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
     scores_train_max = None
     results = []
     extractor_iterator = tqdm(feature_extractor, desc='Extractor Steps')
-    for batched_feature_maps in extractor_iterator:
-        print(batched_feature_maps)
-        feature_maps = batched_feature_maps.join_batches()
+    for feature_maps in extractor_iterator:
         feature_map_iterator = tqdm(feature_maps.items(), desc='CV Mapping Layer', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1  # one layer deeper in feature_maps
@@ -412,9 +410,7 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
         scores_test_max = np.zeros_like(scores_train_max)
         layer_index = 0
         extractor_iterator = tqdm(feature_extractor, desc='Extractor Steps')
-        for batched_feature_maps in extractor_iterator:
-            print(batched_feature_maps)
-            feature_maps = batched_feature_maps.join_batches()
+        for feature_maps in extractor_iterator:
             feature_map_iterator = tqdm(feature_maps.items(), desc='Testing Mapping Layer', leave=False)
             for feature_map_uid, feature_map in feature_map_iterator:
                 layer_index += 1  # one layer deeper in feature_maps
