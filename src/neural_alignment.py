@@ -43,6 +43,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              model_name=None,
                              scale_y=True, 
                              test_eval=False,
+                             run_bootstrapping=False,
+                             stream_statistics=False,
                              grouping_func='grouped_average',
                              alphas=[10.**power for power in np.arange(-5, 2)]):
 
@@ -261,24 +263,33 @@ def get_benchmarking_results(benchmark, model, dataloader,
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max
         results['r_null_dist'] = np.nan
-        results['r_var_dist'] = np.nan
         results['r_null_dist'] = results['r_null_dist'].astype('object')
-        results['r_var_dist'] = results['r_var_dist'].astype('object')
 
         # Do permutation testing on voxels in ROIs
-        roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
+        # If stream_statistics also run the statistics in the stream ROIs
+        if stream_statistics:
+            roi_indices = benchmark.metadata.index[(benchmark.metadata.stream_name != 'none') |
+                                                    ( benchmark.metadata.roi_name != 'none')].to_numpy()
+        else:
+            roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
         print(type(roi_indices))
         print(f'{y_test.shape=}')
         print(f'{y_hat_max.shape=}')
         r_null = stats.perm_gpu(y_test[:, roi_indices],
                                 y_hat_max[:, roi_indices],
                                 verbose=True).cpu().detach().numpy().T.tolist()
-        r_var = stats.bootstrap_gpu(y_test[:, roi_indices], 
-                                    y_hat[:, roi_indices],
-                                    verbose=True).cpu().detach().numpy().T.tolist()
-        for idx, (r_null_val, r_var_val) in zip(roi_indices, zip(r_null, r_var)):
+        for idx, r_null_val in tqdm(zip(roi_indices, r_null), desc='Permutation results to pandas'):
             results.at[idx, 'r_null_dist'] = r_null_val
-            results.at[idx, 'r_var_dist'] = r_var_val
+
+        # Run the bootstrapping only if specified
+        if run_bootstrapping: 
+            results['r_var_dist'] = np.nan
+            results['r_var_dist'] = results['r_var_dist'].astype('object')
+            r_var = stats.bootstrap_gpu(y_test[:, roi_indices], 
+                                        y_hat[:, roi_indices],
+                                        verbose=True).cpu().detach().numpy().T.tolist()
+            for idx, r_var_val in zip(roi_indices, r_var):
+                results.at[idx, 'r_var_dist'] = r_var_val
 
     print(results.head(20))
     return results
