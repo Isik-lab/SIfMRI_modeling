@@ -29,16 +29,16 @@ def get_max_score(group, col='train_score'):
     return group.loc[group[col].idxmax()]
 
 
-def neural_max(df_, categories):
+def neural_max(df_, categories, category_col='roi_name'):
     # get average within subject first
-    out_ = df_.groupby(['subj_id', 'roi_name', 'model_uid']).mean(numeric_only=True).reset_index()
+    out_ = df_.groupby(['subj_id', category_col, 'model_uid']).mean(numeric_only=True).reset_index()
     #now get average across subjects
-    out_ = out_.groupby(['roi_name', 'model_uid']).mean(numeric_only=True).reset_index()
-    out_ = out_.loc[out_.roi_name.isin(categories)].reset_index(drop=True)
-    out_ = pd.melt(out_, id_vars=["model_uid", "layer_index", "layer_relative_depth", "roi_name", "reliability"], 
+    out_ = out_.groupby([category_col, 'model_uid']).mean(numeric_only=True).reset_index()
+    out_ = out_.loc[out_[category_col].isin(categories)].reset_index(drop=True)
+    out_ = pd.melt(out_, id_vars=["model_uid", "layer_index", "layer_relative_depth", category_col, "reliability"], 
                         value_vars=["train_score", "test_score"], 
                         var_name="set", value_name="score")
-    out_['roi_name'] = pd.Categorical(out_['roi_name'], categories=categories, ordered=True)
+    out_[category_col] = pd.Categorical(out_[category_col], categories=categories, ordered=True)
     out_['set'] = out_['set'].replace({'train_score': 'train', 'test_score': 'test'})
     out_['set'] = pd.Categorical(out_['set'], categories=['train', 'test'], ordered=True)
     out_['normalized_score'] = out_['score'] / out_['reliability']
@@ -84,37 +84,43 @@ class ModelSummary:
         self.model_subpath = args.model_subpath
         self.voxel_id = 9539 #test voxel in EVC
         self.top_dir = f'{args.top_dir}/data/interim'
+        self.category_col = args.category_col
         print(vars(self))
         if 'Neural' in self.model_class:
             self.neural = True
-            self.categories = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS', 'aSTS', 'FFA', 'PPA']
+            if self.catgory_col is None:
+                print('No category column passed for neural data. Setting to "roi_name"')
+                self.category_col = 'roi_name'
+                self.categories = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS', 'aSTS', 'FFA', 'PPA']
+            elif self.category_col == 'roi_name': 
+                self.categories = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS', 'aSTS', 'FFA', 'PPA']
+            elif self.category_col == 'stream_name':
+                self.categories = ['evc', 'mid_lateral', 'mid_ventral', 'mid_parietal',
+                                   'high_lateral', 'high_ventral', 'high_parietal']
+            self.out_name = f'{self.out_path}/{self.model_class}_{self.model_subpath}_{self.category_col}.csv.gz'
         else:
             self.neural = False
             self.categories = ['expanse', 'object', 
                                'agent distance', 'facingness', 'joint action', 
                                'communication', 'valence', 'arousal']
-
+            self.out_name = f'{self.out_path}/{self.model_class}_{self.model_subpath}.csv.gz'
         self.out_path = f'{self.top_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
     
     def load_files(self, files, perturb_info=False):
         # Load the files and sum them up 
         df = []
-        model_avg_score = []
         for file in tqdm(files, total=len(files), desc='Loading files'): 
             try: 
                 model_uid = get_model_name(file)
                 pkl = pd.read_pickle(file)
-                pkl.drop(columns=['r_var_dist', 'r_null_dist'], inplace=True)
-                if self.neural:
-                    pkl_mean = pkl.groupby('subj_id').mean(numeric_only=True).reset_index().mean(numeric_only=True)['test_score']
-                else: 
-                    pkl_mean = behavior_max(pkl, self.categories, formatting=False).mean(numeric_only=True)['test_score']
-                model_avg_score.append({'model_uid': model_uid, 'avg_score': pkl_mean})
+                if 'r_var_dist' in pkl.columns: 
+                    pkl.drop(columns=['r_var_dist'], inplace=True)
+                pkl.drop(columns=['r_null_dist'], inplace=True)
 
-                # Remove voxels not in an ROI
-                if 'roi_name' in pkl.columns.tolist():
-                    pkl = pkl.loc[pkl['roi_name'] != 'none'].reset_index(drop=True)
+                # Remove voxels not in an ROI or in a visual stream
+                if (self.category_col is not None) and (self.category_col in pkl.columns):
+                    pkl = pkl.loc[pkl[self.category_col] != 'none'].reset_index(drop=True)
                 
                 # Add information about perturbation and model class
                 if add_perturbation: 
@@ -129,7 +135,7 @@ class ModelSummary:
                 print("Program was stopped by user.")
             except Exception as e:
                 print(f"An unexpected error occurred loading {file.split('/')[-1]}: {e}")
-        return pd.concat(df), pd.DataFrame(model_avg_score)
+        return pd.concat(df)
 
     def run(self): 
         try:
@@ -143,9 +149,9 @@ class ModelSummary:
             print(f'{len(files)} files found')
 
             if 'Language' in self.model_class: 
-                df, model_avg_score = self.load_files(files, perturb_info=True)
+                df = self.load_files(files, perturb_info=True)
             else:
-                df, model_avg_score = self.load_files(files)
+                df = self.load_files(files)
 
             if self.neural:
                 df = neural_max(df, self.categories)
@@ -154,8 +160,7 @@ class ModelSummary:
             print(f'{df.head()=}')
 
             save_start = time.time()
-            df.to_csv(f'{self.out_path}/{self.model_class}_{self.model_subpath}.csv.gz', index=False)
-            model_avg_score.to_csv(f'{self.out_path}/{self.model_class}_{self.model_subpath}_avg-score.csv', index=False)
+            df.to_csv(self.out_name, index=False)
             save_time = time.time() - save_start
             elapsed = time.strftime("%H:%M:%S", time.gmtime(save_time))
             print(f'Saved in {elapsed}!')
@@ -178,6 +183,7 @@ def main():
     user = args.user  # Get the user from the parsed known args
     parser.add_argument('--model_class', type=str, default='VisionNeuralEncoding')
     parser.add_argument('--model_subpath', type=str, default=None)
+    parser.add_argument('--category_col', type=str, default=None)
     parser.add_argument('--top_dir', '-data', type=str,
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
     args = parser.parse_args()

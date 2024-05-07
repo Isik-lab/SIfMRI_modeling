@@ -66,16 +66,16 @@ class ModelAveraging:
             self.neural = True
             self.cols2keep = ['voxel_id', 'roi_name', 'layer_relative_depth',
                             'train_score', 'test_score',
-                            'r_null_dist', 'r_var_dist']
+                            'r_null_dist']
             self.cols2divide = ['layer_relative_depth',
                                 'train_score', 'test_score',
-                                'r_null_dist', 'r_var_dist']
+                                'r_null_dist']
         else:
             self.neural = False
             self.cols2keep = ['feature', 'train_score', 'test_score',
-                              'r_null_dist', 'r_var_dist']
+                              'r_null_dist']
             self.cols2divide = ['train_score', 'test_score',
-                                'r_null_dist', 'r_var_dist']
+                                'r_null_dist']
 
         self.out_path = f'{self.top_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
@@ -103,15 +103,12 @@ class ModelAveraging:
                                                         'test_score': 'sum',
                                                         'layer_relative_depth': 'sum',
                                                         'r_null_dist': sum_of_arrays,
-                                                        'r_var_dist': sum_of_arrays
                                                         }).reset_index()
-                        break
                     else:
                         df = df.groupby('feature').agg({
                                                         'train_score': 'sum',
                                                         'test_score': 'sum',
                                                         'r_null_dist': sum_of_arrays,
-                                                        'r_var_dist': sum_of_arrays
                                                         }).reset_index()
             except KeyboardInterrupt:
                 break
@@ -138,21 +135,9 @@ class ModelAveraging:
             df['n_models'] = n_files # Add number info to the data
 
             # Save the model average without the distributions in the whole brain
-            df_nodist = df.drop(columns=['r_null_dist', 'r_var_dist'])
+            df_nodist = df.drop(columns=['r_null_dist'])
             df_nodist.to_csv(f'{self.out_path}/{self.model_class}_{self.model_subpath}_all-voxels.csv.gz', index=False)
             del df_nodist
-
-            # remove the voxels not in rois for statistics
-            if 'roi_name' in df.columns: 
-                df = df.loc[df.roi_name != 'none'].reset_index(drop=True)
-                df.drop(columns=['roi_name'], inplace=True)
-
-            # calculate the confidence interval
-            df[['lower_ci', 'upper_ci']] = df['r_var_dist'].apply(lambda arr: pd.Series(compute_confidence_intervals(arr)))
-
-            # calculate the p value
-            df['p'] = df.apply(calculate_p_df, axis=1)
-            print(f'{df.head()=}')
 
             save_start = time.time()
             df.to_pickle(f'{self.out_path}/{self.model_class}_{self.model_subpath}.pkl.gz')
