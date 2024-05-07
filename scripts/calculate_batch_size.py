@@ -105,9 +105,7 @@ class BatchSizeCompute:
                                                    grouping_func=self.grouping_func,
                                                    devices=['cuda:0'],
                                                    memory_limit=self.memory_limit,
-                                                   batch_time=True,
-                                                   batch_size=True)
-
+                                                   batch_compute=True)
                 end_time = time.time()
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
