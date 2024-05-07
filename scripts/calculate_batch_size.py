@@ -107,14 +107,16 @@ class BatchSizeCompute:
                                                    memory_limit=self.memory_limit,
                                                    batch_time=True,
                                                    batch_size=True)
-                print('saving results')
-                results.to_pickle(self.out_file, compression='gzip')
-                print('Finished!')
 
                 end_time = time.time()
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
+                results['total_runtime'] = elapsed
+                print('saving results')
+                results.to_pickle(self.out_file, compression='gzip')
+                print('Finished!')
+
                 tools.send_slack(f'Finished: {self.process} {self.model_name}. Total Runtime = {elapsed}',
                                  channel=self.user)
         except Exception as err:
