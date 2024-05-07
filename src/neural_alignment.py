@@ -129,11 +129,11 @@ def get_benchmarking_results(benchmark, model, dataloader,
     extractor_iterator = tqdm(extractor, desc='Extractor Steps')
     for batched_feature_maps in extractor_iterator:
         print(batched_feature_maps)
+        if batch_time:
+            start_batch_time = time.time()
         feature_maps = batched_feature_maps.join_batches()
         feature_map_iterator = tqdm(feature_maps.items(), desc='CV Mapping Layer', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
-            if batch_time:
-                start_batch_time = time.time()
             layer_index += 1  # one layer deeper in feature_maps
 
             # reduce dimensionality of feature_maps by sparse random projection
@@ -185,15 +185,13 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 del y_cv_train, y_cv_test
                 gc.collect()
                 torch.cuda.empty_cache()
-
-                if batch_time:
-                    end_batch_time = time.time()
-                    elapsed = end_batch_time - start_batch_time
-                    elapsed = time.gmtime(elapsed)
-                    return elapsed
             except:
                 print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
-
+        if batch_time:
+            end_batch_time = time.time()
+            elapsed = end_batch_time - start_batch_time
+            elapsed = time.gmtime(elapsed)
+            return elapsed
 
     # Add training data to a dataframe
     results = benchmark.metadata.copy()
