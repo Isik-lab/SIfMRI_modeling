@@ -154,7 +154,7 @@ class ModelSummary:
                 df = self.load_files(files)
 
             if self.neural:
-                df = neural_max(df, self.categories)
+                df = neural_max(df, self.categories, category_col=self.category_col)
             else:
                 df = behavior_max(df, self.categories)
             print(f'{df.head()=}')
