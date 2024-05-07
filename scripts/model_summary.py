@@ -85,7 +85,7 @@ class ModelSummary:
         self.voxel_id = 9539 #test voxel in EVC
         self.top_dir = f'{args.top_dir}/data/interim'
         self.category_col = args.category_col
-        print(vars(self))
+        self.out_path = f'{self.top_dir}/{self.process}'
         if 'Neural' in self.model_class:
             self.neural = True
             if self.category_col is None:
@@ -104,7 +104,7 @@ class ModelSummary:
                                'agent distance', 'facingness', 'joint action', 
                                'communication', 'valence', 'arousal']
             self.out_name = f'{self.out_path}/{self.model_class}_{self.model_subpath}.csv.gz'
-        self.out_path = f'{self.top_dir}/{self.process}'
+        print(vars(self))
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
     
     def load_files(self, files, perturb_info=False):
