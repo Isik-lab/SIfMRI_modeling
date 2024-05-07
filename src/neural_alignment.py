@@ -99,9 +99,6 @@ def get_benchmarking_results(benchmark, model, dataloader,
     # use a CUDA-capable device, if available, else: CPU
     print(cuda_device_report())
 
-    if batch_time:
-        start_batch_time = time.time()
-
     # define the feature extractor object
     if grouping_func == 'grouped_stack':
         extractor = FeatureExtractor(model, dataloader,
@@ -135,6 +132,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
         feature_maps = batched_feature_maps.join_batches()
         feature_map_iterator = tqdm(feature_maps.items(), desc='CV Mapping Layer', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
+            if batch_time:
+                start_batch_time = time.time()
             layer_index += 1  # one layer deeper in feature_maps
 
             # reduce dimensionality of feature_maps by sparse random projection
