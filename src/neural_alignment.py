@@ -189,7 +189,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 if batch_time:
                     end_batch_time = time.time()
                     elapsed = end_batch_time - start_batch_time
-                    elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+                    elapsed = time.gmtime(elapsed)
                     return elapsed
             except:
                 print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
