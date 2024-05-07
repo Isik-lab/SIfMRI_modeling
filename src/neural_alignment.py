@@ -45,9 +45,11 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              model_name=None,
                              scale_y=True,
                              test_eval=False,
+                             run_bootstrapping=False,
+                             stream_statistics=False,
                              grouping_func='grouped_average',
-                             run_stats=True,
-                             alphas=[10. ** power for power in np.arange(-5, 2)]):
+                             alphas=[10.**power for power in np.arange(-5, 2)]):
+
     # Define a grouping function to average across the different captions
     def grouped_average(tensor, batch_iter=None, **kwargs):
         if batch_iter is None: return tensor  # as is
@@ -101,14 +103,12 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                      tensor_fn=grouped_stack,
                                      memory_limit=memory_limit,
                                      batch_strategy='stack', flatten=True,
-                                     exclude_oversize=True,
                                      **{'device': devices[0], 'output_device': devices[0]})
     else:  # grouping_func == 'grouped_average':
         extractor = FeatureExtractor(model, dataloader,
                                      tensor_fn=grouped_average,
                                      memory_limit=memory_limit,
                                      batch_strategy='stack', flatten=True,
-                                     exclude_oversize=True,
                                      **{'device': devices[0], 'output_device': devices[0]})
 
     # initialize pipe and kfold splitter
@@ -161,8 +161,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                     y_cv_hat = pipe.predict(X_cv_test)
                     y_cv_pred.append(y_cv_hat)
                     y_cv_true.append(y_cv_test)
-                scores_train = score_func(torch.cat(y_cv_pred), torch.cat(y_cv_true))  # Get the CV training scores
-                scores_train = scores_train.cpu().detach().numpy()
+                scores_train = score_func(torch.cat(y_cv_pred), torch.cat(y_cv_true)).cpu().detach().numpy() # Get the CV training scores 
 
                 if scores_train_max is None:
                     scores_train_max = scores_train.copy()
@@ -208,24 +207,20 @@ def get_benchmarking_results(benchmark, model, dataloader,
         # define the feature extractor object
         if grouping_func == 'grouped_stack':
             extractor = FeatureExtractor(model, dataloader,
-                                         tensor_fn=grouped_stack,
-                                         memory_limit=memory_limit,
-                                         batch_strategy='stack', flatten=True,
-                                         exclude_oversize=True,
-                                         **{'device': devices[0], 'output_device': devices[0]})
-        else:  # grouping_func == 'grouped_average':
+                                        tensor_fn=grouped_stack,
+                                        memory_limit=memory_limit,
+                                        batch_strategy='stack', flatten=True,
+                                        **{'device': devices[0], 'output_device': devices[0]})
+        else:# grouping_func == 'grouped_average':
             extractor = FeatureExtractor(model, dataloader,
-                                         tensor_fn=grouped_average,
-                                         memory_limit=memory_limit,
-                                         batch_strategy='stack', flatten=True,
-                                         exclude_oversize=True,
-                                         **{'device': devices[0], 'output_device': devices[0]})
+                                        tensor_fn=grouped_average,
+                                        memory_limit=memory_limit,
+                                        batch_strategy='stack', flatten=True,
+                                        **{'device': devices[0], 'output_device': devices[0]})
 
         print('resetting y')
-        y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(
-            devices[-1])
-        y_test = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(
-            devices[-1])
+        y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1])
+        y_test = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(devices[-1])
         if scale_y:
             y_train, y_test = feature_scaler(y_train, y_test)
 
@@ -272,24 +267,32 @@ def get_benchmarking_results(benchmark, model, dataloader,
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max
         results['r_null_dist'] = np.nan
-        results['r_var_dist'] = np.nan
         results['r_null_dist'] = results['r_null_dist'].astype('object')
-        results['r_var_dist'] = results['r_var_dist'].astype('object')
 
-        if run_stats:
-            # Do permutation testing on voxels in ROIs
+        # Do permutation testing on voxels in ROIs
+        # If stream_statistics also run the statistics in the stream ROIs
+        if stream_statistics:
+            roi_indices = benchmark.metadata.index[(benchmark.metadata.stream_name != 'none') |
+                                                    ( benchmark.metadata.roi_name != 'none')].to_numpy()
+        else:
             roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
-            print(type(roi_indices))
-            print(f'{y_test.shape=}')
-            print(f'{y_hat_max.shape=}')
-            r_null = stats.perm_gpu(y_test[:, roi_indices],
-                                    y_hat_max[:, roi_indices],
-                                    verbose=True).cpu().detach().numpy().T.tolist()
+        print(type(roi_indices))
+        print(f'{y_test.shape=}')
+        print(f'{y_hat_max.shape=}')
+        r_null = stats.perm_gpu(y_test[:, roi_indices],
+                                y_hat_max[:, roi_indices],
+                                verbose=True).cpu().detach().numpy().T.tolist()
+        for idx, r_null_val in tqdm(zip(roi_indices, r_null), desc='Permutation results to pandas'):
+            results.at[idx, 'r_null_dist'] = r_null_val
+
+        # Run the bootstrapping only if specified
+        if run_bootstrapping:
+            results['r_var_dist'] = np.nan
+            results['r_var_dist'] = results['r_var_dist'].astype('object')
             r_var = stats.bootstrap_gpu(y_test[:, roi_indices],
                                         y_hat[:, roi_indices],
                                         verbose=True).cpu().detach().numpy().T.tolist()
-            for idx, (r_null_val, r_var_val) in zip(roi_indices, zip(r_null, r_var)):
-                results.at[idx, 'r_null_dist'] = r_null_val
+            for idx, r_var_val in zip(roi_indices, r_var):
                 results.at[idx, 'r_var_dist'] = r_var_val
 
     print(results.head(20))
