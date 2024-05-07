@@ -49,8 +49,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              run_bootstrapping=False,
                              stream_statistics=False,
                              grouping_func='grouped_average',
-                             batch_time=False,
-                             batch_size=False,
+                             batch_compute=False,
                              alphas=[10.**power for power in np.arange(-5, 2)]):
 
     # Define a grouping function to average across the different captions
@@ -114,8 +113,11 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                      batch_strategy='stack', flatten=True,
                                      **{'device': devices[0], 'output_device': devices[0]})
 
-    if batch_size:
-        return extractor.total_memory
+    if batch_compute:
+        total_memory = extractor.total_memory
+        total_memory = int(float(total_memory.split(' ')[0]))
+        batch_memory = extractor.batch_memory[0]
+        batch_memory = int(float(batch_memory.split(' ')[0]))
 
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
@@ -133,7 +135,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
     extractor_iterator = tqdm(extractor, desc='Extractor Steps')
     for batched_feature_maps in extractor_iterator:
         print(batched_feature_maps)
-        if batch_time:
+        if batch_compute:
             start_batch_time = time.time()
         feature_maps = batched_feature_maps.join_batches()
         feature_map_iterator = tqdm(feature_maps.items(), desc='CV Mapping Layer', leave=False)
@@ -191,11 +193,17 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 torch.cuda.empty_cache()
             except:
                 print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
-        if batch_time:
+
+        if batch_compute:
             end_batch_time = time.time()
             elapsed = end_batch_time - start_batch_time
-            elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
-            return elapsed
+            batch_time_str = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+            batch_time = elapsed
+            secs_per_gb = batch_time / batch_memory
+            eta_for_total = secs_per_gb * total_memory
+            row = [{'model_uid': model_name, 'batch_time': batch_time_str, 'batch_memory_gb': batch_memory, 'total_memory_gb': total_memory, 'secs_per_gb': secs_per_gb, 'secs_for_total': eta_for_total}]
+            df_row = pd.DataFrame(row)
+            return df_row
 
     # Add training data to a dataframe
     results = benchmark.metadata.copy()

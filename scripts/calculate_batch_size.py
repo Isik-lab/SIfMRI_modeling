@@ -105,13 +105,12 @@ class BatchSizeCompute:
                                                    grouping_func=self.grouping_func,
                                                    devices=['cuda:0'],
                                                    memory_limit=self.memory_limit,
-                                                   batch_time=False,
+                                                   batch_time=True,
                                                    batch_size=True)
+                print('saving results')
+                results.to_pickle(self.out_file, compression='gzip')
+                print('Finished!')
 
-                # results will show the time it takes
-                tools.send_slack(
-                    f"Finished: {self.process} {self.model_name}. Total batch size = {results}",
-                    channel=self.user)
                 end_time = time.time()
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
