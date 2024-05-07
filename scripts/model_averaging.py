@@ -134,11 +134,6 @@ class ModelAveraging:
             df = divide_df(df, self.cols2divide, n_files)
             df['n_models'] = n_files # Add number info to the data
 
-            # Save the model average without the distributions in the whole brain
-            df_nodist = df.drop(columns=['r_null_dist'])
-            df_nodist.to_csv(f'{self.out_path}/{self.model_class}_{self.model_subpath}_all-voxels.csv.gz', index=False)
-            del df_nodist
-
             save_start = time.time()
             df.to_pickle(f'{self.out_path}/{self.model_class}_{self.model_subpath}.pkl.gz')
             save_time = time.time() - save_start
