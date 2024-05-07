@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 import pandas as pd
 import gc
+import time
 from src import stats
 from src.stats import feature_scaler
 from deepjuice.alignment import TorchRidgeGCV, get_scoring_method, compute_rdm, compare_rdms
@@ -48,6 +49,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              run_bootstrapping=False,
                              stream_statistics=False,
                              grouping_func='grouped_average',
+                             batch_time=False,
                              alphas=[10.**power for power in np.arange(-5, 2)]):
 
     # Define a grouping function to average across the different captions
@@ -96,6 +98,9 @@ def get_benchmarking_results(benchmark, model, dataloader,
 
     # use a CUDA-capable device, if available, else: CPU
     print(cuda_device_report())
+
+    if batch_time:
+        start_batch_time = time.time()
 
     # define the feature extractor object
     if grouping_func == 'grouped_stack':
@@ -181,9 +186,15 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 del y_cv_train, y_cv_test
                 gc.collect()
                 torch.cuda.empty_cache()
+
+                if batch_time:
+                    end_batch_time = time.time()
+                    elapsed = end_batch_time - start_batch_time
+                    elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+                    return elapsed
             except:
-                print(
-                    f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
+                print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
+
 
     # Add training data to a dataframe
     results = benchmark.metadata.copy()

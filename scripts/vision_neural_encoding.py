@@ -25,6 +25,7 @@ class VisionNeuralEncoding:
         self.memory_limit = args.memory_limit
         self.memory_limit_ratio = args.memory_limit_ratio
         self.frame_handling = args.frame_handling
+        self.batch_time = args.batch_time
         frame_opts = ['first_frame', 'grouped_average', 'grouped_stack']
         if args.frame_handling not in frame_opts:
             raise ValueError("Invalid frame handling. Expected one of: %s" % frame_opts)
@@ -103,16 +104,26 @@ class VisionNeuralEncoding:
                                                     test_eval=self.test_eval,
                                                     grouping_func=self.grouping_func,
                                                     devices=['cuda:0'],
-                                                    memory_limit=self.memory_limit)
-                print('saving results')
-                results.to_pickle(self.out_file, compression='gzip')
-                print('Finished!')
+                                                    memory_limit=self.memory_limit,
+                                                    batch_time=self.batch_time)
+                if self.batch_time:
+                    # results will show the time it takes
+                    tools.send_slack(f"Finished: {self.process} {self.model_name}. Time for One batch on GPU = {results}", channel=self.user)
+                    end_time = time.time()
+                    elapsed = end_time - start_time
+                    elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+                    print(f'Finished in {elapsed}!')
+                    tools.send_slack(f'Finished: {self.process} {self.model_name}. Total Runtime = {elapsed}', channel=self.user)
+                else:
+                    print('saving results')
+                    results.to_pickle(self.out_file, compression='gzip')
+                    print('Finished!')
 
-                end_time = time.time()
-                elapsed = end_time - start_time
-                elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
-                print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
+                    end_time = time.time()
+                    elapsed = end_time - start_time
+                    elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+                    print(f'Finished in {elapsed}!')
+                    tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
         except Exception as err:
             print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
             tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
@@ -134,6 +145,7 @@ def main():
     parser.add_argument('--frame_handling', type=str, default='first_frame')
     parser.add_argument('--top_dir', '-top', type=str,
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
+    parser.add_argument('--batch_time', action=argparse.BooleanOptionalAction, default=False)
     args = parser.parse_args()
     VisionNeuralEncoding(args).run()
 
