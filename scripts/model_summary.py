@@ -88,7 +88,7 @@ class ModelSummary:
         print(vars(self))
         if 'Neural' in self.model_class:
             self.neural = True
-            if self.catgory_col is None:
+            if self.category_col is None:
                 print('No category column passed for neural data. Setting to "roi_name"')
                 self.category_col = 'roi_name'
                 self.categories = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS', 'aSTS', 'FFA', 'PPA']
