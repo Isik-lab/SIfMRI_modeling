@@ -50,6 +50,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              stream_statistics=False,
                              grouping_func='grouped_average',
                              batch_time=False,
+                             batch_size=False,
                              alphas=[10.**power for power in np.arange(-5, 2)]):
 
     # Define a grouping function to average across the different captions
@@ -112,6 +113,9 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                      memory_limit=memory_limit,
                                      batch_strategy='stack', flatten=True,
                                      **{'device': devices[0], 'output_device': devices[0]})
+
+    if batch_size:
+        return extractor.total_memory
 
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
@@ -190,7 +194,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
         if batch_time:
             end_batch_time = time.time()
             elapsed = end_batch_time - start_batch_time
-            elapsed = time.gmtime(elapsed)
+            elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
             return elapsed
 
     # Add training data to a dataframe
