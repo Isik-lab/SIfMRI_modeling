@@ -17,8 +17,8 @@ export HF_DATASETS_CACHE="${project_folder}/.cache/huggingface/hub"
 ml anaconda
 conda activate deepjuice
 
-echo "python language_behavior_encoding.py --model_uid $model --overwrite \
+echo "python language_behavior_encoding.py --model_uid $model \
     --top_dir $project_folder --user $user --perturb_func $func" 
     
-python language_behavior_encoding.py --model_uid $model --overwrite \
+python language_behavior_encoding.py --model_uid $model \
     --top_dir $project_folder --user $user --perturb_func $func
