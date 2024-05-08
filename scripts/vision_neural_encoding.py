@@ -121,8 +121,8 @@ class VisionNeuralEncoding:
                     save_timer.start()
                     results.to_pickle(self.out_file, compression='gzip')
                     save_elapsed = save_timer.elapse()
-                    timers['save': save_elapsed]
                     timers['benchmark_setup'] = benchmark_setup_elapsed
+                    timers['save': save_elapsed]
                     elapsed = run_timer.elapse()
                     print(f'Finished in {elapsed}!')
 
