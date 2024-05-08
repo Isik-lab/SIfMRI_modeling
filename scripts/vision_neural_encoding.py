@@ -121,7 +121,7 @@ class VisionNeuralEncoding:
 
                     tools.send_slack(f'Finished: {self.process} {self.model_name} - Total time =  {elapsed}', channel=self.user)
                     for key, value in timers.items():
-                        tools.send_slack(f'Finished: {self.process} {self.model_name} - {key} time = {value}', channel=self.user)
+                        tools.send_slack(f'Finished: {self.process} {self.model_name} - {key.title()} time = {value}', channel=self.user)
         except Exception as err:
             print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
             tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
