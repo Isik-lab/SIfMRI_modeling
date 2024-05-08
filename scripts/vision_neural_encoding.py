@@ -110,25 +110,19 @@ class VisionNeuralEncoding:
                                                     devices=['cuda:0'],
                                                     memory_limit=self.memory_limit)
 
-                if self.batch_time:
-                    elapsed = run_timer.elapse()
-                    # results will show the time it takes
-                    tools.send_slack(f"Finished: {self.process} {self.model_name}. Time for One batch on GPU = {results}", channel=self.user)
-                    tools.send_slack(f'Finished: {self.process} {self.model_name}. Total Runtime = {elapsed}', channel=self.user)
-                else:
-                    print('saving results')
-                    save_timer = tools.TimeBlock()
-                    save_timer.start()
-                    results.to_pickle(self.out_file, compression='gzip')
-                    save_elapsed = save_timer.elapse()
-                    timers['benchmark_setup'] = benchmark_setup_elapsed
-                    timers['save': save_elapsed]
-                    elapsed = run_timer.elapse()
-                    print(f'Finished in {elapsed}!')
+                print('saving results')
+                save_timer = tools.TimeBlock()
+                save_timer.start()
+                results.to_pickle(self.out_file, compression='gzip')
+                save_elapsed = save_timer.elapse()
+                timers['benchmark_setup'] = benchmark_setup_elapsed
+                timers['save'] = save_elapsed
+                elapsed = run_timer.elapse()
+                print(f'Finished in {elapsed}!')
 
-                    tools.send_slack(f'Finished: {self.process} {self.model_name} - Total time =  {elapsed} \nTimeBlock output:', channel=self.user)
-                    for key, value in timers.items():
-                        tools.send_slack(f'- {key.title()} time = {value}', channel=self.user)
+                tools.send_slack(f'Finished: {self.process} {self.model_name} - Total time =  {elapsed} \nTimeBlock output:', channel=self.user)
+                for key, value in timers.items():
+                    tools.send_slack(f'- {key.title()} time = {value}', channel=self.user)
         except Exception as err:
             print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
             tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
