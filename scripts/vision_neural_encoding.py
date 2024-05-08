@@ -25,7 +25,6 @@ class VisionNeuralEncoding:
         self.memory_limit = args.memory_limit
         self.memory_limit_ratio = args.memory_limit_ratio
         self.frame_handling = args.frame_handling
-        self.batch_time = args.batch_time
         frame_opts = ['first_frame', 'grouped_average', 'grouped_stack']
         if args.frame_handling not in frame_opts:
             raise ValueError("Invalid frame handling. Expected one of: %s" % frame_opts)
@@ -144,7 +143,6 @@ def main():
     parser.add_argument('--frame_handling', type=str, default='first_frame')
     parser.add_argument('--top_dir', '-top', type=str,
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
-    parser.add_argument('--batch_time', action=argparse.BooleanOptionalAction, default=False)
     args = parser.parse_args()
     VisionNeuralEncoding(args).run()
 
