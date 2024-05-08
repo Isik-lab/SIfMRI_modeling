@@ -13,4 +13,4 @@ total_tasks=$((num_models * num_funcs))
 echo "total number of tasks: " "$total_tasks" 
 
 # Submit the job array with the calculated total tasks
-sbatch --array=1-$total_tasks%1 batch_lm-beh_encoding_array.sh
+sbatch --array=1-$total_tasks%4 batch_lm-beh_encoding_array.sh
