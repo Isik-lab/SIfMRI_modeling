@@ -8,6 +8,7 @@ from tqdm import tqdm
 import pandas as pd
 import gc
 import time
+import src.tools as tools
 from src import stats
 from src.stats import feature_scaler
 from deepjuice.alignment import TorchRidgeGCV, get_scoring_method, compute_rdm, compare_rdms
@@ -51,6 +52,9 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              grouping_func='grouped_average',
                              batch_compute=False,
                              alphas=[10.**power for power in np.arange(-5, 2)]):
+
+    func_timer = tools.TimeBlock()
+    func_timer.start()
 
     # Define a grouping function to average across the different captions
     def grouped_average(tensor, batch_iter=None, **kwargs):
@@ -98,6 +102,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
 
     # use a CUDA-capable device, if available, else: CPU
     print(cuda_device_report())
+    train_timer = tools.TimeBlock()
+    train_timer.start()
 
     # define the feature extractor object
     if grouping_func == 'grouped_stack':
@@ -133,10 +139,14 @@ def get_benchmarking_results(benchmark, model, dataloader,
     scores_train_max = None
     results = []
     extractor_iterator = tqdm(extractor, desc='Extractor Steps')
+    setup_elapsed = func_timer.elapse()
+
     for batched_feature_maps in extractor_iterator:
-        print(batched_feature_maps)
         if batch_compute:
-            start_batch_time = time.time()
+            batch_timer = tools.TimeBlock()
+            batch_timer.start()
+
+        print(batched_feature_maps)
         feature_maps = batched_feature_maps.join_batches()
         feature_map_iterator = tqdm(feature_maps.items(), desc='CV Mapping Layer', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
@@ -195,15 +205,14 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
 
         if batch_compute:
-            end_batch_time = time.time()
-            elapsed = end_batch_time - start_batch_time
-            batch_time_str = time.strftime("%H:%M:%S", time.gmtime(elapsed))
-            batch_time = elapsed
+            batch_time_str = batch_timer.elapse(formatted=True)
+            batch_time = batch_timer.elapse(formatted=False)
             secs_per_gb = batch_time / batch_memory
             eta_for_total = secs_per_gb * total_memory
             row = [{'model_uid': model_name, 'batch_time': batch_time_str, 'batch_memory_gb': batch_memory, 'total_memory_gb': total_memory, 'secs_per_gb': secs_per_gb, 'secs_for_total': eta_for_total}]
             df_row = pd.DataFrame(row)
             return df_row
+
 
     # Add training data to a dataframe
     results = benchmark.metadata.copy()
@@ -221,7 +230,11 @@ def get_benchmarking_results(benchmark, model, dataloader,
     torch.cuda.empty_cache()
     memory_stats(devices)
 
+    train_elapsed = train_timer.elapse()
+
     if test_eval:
+        test_timer = tools.TimeBlock()
+        test_timer.start()
         print('\n\n\n\n\nRunning evaluation in the test set')
         print('resting extractor')
         # define the feature extractor object
@@ -284,6 +297,10 @@ def get_benchmarking_results(benchmark, model, dataloader,
                     print(
                         f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
 
+        test_elapsed = test_timer.elapse()
+        stats_timer = tools.TimeBlock()
+        stats_timer.start()
+
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max
         results['r_null_dist'] = np.nan
@@ -315,8 +332,15 @@ def get_benchmarking_results(benchmark, model, dataloader,
             for idx, r_var_val in zip(roi_indices, r_var):
                 results.at[idx, 'r_var_dist'] = r_var_val
 
+        stats_elapsed = stats_timer.elapse()
+
     print(results.head(20))
-    return results
+
+    # Timers
+    func_elapsed = func_timer.elapse()
+    timers = {'setup': setup_elapsed, 'train': train_elapsed, 'test': test_elapsed, 'stats': stats_elapsed,
+              'func': func_elapsed}
+    return results, timers
 
 
 def get_video_benchmarking_results(benchmark, feature_extractor,

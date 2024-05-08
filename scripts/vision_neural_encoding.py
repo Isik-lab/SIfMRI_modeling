@@ -75,7 +75,9 @@ class VisionNeuralEncoding:
                 # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')
             else:
-                start_time = time.time()
+                run_timer = tools.TimeBlock()
+                run_timer.start()
+
                 tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
                 benchmark = self.load_fmri()
                 # Break the videos into frames for averaging
@@ -99,31 +101,27 @@ class VisionNeuralEncoding:
                 benchmark.response_data = benchmark.response_data[stim_idx]
 
                 print('running regressions')
-                results = get_benchmarking_results(benchmark, model, dataloader,
+                results, timers = get_benchmarking_results(benchmark, model, dataloader,
                                                     model_name=self.model_name,
                                                     test_eval=self.test_eval,
                                                     grouping_func=self.grouping_func,
                                                     devices=['cuda:0'],
                                                     memory_limit=self.memory_limit,
                                                     batch_time=self.batch_time)
+
+                elapsed = run_timer.elapse()
                 if self.batch_time:
                     # results will show the time it takes
                     tools.send_slack(f"Finished: {self.process} {self.model_name}. Time for One batch on GPU = {results}", channel=self.user)
-                    end_time = time.time()
-                    elapsed = end_time - start_time
-                    elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
-                    print(f'Finished in {elapsed}!')
                     tools.send_slack(f'Finished: {self.process} {self.model_name}. Total Runtime = {elapsed}', channel=self.user)
                 else:
                     print('saving results')
                     results.to_pickle(self.out_file, compression='gzip')
-                    print('Finished!')
-
-                    end_time = time.time()
-                    elapsed = end_time - start_time
-                    elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                     print(f'Finished in {elapsed}!')
-                    tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
+
+                    tools.send_slack(f'Finished: {self.process} {self.model_name} - Total time =  {elapsed}', channel=self.user)
+                    for key, value in timers.items():
+                        tools.send_slack(f'Finished: {self.process} {self.model_name} - {key} time = {value}', channel=self.user)
         except Exception as err:
             print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
             tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
@@ -148,7 +146,6 @@ def main():
     parser.add_argument('--batch_time', action=argparse.BooleanOptionalAction, default=False)
     args = parser.parse_args()
     VisionNeuralEncoding(args).run()
-
 
 if __name__ == '__main__':
     main()
