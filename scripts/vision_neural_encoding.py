@@ -77,8 +77,8 @@ class VisionNeuralEncoding:
             else:
                 run_timer = tools.TimeBlock()
                 run_timer.start()
-
                 tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
+
                 benchmark = self.load_fmri()
                 # Break the videos into frames for averaging
                 frame_data = ops.visual_events(benchmark.stimulus_data,
@@ -100,6 +100,8 @@ class VisionNeuralEncoding:
                 benchmark.stimulus_data.reset_index(drop=True, inplace=True)
                 benchmark.response_data = benchmark.response_data[stim_idx]
 
+                benchmark_setup_elapsed = run_timer.elapse()
+
                 print('running regressions')
                 results, timers = get_benchmarking_results(benchmark, model, dataloader,
                                                     model_name=self.model_name,
@@ -108,19 +110,25 @@ class VisionNeuralEncoding:
                                                     devices=['cuda:0'],
                                                     memory_limit=self.memory_limit)
 
-                elapsed = run_timer.elapse()
                 if self.batch_time:
+                    elapsed = run_timer.elapse()
                     # results will show the time it takes
                     tools.send_slack(f"Finished: {self.process} {self.model_name}. Time for One batch on GPU = {results}", channel=self.user)
                     tools.send_slack(f'Finished: {self.process} {self.model_name}. Total Runtime = {elapsed}', channel=self.user)
                 else:
                     print('saving results')
+                    save_timer = tools.TimeBlock()
+                    save_timer.start()
                     results.to_pickle(self.out_file, compression='gzip')
+                    save_elapsed = save_timer.elapse()
+                    timers['save': save_elapsed]
+                    timers['benchmark_setup'] = benchmark_setup_elapsed
+                    elapsed = run_timer.elapse()
                     print(f'Finished in {elapsed}!')
 
-                    tools.send_slack(f'Finished: {self.process} {self.model_name} - Total time =  {elapsed}', channel=self.user)
+                    tools.send_slack(f'Finished: {self.process} {self.model_name} - Total time =  {elapsed} \nTimeBlock output:', channel=self.user)
                     for key, value in timers.items():
-                        tools.send_slack(f'Finished: {self.process} {self.model_name} - {key.title()} time = {value}', channel=self.user)
+                        tools.send_slack(f'- {key.title()} time = {value}', channel=self.user)
         except Exception as err:
             print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
             tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
