@@ -106,8 +106,7 @@ class VisionNeuralEncoding:
                                                     test_eval=self.test_eval,
                                                     grouping_func=self.grouping_func,
                                                     devices=['cuda:0'],
-                                                    memory_limit=self.memory_limit,
-                                                    batch_time=self.batch_time)
+                                                    memory_limit=self.memory_limit)
 
                 elapsed = run_timer.elapse()
                 if self.batch_time:
