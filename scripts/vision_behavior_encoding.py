@@ -93,13 +93,14 @@ class VisionBehaviorEncoding:
                 print(dataloader.batch_data.head(20))
 
                 # Perform all the regressions
-                results = get_benchmarking_results(benchmark, model, dataloader,
+                results, func_elapsed = get_benchmarking_results(benchmark, model, dataloader,
                                                     target_features=target_features,
                                                     model_name=self.model_name,
                                                     grouping_func=self.grouping_func,
                                                     memory_limit=self.memory_limit)
 
                 # Save
+                tools.send_slack(f'Finished: {self.process} {self.model_name} func elapsed = {func_elapsed}', channel=self.user)
                 print('saving results')
                 results.to_pickle(self.out_file, compression='gzip')
                 print('Finished!')

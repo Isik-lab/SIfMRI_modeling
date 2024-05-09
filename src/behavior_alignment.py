@@ -19,6 +19,7 @@ from deepjuice.extraction import FeatureExtractor
 from deepjuice.procedural.cv_ops import CVIndexer
 from deepjuice.alignment import TorchRidgeGCV
 from deepjuice.reduction import compute_srp
+import src.tools as tools
 
 
 def get_benchmarking_results(benchmark, model, dataloader,
@@ -31,6 +32,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
                             grouping_func='grouped_average',
                             alphas=[10.**power for power in np.arange(-5, 2)]):
 
+    func_timer = tools.TimeBlock()
+    func_timer.start()
     # Define a grouping function to average across the different captions
     def grouped_average(tensor, batch_iter=None, **kwargs):
         if batch_iter is None: return tensor # as is
@@ -193,7 +196,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 torch.cuda.empty_cache()
             except:
                 print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
-    return pd.DataFrame(results)
+    func_elapsed = func_timer.elapse()
+    return pd.DataFrame(results), func_elapsed
 
 
 def get_video_benchmarking_results(benchmark, feature_extractor,
@@ -204,6 +208,7 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
                              model_name=None,
                              scale_y=True,
                              alphas=[10. ** power for power in np.arange(-5, 2)]):
+
 
     # use a CUDA-capable device, if available, else: CPU
     print(cuda_device_report())
