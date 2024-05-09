@@ -109,6 +109,14 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                      batch_strategy='stack', flatten=True,
                                      **{'device': devices[0], 'output_device': devices[0]})
 
+    if stream_statistics:
+        print('computing stream and roi statistics')
+        roi_indices = benchmark.metadata.index[(benchmark.metadata.stream_name != 'none') |
+                                                ( benchmark.metadata.roi_name != 'none')].to_numpy()
+        print(f'number of statistic indices = {len(roi_indices)}')
+    else:
+        roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
+
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
     score_func = get_scoring_method('pearsonr')
@@ -268,6 +276,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
         # Do permutation testing on voxels in ROIs
         # If stream_statistics also run the statistics in the stream ROIs
         if stream_statistics:
+            print('computing stream and roi statistics')
             roi_indices = benchmark.metadata.index[(benchmark.metadata.stream_name != 'none') |
                                                     ( benchmark.metadata.roi_name != 'none')].to_numpy()
         else:

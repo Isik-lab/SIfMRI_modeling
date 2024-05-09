@@ -23,4 +23,4 @@ echo "python language_behavior_encoding.py --model_uid $model --overwrite \
 python language_neural_encoding.py --model_uid $model \
     --test_eval --perturb_func $func \
     --top_dir $project_folder \
-    --user $user
+    --user $user --stream_statistics
