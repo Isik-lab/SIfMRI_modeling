@@ -30,6 +30,7 @@ class LanguageNeuralEncoding:
         self.memory_limit_ratio = args.memory_limit_ratio
         self.data_dir = f'{args.top_dir}/data'
         self.cache = f'{args.top_dir}/.cache'
+        self.stream_statistics = args.stream_statistics
         torch.hub.set_dir(self.cache)
         self.model_name = self.model_uid.replace('/', '_')
 
@@ -103,6 +104,7 @@ class LanguageNeuralEncoding:
                 results = get_benchmarking_results(benchmark, model, dataloader,
                                                    model_name=self.model_name,
                                                    memory_limit=self.memory_limit,
+                                                   stream_statistics=self.stream_statistics,
                                                    test_eval=self.test_eval)
                 print('saving results')
                 results.to_csv(self.out_file.replace('.pkl', 'nodist.csv'), index=False, compression='gzip')
@@ -132,6 +134,7 @@ def main():
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--perturb_func', type=str, default='none')
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('--stream_statistics', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--top_dir', '-data', type=str,
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
     args = parser.parse_args()
