@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Parameters
-model_file="../data/raw/model_list/beh_lang_models.csv"
-func_file="../data/raw/model_list/beh_perturb.csv"
+model_file="../data/raw/model_list/language_models.csv"
+func_file="../data/raw/model_list/perturbations.csv"
 num_funcs=$(($(wc -l < "$func_file") - 1))  # Subtract 1 for the header
 num_models=$(($(wc -l < "$model_file") - 1))  # Subtract 1 for the header
 echo "number of functions: $num_funcs" 

@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH --time=4:00:00
-#SBATCH --partition=ica100
+#SBATCH --partition=ica100,a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
 #SBATCH --mem-per-cpu=10G
@@ -10,8 +10,8 @@
 #SBATCH --output=slurm-%A_%a.out
 
 # Parameters
-file="../data/raw/model_list/beh_lang_models.csv"
-funcs_file="../data/raw/model_list/beh_perturb.csv"
+file="../data/raw/model_list/language_models.csv"
+funcs_file="../data/raw/model_list/perturbations.csv"
 
 # Read function names from CSV, skipping the header
 mapfile -t funcs < <(tail -n +2 "$funcs_file")
