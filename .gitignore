@@ -1,6 +1,7 @@
 .cache/*
 data/*
 reports/presentations/*
+reports/figures/WholeBrainPlotting/*
 reports/writing/*
 scripts/slurm*out
 scripts/model_uid.csv
