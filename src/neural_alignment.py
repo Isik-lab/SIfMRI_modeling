@@ -53,9 +53,6 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              batch_compute=False,
                              alphas=[10.**power for power in np.arange(-5, 2)]):
 
-    func_timer = tools.TimeBlock()
-    func_timer.start()
-
     # Define a grouping function to average across the different captions
     def grouped_average(tensor, batch_iter=None, **kwargs):
         if batch_iter is None: return tensor  # as is
@@ -139,7 +136,6 @@ def get_benchmarking_results(benchmark, model, dataloader,
     scores_train_max = None
     results = []
     extractor_iterator = tqdm(extractor, desc='Extractor Steps')
-    setup_elapsed = func_timer.elapse()
 
     for batched_feature_maps in extractor_iterator:
         if batch_compute:
@@ -337,9 +333,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
     print(results.head(20))
 
     # Timers
-    func_elapsed = func_timer.elapse()
-    timers = {'setup': setup_elapsed, 'train': train_elapsed, 'test': test_elapsed, 'stats': stats_elapsed,
-              'func': func_elapsed}
+    timers = {'train': train_elapsed, 'test': test_elapsed, 'stats': stats_elapsed}
     return results, timers
 
 

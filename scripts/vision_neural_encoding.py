@@ -102,12 +102,15 @@ class VisionNeuralEncoding:
                 benchmark_setup_elapsed = run_timer.elapse()
 
                 print('running regressions')
+                func_timer = tools.TimeBlock()
+                func_timer.start()
                 results, timers = get_benchmarking_results(benchmark, model, dataloader,
                                                     model_name=self.model_name,
                                                     test_eval=self.test_eval,
                                                     grouping_func=self.grouping_func,
                                                     devices=['cuda:0'],
                                                     memory_limit=self.memory_limit)
+                func_elapsed = func_timer.elapse()
 
                 print('saving results')
                 save_timer = tools.TimeBlock()
@@ -116,6 +119,7 @@ class VisionNeuralEncoding:
                 save_elapsed = save_timer.elapse()
                 timers['benchmark_setup'] = benchmark_setup_elapsed
                 timers['save'] = save_elapsed
+                timers['func'] = func_elapsed
                 elapsed = run_timer.elapse()
                 print(f'Finished in {elapsed}!')
 

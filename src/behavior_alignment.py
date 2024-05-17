@@ -32,8 +32,6 @@ def get_benchmarking_results(benchmark, model, dataloader,
                             grouping_func='grouped_average',
                             alphas=[10.**power for power in np.arange(-5, 2)]):
 
-    func_timer = tools.TimeBlock()
-    func_timer.start()
     # Define a grouping function to average across the different captions
     def grouped_average(tensor, batch_iter=None, **kwargs):
         if batch_iter is None: return tensor # as is
@@ -196,8 +194,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 torch.cuda.empty_cache()
             except:
                 print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
-    func_elapsed = func_timer.elapse()
-    return pd.DataFrame(results), func_elapsed
+    return pd.DataFrame(results)
 
 
 def get_video_benchmarking_results(benchmark, feature_extractor,

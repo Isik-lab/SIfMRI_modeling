@@ -93,14 +93,16 @@ class VisionBehaviorEncoding:
                 print(dataloader.batch_data.head(20))
 
                 # Perform all the regressions
-                results, func_elapsed = get_benchmarking_results(benchmark, model, dataloader,
+                func_timer = tools.TimeBlock()
+                func_timer.start()
+                results = get_benchmarking_results(benchmark, model, dataloader,
                                                     target_features=target_features,
                                                     model_name=self.model_name,
                                                     grouping_func=self.grouping_func,
                                                     memory_limit=self.memory_limit)
+                func_elapsed = func_timer.elapse()
 
                 # Save
-                tools.send_slack(f'Finished: {self.process} {self.model_name} func elapsed = {func_elapsed}', channel=self.user)
                 print('saving results')
                 results.to_pickle(self.out_file, compression='gzip')
                 print('Finished!')
@@ -110,6 +112,7 @@ class VisionBehaviorEncoding:
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
                 tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
+                tools.send_slack(f'- func time = {func_elapsed}', channel=self.user)
         except Exception as err:
             print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
             tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
