@@ -1,5 +1,14 @@
 #!/bin/bash -l
 
+#SBATCH --time=4:00:00
+#SBATCH --partition=ica100
+#SBATCH --account=lisik3_gpu
+#SBATCH --nodes=1
+#SBATCH --mem-per-cpu=10G
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:2
+#SBATCH --output=slurm-%A_%a.out
+
 model=${1:-slowfast_r50}
 echo "model name= $model"
 

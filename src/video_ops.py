@@ -2,7 +2,7 @@ import torch
 import av
 import numpy as np
 import pandas as pd
-from deepjuice.procedural.datasets import CustomData
+from deepjuice.procedural.datasets import CustomDataset
 from torchvision.transforms import Compose, Lambda
 from torchvision.transforms._transforms_video import NormalizeVideo
 from pytorchvideo.data.encoded_video import EncodedVideo
@@ -13,12 +13,11 @@ from pytorchvideo.transforms import (
     UniformCropVideo
 )
 from torch.utils.data import DataLoader
-from transformers import AutoImageProcessor, AutoProcessor, XCLIPVisionModel, VideoMAEModel, \
-    TimesformerForVideoClassification
+from transformers import AutoImageProcessor, AutoProcessor, VideoMAEModel, TimesformerForVideoClassification, AutoModel
 import transformers
 
 
-class VideoData(CustomData):
+class VideoData(CustomDataset):
     def __init__(self, video_paths, clip_duration,
                  transforms=None, device='cuda'):
         self.videos = video_paths
@@ -33,7 +32,7 @@ class VideoData(CustomData):
             self.model_type = 'normal'
         self.data = self.videos
 
-    def xclip_read_video_pyav(container, indices):
+    def xclip_read_video_pyav(self, container, indices):
         '''
         Decode the video with PyAV decoder.
         Args:
@@ -53,7 +52,7 @@ class VideoData(CustomData):
                 frames.append(frame)
         return np.stack([x.to_ndarray(format="rgb24") for x in frames])
 
-    def xclip_sample_frame_indices(clip_len, frame_sample_rate, seg_len):
+    def xclip_sample_frame_indices(self, clip_len, frame_sample_rate, seg_len):
         '''
         Sample a given number of frame indices from the video.
         Args:
@@ -70,11 +69,10 @@ class VideoData(CustomData):
         indices = np.clip(indices, start_idx, end_idx - 1).astype(np.int64)
         return indices
 
-
     def __getitem__(self, index):
         if self.model_type == 'xclip':
             container = av.open(self.videos[index])
-            indices = sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
+            indices = self.xclip_sample_frame_indices(clip_len=8, frame_sample_rate=5, seg_len=container.streams.video[0].frames)
             video = self.xclip_read_video_pyav(container, indices)
 
             processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
@@ -83,9 +81,10 @@ class VideoData(CustomData):
                 text=["talking"],
                 videos=list(video),
                 return_tensors="pt",
-                padding=True,
             )
 
+            inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
+            inputs['attention_mask'] = inputs['attention_mask'].squeeze(0)
             inputs = inputs.to(self.device)
             return inputs
         elif self.model_type == 'transformer':
@@ -445,7 +444,7 @@ def get_model(model_name):
     if model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
         model = torch.hub.load("facebookresearch/pytorchvideo", model=model_name, pretrained=True).to("cuda").eval()
     elif model_name.lower() == 'xclip-base-patch32':
-        model = XCLIPVisionModel.from_pretrained("microsoft/xclip-base-patch32")
+        model = AutoModel.from_pretrained("microsoft/xclip-base-patch32")
     elif model_name.lower() == 'videomae_base_short':
         model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
     elif model_name.lower() == 'timesformer-base-finetuned-k400':

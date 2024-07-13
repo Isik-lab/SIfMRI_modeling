@@ -67,7 +67,7 @@ class VideoNeuralEncoding:
                     return model(x)
 
                 def xclip_forward(model, x):
-                    return model(*x)
+                    return model(**x)
 
                 def transform_forward(model, x):
                     return model(**x)
