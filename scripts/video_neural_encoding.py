@@ -59,15 +59,22 @@ class VideoNeuralEncoding:
 
                 preprocess, clip_duration = video_ops.get_transform(self.model_name)
                 print(f'{preprocess}')
+
+                kwargs = {"variant": 'vision'}
+                # kwargs = {"variant": 'mm'}
                 print(f"Loading dataloader...")
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
-                                                        clip_duration, preprocess, batch_size=batch_size)
+                                                        clip_duration, preprocess, batch_size=batch_size, **kwargs)
 
                 def custom_forward(model, x):
                     return model(x)
 
-                def xclip_forward(model, x):
+                def xclip_mm_fwd(model, x):
                     return model(**x)
+
+                def xclip_vision_fwd(model, inputs):
+                    inputs = inputs.squeeze(0)
+                    return model(inputs)
 
                 def transform_forward(model, x):
                     return model(**x)

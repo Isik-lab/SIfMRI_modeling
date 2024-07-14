@@ -19,74 +19,53 @@ import transformers
 
 class VideoData(CustomDataset):
     def __init__(self, video_paths, clip_duration,
-                 transforms=None, device='cuda'):
+                 transforms=None, device='cuda', **kwargs):
         self.videos = video_paths
         self.clip_duration = clip_duration
         self.device = device
         self.transforms = transforms
+        self.variant = kwargs.get('variant')
         if isinstance(transforms, transformers.models.x_clip.processing_x_clip.XCLIPProcessor):
-            self.model_type = 'xclip'
+            if self.variant == 'mm':
+                self.model_type = 'xclip_mm'
+            elif self.variant == 'vision':
+                self.model_type = 'xclip_vision'
         elif isinstance(transforms, transformers.models.videomae.image_processing_videomae.VideoMAEImageProcessor):
             self.model_type = 'transformer'
         else:
             self.model_type = 'normal'
         self.data = self.videos
 
-    def xclip_read_video_pyav(self, container, indices):
-        '''
-        Decode the video with PyAV decoder.
-        Args:
-            container (`av.container.input.InputContainer`): PyAV container.
-            indices (`List[int]`): List of frame indices to decode.
-        Returns:
-            result (np.ndarray): np array of decoded frames of shape (num_frames, height, width, 3).
-        '''
-        frames = []
-        container.seek(0)
-        start_index = indices[0]
-        end_index = indices[-1]
-        for i, frame in enumerate(container.decode(video=0)):
-            if i > end_index:
-                break
-            if i >= start_index and i in indices:
-                frames.append(frame)
-        return np.stack([x.to_ndarray(format="rgb24") for x in frames])
-
-    def xclip_sample_frame_indices(self, clip_len, frame_sample_rate, seg_len):
-        '''
-        Sample a given number of frame indices from the video.
-        Args:
-            clip_len (`int`): Total number of frames to sample.
-            frame_sample_rate (`int`): Sample every n-th frame.
-            seg_len (`int`): Maximum allowed index of sample's last frame.
-        Returns:
-            indices (`List[int]`): List of sampled frame indices
-        '''
-        converted_len = int(clip_len * frame_sample_rate)
-        end_idx = np.random.randint(converted_len, seg_len)
-        start_idx = end_idx - converted_len
-        indices = np.linspace(start_idx, end_idx, num=clip_len)
-        indices = np.clip(indices, start_idx, end_idx - 1).astype(np.int64)
-        return indices
-
     def __getitem__(self, index):
-        if self.model_type == 'xclip':
+        if self.model_type == 'xclip_vision':
+            # sample 8 frames
             container = av.open(self.videos[index])
-            indices = self.xclip_sample_frame_indices(clip_len=8, frame_sample_rate=5, seg_len=container.streams.video[0].frames)
-            video = self.xclip_read_video_pyav(container, indices)
-
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1,
+                                                      seg_len=container.streams.video[0].frames)
+            video = self.read_video_pyav(container, indices)
             processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
+            pixel_values = processor(videos=list(video), return_tensors="pt").pixel_values
+            batch_size, num_frames, num_channels, height, width = pixel_values.shape
+            inputs = pixel_values.reshape(-1, num_channels, height, width)
+            inputs = inputs.squeeze(0)
+            inputs = inputs.to(self.device)
+            return inputs
 
+        elif self.model_type == 'xclip_mm':
+            container = av.open(self.videos[index])
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=5, seg_len=container.streams.video[0].frames)
+            video = self.read_video_pyav(container, indices)
+            processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
             inputs = processor(
-                text=["talking"],
+                text=["talking together", "walking together", "eating together"],
                 videos=list(video),
                 return_tensors="pt",
             )
-
             inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
             inputs['attention_mask'] = inputs['attention_mask'].squeeze(0)
             inputs = inputs.to(self.device)
             return inputs
+
         elif self.model_type == 'transformer':
             container = av.open(self.videos[index])
             indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
