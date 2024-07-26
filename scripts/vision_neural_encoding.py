@@ -60,7 +60,7 @@ class VisionNeuralEncoding:
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
         Path(f'{self.data_dir}/interim/{self.process}/{self.frame_handling}').mkdir(parents=True, exist_ok=True)
-        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.frame_handling}/model-{self.model_name}.pkl.gz'
+        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.frame_handling}/model-{self.model_name}.parquet'
 
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
@@ -105,7 +105,7 @@ class VisionNeuralEncoding:
                                                     devices=['cuda:0'],
                                                     memory_limit=self.memory_limit)
                 print('saving results')
-                results.to_pickle(self.out_file, compression='gzip')
+                results.to_parquet(self.out_file)
                 print('Finished!')
 
                 end_time = time.time()
