@@ -7,6 +7,8 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 import pandas as pd
 import gc
+import time
+import src.tools as tools
 from src import stats
 from src.stats import feature_scaler
 from deepjuice.alignment import TorchRidgeGCV, get_scoring_method, compute_rdm, compare_rdms
@@ -45,9 +47,12 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              model_name=None,
                              scale_y=True,
                              test_eval=False,
+                             run_bootstrapping=False,
+                             stream_statistics=False,
                              grouping_func='grouped_average',
-                             run_stats=True,
-                             alphas=[10. ** power for power in np.arange(-5, 2)]):
+                             batch_compute=False,
+                             alphas=[10.**power for power in np.arange(-5, 2)]):
+
     # Define a grouping function to average across the different captions
     def grouped_average(tensor, batch_iter=None, **kwargs):
         if batch_iter is None: return tensor  # as is
@@ -94,6 +99,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
 
     # use a CUDA-capable device, if available, else: CPU
     print(cuda_device_report())
+    train_timer = tools.TimeBlock()
+    train_timer.start()
 
     # define the feature extractor object
     if grouping_func == 'grouped_stack':
@@ -101,15 +108,19 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                      tensor_fn=grouped_stack,
                                      memory_limit=memory_limit,
                                      batch_strategy='stack', flatten=True,
-                                     exclude_oversize=True,
                                      **{'device': devices[0], 'output_device': devices[0]})
     else:  # grouping_func == 'grouped_average':
         extractor = FeatureExtractor(model, dataloader,
                                      tensor_fn=grouped_average,
                                      memory_limit=memory_limit,
                                      batch_strategy='stack', flatten=True,
-                                     exclude_oversize=True,
                                      **{'device': devices[0], 'output_device': devices[0]})
+
+    if batch_compute:
+        total_memory = extractor.total_memory
+        total_memory = int(float(total_memory.split(' ')[0]))
+        batch_memory = extractor.batch_memory[0]
+        batch_memory = int(float(batch_memory.split(' ')[0]))
 
     # initialize pipe and kfold splitter
     cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_seed)
@@ -125,7 +136,12 @@ def get_benchmarking_results(benchmark, model, dataloader,
     scores_train_max = None
     results = []
     extractor_iterator = tqdm(extractor, desc='Extractor Steps')
+
     for batched_feature_maps in extractor_iterator:
+        if batch_compute:
+            batch_timer = tools.TimeBlock()
+            batch_timer.start()
+
         print(batched_feature_maps)
         feature_maps = batched_feature_maps.join_batches()
         feature_map_iterator = tqdm(feature_maps.items(), desc='CV Mapping Layer', leave=False)
@@ -161,8 +177,7 @@ def get_benchmarking_results(benchmark, model, dataloader,
                     y_cv_hat = pipe.predict(X_cv_test)
                     y_cv_pred.append(y_cv_hat)
                     y_cv_true.append(y_cv_test)
-                scores_train = score_func(torch.cat(y_cv_pred), torch.cat(y_cv_true))  # Get the CV training scores
-                scores_train = scores_train.cpu().detach().numpy()
+                scores_train = score_func(torch.cat(y_cv_pred), torch.cat(y_cv_true)).cpu().detach().numpy() # Get the CV training scores 
 
                 if scores_train_max is None:
                     scores_train_max = scores_train.copy()
@@ -183,8 +198,17 @@ def get_benchmarking_results(benchmark, model, dataloader,
                 gc.collect()
                 torch.cuda.empty_cache()
             except:
-                print(
-                    f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
+                print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
+
+        if batch_compute:
+            batch_time_str = batch_timer.elapse(formatted=True)
+            batch_time = batch_timer.elapse(formatted=False)
+            secs_per_gb = batch_time / batch_memory
+            eta_for_total = secs_per_gb * total_memory
+            row = [{'model_uid': model_name, 'batch_time': batch_time_str, 'batch_memory_gb': batch_memory, 'total_memory_gb': total_memory, 'secs_per_gb': secs_per_gb, 'secs_for_total': eta_for_total}]
+            df_row = pd.DataFrame(row)
+            return df_row
+
 
     # Add training data to a dataframe
     results = benchmark.metadata.copy()
@@ -202,30 +226,30 @@ def get_benchmarking_results(benchmark, model, dataloader,
     torch.cuda.empty_cache()
     memory_stats(devices)
 
+    train_elapsed = train_timer.elapse()
+
     if test_eval:
+        test_timer = tools.TimeBlock()
+        test_timer.start()
         print('\n\n\n\n\nRunning evaluation in the test set')
         print('resting extractor')
         # define the feature extractor object
         if grouping_func == 'grouped_stack':
             extractor = FeatureExtractor(model, dataloader,
-                                         tensor_fn=grouped_stack,
-                                         memory_limit=memory_limit,
-                                         batch_strategy='stack', flatten=True,
-                                         exclude_oversize=True,
-                                         **{'device': devices[0], 'output_device': devices[0]})
-        else:  # grouping_func == 'grouped_average':
+                                        tensor_fn=grouped_stack,
+                                        memory_limit=memory_limit,
+                                        batch_strategy='stack', flatten=True,
+                                        **{'device': devices[0], 'output_device': devices[0]})
+        else:# grouping_func == 'grouped_average':
             extractor = FeatureExtractor(model, dataloader,
-                                         tensor_fn=grouped_average,
-                                         memory_limit=memory_limit,
-                                         batch_strategy='stack', flatten=True,
-                                         exclude_oversize=True,
-                                         **{'device': devices[0], 'output_device': devices[0]})
+                                        tensor_fn=grouped_average,
+                                        memory_limit=memory_limit,
+                                        batch_strategy='stack', flatten=True,
+                                        **{'device': devices[0], 'output_device': devices[0]})
 
         print('resetting y')
-        y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(
-            devices[-1])
-        y_test = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(
-            devices[-1])
+        y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1])
+        y_test = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['test']]).to(torch.float32).to(devices[-1])
         if scale_y:
             y_train, y_test = feature_scaler(y_train, y_test)
 
@@ -269,31 +293,48 @@ def get_benchmarking_results(benchmark, model, dataloader,
                     print(
                         f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
 
+        test_elapsed = test_timer.elapse()
+        stats_timer = tools.TimeBlock()
+        stats_timer.start()
+
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max
         results['r_null_dist'] = np.nan
-        results['r_var_dist'] = np.nan
         results['r_null_dist'] = results['r_null_dist'].astype('object')
-        results['r_var_dist'] = results['r_var_dist'].astype('object')
 
-        if run_stats:
-            # Do permutation testing on voxels in ROIs
+        # Do permutation testing on voxels in ROIs
+        # If stream_statistics also run the statistics in the stream ROIs
+        if stream_statistics:
+            roi_indices = benchmark.metadata.index[(benchmark.metadata.stream_name != 'none') |
+                                                    ( benchmark.metadata.roi_name != 'none')].to_numpy()
+        else:
             roi_indices = benchmark.metadata.index[benchmark.metadata.roi_name != 'none'].to_numpy()
-            print(type(roi_indices))
-            print(f'{y_test.shape=}')
-            print(f'{y_hat_max.shape=}')
-            r_null = stats.perm_gpu(y_test[:, roi_indices],
-                                    y_hat_max[:, roi_indices],
-                                    verbose=True).cpu().detach().numpy().T.tolist()
+        print(type(roi_indices))
+        print(f'{y_test.shape=}')
+        print(f'{y_hat_max.shape=}')
+        r_null = stats.perm_gpu(y_test[:, roi_indices],
+                                y_hat_max[:, roi_indices],
+                                verbose=True).cpu().detach().numpy().T.tolist()
+        for idx, r_null_val in tqdm(zip(roi_indices, r_null), desc='Permutation results to pandas'):
+            results.at[idx, 'r_null_dist'] = r_null_val
+
+        # Run the bootstrapping only if specified
+        if run_bootstrapping:
+            results['r_var_dist'] = np.nan
+            results['r_var_dist'] = results['r_var_dist'].astype('object')
             r_var = stats.bootstrap_gpu(y_test[:, roi_indices],
                                         y_hat[:, roi_indices],
                                         verbose=True).cpu().detach().numpy().T.tolist()
-            for idx, (r_null_val, r_var_val) in zip(roi_indices, zip(r_null, r_var)):
-                results.at[idx, 'r_null_dist'] = r_null_val
+            for idx, r_var_val in zip(roi_indices, r_var):
                 results.at[idx, 'r_var_dist'] = r_var_val
 
+        stats_elapsed = stats_timer.elapse()
+
     print(results.head(20))
-    return results
+
+    # Timers
+    timers = {'train': train_elapsed, 'test': test_elapsed, 'stats': stats_elapsed}
+    return results, timers
 
 
 def get_video_benchmarking_results(benchmark, feature_extractor,
@@ -322,9 +363,7 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
     scores_train_max = None
     results = []
     extractor_iterator = tqdm(feature_extractor, desc='Extractor Steps')
-    for batched_feature_maps in extractor_iterator:
-        print(batched_feature_maps)
-        feature_maps = batched_feature_maps.join_batches()
+    for feature_maps in extractor_iterator:
         feature_map_iterator = tqdm(feature_maps.items(), desc='CV Mapping Layer', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
             layer_index += 1  # one layer deeper in feature_maps
@@ -394,7 +433,7 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
     # Free up memory
     memory_stats(devices)
     y_hat_max = torch.zeros_like(y_cv_hat)
-    del y_train, y_cv_hat, feature_extractor
+    del y_train, y_cv_hat
     gc.collect()
     torch.cuda.empty_cache()
     memory_stats(devices)
@@ -412,9 +451,7 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
         scores_test_max = np.zeros_like(scores_train_max)
         layer_index = 0
         extractor_iterator = tqdm(feature_extractor, desc='Extractor Steps')
-        for batched_feature_maps in extractor_iterator:
-            print(batched_feature_maps)
-            feature_maps = batched_feature_maps.join_batches()
+        for feature_maps in extractor_iterator:
             feature_map_iterator = tqdm(feature_maps.items(), desc='Testing Mapping Layer', leave=False)
             for feature_map_uid, feature_map in feature_map_iterator:
                 layer_index += 1  # one layer deeper in feature_maps

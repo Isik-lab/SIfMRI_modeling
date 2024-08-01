@@ -22,4 +22,4 @@ fi
 
 echo $command
 # Execute the command
-# eval $command
+eval $command

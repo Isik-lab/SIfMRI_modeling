@@ -1,27 +1,33 @@
-#/home/emcmaho7/.conda/envs/deepjuice_video/bin/python
-from pathlib import Path
+# /Applications/anaconda3/envs/deepjuice/bin/python
+import torch
+import time
 import argparse
 import pandas as pd
 import os
-import time
 from src.mri import Benchmark
-from src import neural_alignment, tools, video_ops
-import torch
+from src import video_ops, behavior_alignment, tools
 from deepjuice.extraction import FeatureExtractor
+from pathlib import Path
 from deepjuice.systemops.devices import cuda_device_report
+from transformers import AutoModel, VideoMAEModel, TimesformerForVideoClassification, XCLIPVisionModel
+import av
+import torch
+from src.behavior_alignment import get_benchmarking_results
+from src.language_ops import parse_caption_data, get_model
+from src.language_ablation import perturb_captions
 
-class VideoNeuralEncoding:
+from transformers import AutoProcessor, AutoModel
+from huggingface_hub import hf_hub_download
+
+class VideoBehaviorEncoding:
     def __init__(self, args):
-        self.process = 'VideoNeuralEncoding'
+        self.process = 'MultiModalBehaviorEncoding'
         self.overwrite = args.overwrite
         self.model_name = args.model_name
         self.model_input = args.model_input
         self.data_dir = args.data_dir
         self.user = args.user
-        if self.model_input == 'videos':
-            self.extension = 'mp4'
-        else:
-            self.extension = 'png'
+        self.extension = 'mp4'
         print(vars(self))
         if torch.cuda.is_available():
             self.device = 'cuda'
@@ -30,61 +36,41 @@ class VideoNeuralEncoding:
         self.out_path = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}'
         self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.pkl.gz'
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
-    
-    def load_fmri(self):
-        metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
-        response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
-        stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
-        return Benchmark(metadata_, stimulus_data_, response_data_)
-    
+
+    def load_data(self):
+        return Benchmark(stimulus_data=f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
+
+    def get_model(self, model_name):
+        if model_name == 'xclip-base-patch32':
+            model = AutoModel.from_pretrained("microsoft/xclip-base-patch32")
+        else:
+            raise Exception(f"{model_name} is not implemented!")
+        return model
+
     def run(self):
         try:
             if os.path.exists(self.out_file) and not self.overwrite:
-                # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')
             else:
                 start_time = time.time()
-                tools.send_slack(f'Started: :video_camera: {self.process} - {self.model_name}...', channel=self.user)
-                print('Loading data...')
-                benchmark = self.load_fmri()
+                tools.send_slack(f'Started: {self.process} {self.model_name} on Rockfish...', channel=self.user)
+                # Load data and sort
+                benchmark = self.load_data()
                 benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
-                # benchmark.filter_stimulus(stimulus_set='train')
+                print(f'Loading target features...')
+                target_features = [col for col in benchmark.stimulus_data.columns if
+                                   ('rating-' in col) and ('indoor' not in col)]
 
                 print(f'Loading model {self.model_name}...')
-                model = video_ops.get_model(self.model_name)
-                if self.model_name == 'xclip-base-patch32':
-                    batch_size = 1
-                else:
-                    batch_size = 5
+                model = self.get_model(self.model_name)
 
-                preprocess, clip_duration = video_ops.get_transform(self.model_name)
-                print(f'{preprocess}')
-
-                kwargs = {"variant": 'vision'}
-                # kwargs = {"variant": 'mm'}
                 print(f"Loading dataloader...")
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
-                                                        clip_duration, preprocess, batch_size=batch_size, **kwargs)
-
-                def custom_forward(model, x):
-                    return model(x)
-
-                def xclip_mm_fwd(model, x):
+                                                        3, None, batch_size=5)
+                def xclip_forward(model, x):
                     return model(**x)
+                kwargs = {"forward_fn": xclip_forward}
 
-                def xclip_vision_fwd(model, inputs):
-                    inputs = inputs.squeeze(0)
-                    return model(inputs)
-
-                def transform_forward(model, x):
-                    return model(**x)
-
-                if self.model_name == 'timesformer-base-finetuned-k400':
-                    kwargs = {"forward_fn": transform_forward}
-                elif self.model_name == 'xclip-base-patch32':
-                    kwargs = {"forward_fn": xclip_forward}
-                else:
-                    kwargs = {"forward_fn": custom_forward}
 
                 # Calculate the memory limit and generate the feature_extractor
                 total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
@@ -96,20 +82,21 @@ class VideoNeuralEncoding:
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
                                                          flatten=True, progress=True, **kwargs)
 
+                # Perform all the regressions
                 print('Running regressions...')
-                results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, devices=['cuda:0'], model_name=self.model_name, test_eval=True)
-
-                print('Saving results')
+                results = behavior_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, target_features=target_features, model_name=self.model_name, devices=['cuda:0'])
+                print(results.head(20))
+                print('Saving results...')
                 results.to_pickle(self.out_file, compression='gzip')
 
                 end_time = time.time()
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: :video_camera: {self.process} - {self.model_name} in {elapsed} :white_check_mark:', channel=self.user)
+                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed} :baby-yoda:', channel=self.user)
         except Exception as err:
             print(err)
-            tools.send_slack(f'Error: :video_camera: {self.process} - {self.model_name} :x: Error = {err}', channel=self.user)
+            tools.send_slack(f'Error: {self.process} {self.model_name} Error = {err}', channel=self.user)
             raise err
 
 
@@ -121,14 +108,15 @@ def main():
     args, remaining_argv = parser.parse_known_args()
     user = args.user  # Get the user from the parsed known args
 
-    parser.add_argument('--model_name', type=str, default='No_Model')
+    parser.add_argument('--model_name', type=str, default='xclip-base-patch32')
     parser.add_argument('--model_input', type=str, default='videos')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')
-
+                        # default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
+                        # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
     args = parser.parse_args(remaining_argv)
-    VideoNeuralEncoding(args).run()
+    VideoBehaviorEncoding(args).run()
 
 
 if __name__ == '__main__':

@@ -1,12 +1,10 @@
 #!/bin/bash -l
 
-model=${1:-sentence-transformers/all-MiniLM-L6-v2}
-func=${2:-mask_nouns}
-echo "model name = $model"
-echo "function = $func"
+model=${1:-torchvision_alexnet_imagenet1k_v1}
+grouping=${2:-grouped_average}
+echo "model name= $model"
 
 user=$(whoami)
-echo "user = $user"
 project_folder="/home/$user/scratch4-lisik3/$user/SIfMRI_modeling"
 
 export HF_HOME="${project_folder}/.cache/huggingface/hub"
@@ -17,10 +15,8 @@ export HF_DATASETS_CACHE="${project_folder}/.cache/huggingface/hub"
 ml anaconda
 conda activate deepjuice
 
-echo "python language_behavior_encoding.py --model_uid $model --overwrite \
-    --top_dir $project_folder --user $user --perturb_func $func" 
-
-python language_neural_encoding.py --model_uid $model \
-    --test_eval --perturb_func $func \
+python calculate_batch_size.py --model_uid $model \
+    --test_eval --overwrite \
     --top_dir $project_folder \
+    --frame_handling $grouping \
     --user $user

@@ -74,8 +74,10 @@ class VisionNeuralEncoding:
                 # results = pd.read_csv(self.out_file)
                 print('Output file already exists. To run again pass --overwrite.')
             else:
-                start_time = time.time()
+                run_timer = tools.TimeBlock()
+                run_timer.start()
                 tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
+
                 benchmark = self.load_fmri()
                 # Break the videos into frames for averaging
                 frame_data = ops.visual_events(benchmark.stimulus_data,
@@ -114,22 +116,33 @@ class VisionNeuralEncoding:
                 benchmark.stimulus_data.reset_index(drop=True, inplace=True)
                 benchmark.response_data = benchmark.response_data[stim_idx]
 
+                benchmark_setup_elapsed = run_timer.elapse()
+
                 print('running regressions')
-                results = get_benchmarking_results(benchmark, model, dataloader,
+                func_timer = tools.TimeBlock()
+                func_timer.start()
+                results, timers = get_benchmarking_results(benchmark, model, dataloader,
                                                     model_name=self.model_name,
                                                     test_eval=self.test_eval,
                                                     grouping_func=self.grouping_func,
                                                     devices=['cuda:0'],
                                                     memory_limit=self.memory_limit)
-                print('saving results')
-                results.to_pickle(self.out_file, compression='gzip')
-                print('Finished!')
+                func_elapsed = func_timer.elapse()
 
-                end_time = time.time()
-                elapsed = end_time - start_time
-                elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+                print('saving results')
+                save_timer = tools.TimeBlock()
+                save_timer.start()
+                results.to_pickle(self.out_file, compression='gzip')
+                save_elapsed = save_timer.elapse()
+                timers['benchmark_setup'] = benchmark_setup_elapsed
+                timers['save'] = save_elapsed
+                timers['func'] = func_elapsed
+                elapsed = run_timer.elapse()
                 print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
+
+                tools.send_slack(f'Finished: {self.process} {self.model_name} - Total time =  {elapsed} \nTimeBlock output:', channel=self.user)
+                for key, value in timers.items():
+                    tools.send_slack(f'- {key.title()} time = {value}', channel=self.user)
         except Exception as err:
             print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
             tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
@@ -153,7 +166,6 @@ def main():
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
     args = parser.parse_args()
     VisionNeuralEncoding(args).run()
-
 
 if __name__ == '__main__':
     main()

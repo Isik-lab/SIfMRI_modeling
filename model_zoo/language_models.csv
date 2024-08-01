@@ -1,0 +1,25 @@
+Model UID
+sentence-transformers/all-MiniLM-L6-v2
+sentence-transformers/all-mpnet-base-v2
+sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+sentence-transformers/paraphrase-MiniLM-L6-v2
+sentence-transformers/LaBSE
+sentence-transformers/clip-ViT-B-32-multilingual-v1
+sentence-transformers/distiluse-base-multilingual-cased-v1
+sentence-transformers/multi-qa-MiniLM-L6-cos-v1
+sentence-transformers/paraphrase-multilingual-mpnet-base-v2
+sentence-transformers/stsb-distilroberta-base-v2
+sentence-transformers/all-MiniLM-L12-v2
+sentence-transformers/all-MiniLM-L6-v1
+sentence-transformers/all-distilroberta-v1
+sentence-transformers/all-mpnet-base-v1
+sentence-transformers/all-roberta-large-v1
+gpt2
+FacebookAI/xlm-roberta-large
+FacebookAI/roberta-large-mnli
+FacebookAI/roberta-base
+FacebookAI/xlm-roberta-base
+mixedbread-ai/mxbai-embed-large-v1
+mixedbread-ai/mxbai-colbert-large-v1
+mixedbread-ai/mxbai-embed-2d-large-v1
+mixedbread-ai/mxbai-embed-large-v1

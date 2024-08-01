@@ -1,0 +1,10 @@
+model_uid,model_name,architecture_type,architecture,train_task,train_data,task_cluster
+slowfast_r50,slowfast_r50,,Resnet50,,,
+x3d_xs,x3d_xs,,,,,
+x3d_s,x3d_s,,,,,
+x3d_m,x3d_m,,,,,
+slow_r50,slow_r50,,Resnet50,,,
+c2d_r50,c2d_r50,,Resnet50,,,
+i3d_r50,i3d_r50,,Resnet50,,,
+csn_r101,csn_r101,,,,,
+timesformer-base-finetuned-k400,timesformer-base-finetuned-k400,Transformer,,,,

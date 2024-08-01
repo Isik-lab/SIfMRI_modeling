@@ -25,19 +25,37 @@ def add_perturbation(file_, df_):
     return df_
 
 
-def neural_max(df_, rois):
+def get_max_score(group, col='train_score'):
+    return group.loc[group[col].idxmax()]
+
+
+def neural_max(df_, categories):
     # get average within subject first
     out_ = df_.groupby(['subj_id', 'roi_name', 'model_uid']).mean(numeric_only=True).reset_index()
     #now get average across subjects
     out_ = out_.groupby(['roi_name', 'model_uid']).mean(numeric_only=True).reset_index()
-    out_ = out_.loc[out_.roi_name.isin(rois)].reset_index(drop=True)
+    out_ = out_.loc[out_.roi_name.isin(categories)].reset_index(drop=True)
     out_ = pd.melt(out_, id_vars=["model_uid", "layer_index", "layer_relative_depth", "roi_name", "reliability"], 
                         value_vars=["train_score", "test_score"], 
                         var_name="set", value_name="score")
-    out_['roi_name'] = pd.Categorical(out_['roi_name'], categories=rois, ordered=True)
+    out_['roi_name'] = pd.Categorical(out_['roi_name'], categories=categories, ordered=True)
     out_['set'] = out_['set'].replace({'train_score': 'train', 'test_score': 'test'})
     out_['set'] = pd.Categorical(out_['set'], categories=['train', 'test'], ordered=True)
     out_['normalized_score'] = out_['score'] / out_['reliability']
+    return out_
+
+
+def behavior_max(df_, categories, formatting=True):
+    out_ = df_.groupby(['feature', 'model_uid']).apply(get_max_score).reset_index(drop=True)
+    if formatting:
+        rename_mapping = {orig: orig.replace('rating-', '').replace('_', ' ') for orig in out_.feature.unique()}
+        out_ = pd.melt(out_, id_vars=["model_uid", "model_layer", "model_layer_index", "feature"], 
+                            value_vars=["train_score", "test_score"], 
+                            var_name="set", value_name="score")
+        out_['feature'] = out_['feature'].replace(rename_mapping)
+        out_['feature'] = pd.Categorical(out_['feature'], categories=categories, ordered=True)
+        out_['set'] = out_['set'].replace({'train_score': 'train', 'test_score': 'test'})
+        out_['set'] = pd.Categorical(out_['set'], categories=['train', 'test'], ordered=True)
     return out_
 
 
@@ -58,30 +76,41 @@ def get_model_name(file_):
         return file_.split('model-')[-1].split('.')[0]
 
 
-class ModelROISummary:
+class ModelSummary:
     def __init__(self, args):
-        self.process = 'ModelROISummary'
+        self.process = 'ModelSummary'
         self.user = args.user
         self.model_class = args.model_class
         self.model_subpath = args.model_subpath
         self.voxel_id = 9539 #test voxel in EVC
         self.top_dir = f'{args.top_dir}/data/interim'
-        self.rois = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS', 'aSTS', 'FFA', 'PPA']
-
+        print(vars(self))
+        if 'Neural' in self.model_class:
+            self.neural = True
+            self.categories = ['EVC', 'MT', 'EBA', 'LOC', 'pSTS', 'aSTS', 'FFA', 'PPA']
+        else:
+            self.neural = False
+            self.categories = ['expanse', 'object', 
+                               'agent distance', 'facingness', 'joint action', 
+                               'communication', 'valence', 'arousal']
 
         self.out_path = f'{self.top_dir}/{self.process}'
         Path(self.out_path).mkdir(exist_ok=True, parents=True)
     
-    def load_files(self, files, add_perturbation=False):
+    def load_files(self, files, perturb_info=False):
         # Load the files and sum them up 
         df = []
         model_avg_score = []
         for file in tqdm(files, total=len(files), desc='Loading files'): 
             try: 
+                model_uid = get_model_name(file)
                 pkl = pd.read_pickle(file)
                 pkl.drop(columns=['r_var_dist', 'r_null_dist'], inplace=True)
-                pkl_mean = pkl.groupby('subj_id').mean(numeric_only=True).reset_index().mean(numeric_only=True)['test_score']
-                model_avg_score.append({'model_uid': get_model_name(file), 'avg_score': pkl_mean})
+                if self.neural:
+                    pkl_mean = pkl.groupby('subj_id').mean(numeric_only=True).reset_index().mean(numeric_only=True)['test_score']
+                else: 
+                    pkl_mean = behavior_max(pkl, self.categories, formatting=False).mean(numeric_only=True)['test_score']
+                model_avg_score.append({'model_uid': model_uid, 'avg_score': pkl_mean})
 
                 # Remove voxels not in an ROI
                 if 'roi_name' in pkl.columns.tolist():
@@ -91,13 +120,16 @@ class ModelROISummary:
                 if add_perturbation: 
                     pkl = add_perturbation(file, pkl)
                 pkl = add_model_class(file, pkl)
+                pkl['model_uid'] = model_uid
 
                 #Add to df list 
                 df.append(pkl)
-                n_final_files += 1 
-            except:
-                print(f'could not load {file}')
-        return pd.DataFrame(pkl), pd.DataFrame(model_avg_score)
+            except KeyboardInterrupt:
+                break
+                print("Program was stopped by user.")
+            except Exception as e:
+                print(f"An unexpected error occurred loading {file.split('/')[-1]}: {e}")
+        return pd.concat(df), pd.DataFrame(model_avg_score)
 
     def run(self): 
         try:
@@ -111,10 +143,15 @@ class ModelROISummary:
             print(f'{len(files)} files found')
 
             if 'Language' in self.model_class: 
-                df, model_avg_score = self.load_files(files, add_perturbation=True)
+                df, model_avg_score = self.load_files(files, perturb_info=True)
             else:
                 df, model_avg_score = self.load_files(files)
-            df = neural_max(df, self.rois)
+
+            if self.neural:
+                df = neural_max(df, self.categories)
+            else:
+                df = behavior_max(df, self.categories)
+            print(f'{df.head()=}')
 
             save_start = time.time()
             df.to_csv(f'{self.out_path}/{self.model_class}_{self.model_subpath}.csv.gz', index=False)
@@ -144,7 +181,7 @@ def main():
     parser.add_argument('--top_dir', '-data', type=str,
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
     args = parser.parse_args()
-    ModelROISummary(args).run()
+    ModelSummary(args).run()
 
 
 if __name__ == '__main__':

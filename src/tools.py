@@ -6,6 +6,7 @@ from tqdm import tqdm
 from scipy.spatial.distance import squareform
 import math
 from scipy.stats import spearmanr
+import time
 import torch
 from slack_sdk.webhook import WebhookClient
 from slack_sdk import WebClient
@@ -58,3 +59,24 @@ def send_slack(msg='', channel=None, attachment=None):
         webhook = WebhookClient(url)
         response = webhook.send(text=msg)
     return response
+
+class TimeBlock:
+    def __init__(self):
+        self.start_time = None,
+        self.end_time = None,
+        self.elapsed = None,
+        self.formatted_elapsed = None
+    def start(self):
+        self.start_time = time.time()
+
+    def end(self):
+        self.end_time = time.time()
+
+    def elapse(self, formatted=True):
+        self.end()
+        self.elapsed = self.end_time - self.start_time
+        self.formatted_elapsed = time.strftime("%H:%M:%S", time.gmtime(self.elapsed))
+        if formatted:
+            return self.formatted_elapsed
+        else:
+            return self.elapsed
