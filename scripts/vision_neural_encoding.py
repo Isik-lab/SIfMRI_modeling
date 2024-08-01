@@ -97,12 +97,13 @@ class VisionNeuralEncoding:
                                  'ntau': 32,
                                  'nt': 1,
                                  'subsample_layers': False})
-
+                    print('trying to load model...')
                     model, hooks, data = get_feature_model(args)
                     preprocess = None
                 else:
                     model, preprocess = get_deepjuice_model(self.model_name)
 
+                print('Running dataloader...')
                 dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
                                                 batch_size=16, data_key='images', group_keys='video_name')
                 print(dataloader.batch_data.head(20))
