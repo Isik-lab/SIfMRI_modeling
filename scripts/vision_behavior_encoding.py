@@ -80,7 +80,24 @@ class VisionBehaviorEncoding:
                                                 frame_idx=self.frames)
 
                 # Get the model and dataloader
-                model, preprocess = get_deepjuice_model(self.model_name)
+                if self.model_name == 'dorsalnet':
+                    from python_dict_wrapper import wrap
+                    from models.yhit.models import get_feature_model
+
+                    features = 'airsim_04'
+
+                    args = wrap({'features': features,
+                                 'ckpt_root': '/content/yhit/checkpoints',  # CHECKPOINTS,
+                                 'slowfast_root': None,
+                                 'ntau': 32,
+                                 'nt': 1,
+                                 'subsample_layers': False})
+
+                    model, hooks, data = get_feature_model(args)
+                    preprocess = None
+                else:
+                    model, preprocess = get_deepjuice_model(self.model_name)
+
                 dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
                                                 batch_size=16, data_key='images', group_keys='video_name')
 
