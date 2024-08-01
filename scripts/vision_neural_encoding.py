@@ -86,6 +86,7 @@ class VisionNeuralEncoding:
 
                 # Get the model and dataloader
                 if self.model_name == 'dorsalnet':
+                    print('loading modules for dorsalnet')
                     from python_dict_wrapper import wrap
                     from models.yhit.models import get_feature_model
 
