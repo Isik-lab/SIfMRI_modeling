@@ -13,6 +13,7 @@ from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.systemops.devices import cuda_device_report
+from models.yhit.paths import *
 
 class VisionNeuralEncoding:
     def __init__(self, args):
@@ -88,7 +89,6 @@ class VisionNeuralEncoding:
                     print('loading modules for dorsalnet')
                     from python_dict_wrapper import wrap
                     from models.yhit.models import get_feature_model
-                    from models.yhit.paths import *
 
                     features = 'airsim_04'
 
