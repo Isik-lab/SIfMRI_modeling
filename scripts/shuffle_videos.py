@@ -55,7 +55,7 @@ def process_videos(input_dir, output_dir):
             print(f"Processed and saved: {output_video_path}")
 
 # Example usage
-input_directory = 'data/raw/videos'
-output_directory = 'data/raw/shuffled_videos'
+input_directory = '/home/kgarci18/scratch4-lisik3/kgarci18/SIfMRI_modeling/data/raw/videos'
+output_directory = '/home/kgarci18/scratch4-lisik3/kgarci18/SIfMRI_modeling/data/raw/shuffled_videos'
 Path(output_directory).mkdir(exist_ok=True, parents=True)
 process_videos(input_directory, output_directory)
