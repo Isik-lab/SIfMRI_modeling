@@ -89,6 +89,7 @@ class VisionNeuralEncoding:
                     print('loading modules for dorsalnet')
                     from python_dict_wrapper import wrap
                     from models.yhit.models import get_feature_model
+                    from models.yhit import loaders
 
                     features = 'airsim_04'
 
