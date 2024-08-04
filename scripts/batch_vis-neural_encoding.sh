@@ -1,7 +1,17 @@
 #!/bin/bash -l
 
-model=${1:-torchvision_alexnet_imagenet1k_v1}
-grouping=${2:-grouped_average}
+#SBATCH
+#SBATCH --time=2:30:00
+#SBATCH --partition=v100
+#SBATCH --account=lisik3_gpu
+#SBATCH --nodes=1
+#SBATCH --mem-per-cpu=10G
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:1
+#SBATCH --output=slurm-%A_%a.out
+
+model=${1:-dorsalnet}
+grouping=${2:-first_frame}
 echo "model name= $model"
 
 user=$(whoami)
@@ -13,9 +23,9 @@ export HF_HUB_CACHE="${project_folder}/.cache/huggingface/hub"
 export HF_DATASETS_CACHE="${project_folder}/.cache/huggingface/hub"
 
 ml anaconda
-conda activate deepjuice
+conda activate ~/anaconda3/envs/deepjuice
 
-python vision_neural_encoding.py --model_uid $model \
+~/anaconda3/envs/deepjuice/bin/python vision_neural_encoding.py --model_uid $model \
     --test_eval --overwrite \
     --top_dir $project_folder \
     --frame_handling $grouping \

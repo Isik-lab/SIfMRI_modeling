@@ -92,7 +92,6 @@ class VisionNeuralEncoding:
                     from models.yhit.models import get_feature_model
 
                     features = 'airsim_04'
-
                     args = wrap({'features': features,
                                  'ckpt_root': '/content/yhit/checkpoints',  # CHECKPOINTS,
                                  'slowfast_root': None,
