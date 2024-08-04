@@ -2,7 +2,7 @@ import torch
 import av
 import numpy as np
 import pandas as pd
-from deepjuice.procedural.datasets import CustomDataset
+from deepjuice.procedural.datasets import CustomData
 from torchvision.transforms import Compose, Lambda
 from torchvision.transforms._transforms_video import NormalizeVideo
 from pytorchvideo.data.encoded_video import EncodedVideo
@@ -17,7 +17,7 @@ from transformers import AutoImageProcessor, AutoProcessor, VideoMAEModel, Times
 import transformers
 
 
-class VideoData(CustomDataset):
+class VideoData(CustomData):
     def __init__(self, video_paths, clip_duration,
                  transforms=None, device='cuda', **kwargs):
         self.videos = video_paths
