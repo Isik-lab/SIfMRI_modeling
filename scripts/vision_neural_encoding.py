@@ -13,8 +13,8 @@ from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.systemops.devices import cuda_device_report
-from models.yhit.paths import *
-from models.yhit import *
+#from models.yhit.paths import *
+#from models.yhit import *
 
 class VisionNeuralEncoding:
     def __init__(self, args):
@@ -93,15 +93,16 @@ class VisionNeuralEncoding:
                     print('laoded modules for dorsalnet')
 
                     features = 'airsim_04'
+                    print(os.getcwd())
                     args = wrap({'features': features,
-                                 'ckpt_root': '/content/yhit/checkpoints',  # CHECKPOINTS,
+                                 'ckpt_root': '../models/yhit/checkpoints',  # CHECKPOINTS,
                                  'slowfast_root': None,
                                  'ntau': 32,
                                  'nt': 1,
                                  'subsample_layers': False})
                     print('trying to load model...')
                     model, hooks, data = get_feature_model(args)
-                    preprocess = None
+                    default, preprocess = get_deepjuice_model('slip_vit_s_clip_yfcc15m')
                 else:
                     model, preprocess = get_deepjuice_model(self.model_name)
 
