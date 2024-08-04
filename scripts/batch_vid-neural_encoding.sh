@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH
 #SBATCH --time=2:00:00
-#SBATCH --partition=ica100
+#SBATCH --partition=v100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
 #SBATCH --mem-per-cpu=10G

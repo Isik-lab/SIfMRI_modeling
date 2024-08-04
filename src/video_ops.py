@@ -174,6 +174,14 @@ def get_transform(model_name):
     elif 'x3d' in model_name:
         return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
 
+    elif 'dorsalnet' in model_name:
+        sampling_rate = 2
+        fps = 30
+        num_frames = 32
+        clip_duration = (num_frames * sampling_rate) / fps
+        return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames,
+                                  side_size=256), clip_duration
+
     elif model_name == 'slow_r50':
         num_frames = 8
         sampling_rate = 8
@@ -428,6 +436,21 @@ def get_model(model_name):
         model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
     elif model_name.lower() == 'timesformer-base-finetuned-k400':
         model = TimesformerForVideoClassification.from_pretrained("facebook/timesformer-base-finetuned-k400")
+    elif model_name.lower() == 'dorsalnet':
+        print('loading modules for dorsalnet')
+        from python_dict_wrapper import wrap
+        from models.yhit.models import get_feature_model
+        print('laoded modules for dorsalnet')
+
+        features = 'airsim_04'
+        args = wrap({'features': features,
+                     'ckpt_root': '/content/yhit/checkpoints',  # CHECKPOINTS,
+                     'slowfast_root': None,
+                     'ntau': 32,
+                     'nt': 1,
+                     'subsample_layers': False})
+        print('trying to load model...')
+        model, hooks, data = get_feature_model(args)
     else:
         raise Exception(f"{model_name} is not implemented!")
     return model
