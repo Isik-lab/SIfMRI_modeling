@@ -444,7 +444,7 @@ def get_model(model_name):
 
         features = 'airsim_04'
         args = wrap({'features': features,
-                     'ckpt_root': '/content/yhit/checkpoints',  # CHECKPOINTS,
+                     'ckpt_root': '../models/yhit/checkpoints',  # CHECKPOINTS,
                      'slowfast_root': None,
                      'ntau': 32,
                      'nt': 1,
