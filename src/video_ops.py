@@ -84,7 +84,7 @@ class VideoData(CustomData):
                 select_frame_index = np.rint(np.linspace(start_index, end_index - 1, num_frames)).astype(int).tolist()
                 frames = vr.get_batch(select_frame_index).permute(3, 0, 1, 2).to(torch.float32)
                 # Apply the resize transformation to each frame
-                resized_frames = torch.stack([self.resize_transform(frame) for frame in frames.permute(1, 0, 2, 3)])
+                resized_frames = torch.stack([self.resize_transform(frame) for frame in frames])
                 return resized_frames
 
             vr = VideoReader(self.videos[index], ctx=cpu(0))
