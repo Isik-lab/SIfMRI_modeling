@@ -15,7 +15,10 @@ from pytorchvideo.transforms import (
 from torch.utils.data import DataLoader
 from transformers import AutoImageProcessor, AutoProcessor, VideoMAEModel, TimesformerForVideoClassification, AutoModel
 import transformers
-
+import decord
+from decord import VideoReader
+from decord import cpu, gpu
+decord.bridge.set_bridge('torch')
 
 class VideoData(CustomData):
     def __init__(self, video_paths, clip_duration,
@@ -32,6 +35,9 @@ class VideoData(CustomData):
                 self.model_type = 'xclip_vision'
         elif isinstance(transforms, transformers.models.videomae.image_processing_videomae.VideoMAEImageProcessor):
             self.model_type = 'transformer'
+        elif isinstance(transforms, dict):
+            self.model_type = 'mallm'
+            self.transforms = transforms['eval']
         else:
             self.model_type = 'normal'
         self.data = self.videos
@@ -64,6 +70,22 @@ class VideoData(CustomData):
             inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
             inputs['attention_mask'] = inputs['attention_mask'].squeeze(0)
             inputs = inputs.to(self.device)
+            return inputs
+
+        elif self.model_type == 'mallm':
+            def load_video(vr, start_time, end_time, fps, num_frames=8):
+                start_index = int(round(start_time * fps))
+                end_index = int(round(end_time * fps))
+                select_frame_index = np.rint(np.linspace(start_index, end_index - 1, num_frames)).astype(int).tolist()
+                frames = vr.get_batch(select_frame_index).permute(3, 0, 1, 2).to(torch.float32)
+                return frames
+            vr = VideoReader(self.videos[index], ctx=cpu(0))
+            inputs = load_video(vr, 0, 3, 30, num_frames=8)
+            # Move to device
+            if isinstance(inputs, torch.Tensor):
+                inputs = inputs.to(self.device)
+            else:
+                inputs = [x.to(self.device) for x in inputs]
             return inputs
 
         elif self.model_type == 'transformer':
