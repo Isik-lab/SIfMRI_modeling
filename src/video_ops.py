@@ -94,7 +94,7 @@ class VideoData(CustomData):
                 inputs = inputs.to(self.device)
             else:
                 inputs = [x.to(self.device) for x in inputs]
-            return {"image": inputs, "text_input": self.texts[index]}
+            return {"image": inputs, "text_input": 'People'}
 
         elif self.model_type == 'transformer':
             container = av.open(self.videos[index])
