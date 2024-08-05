@@ -9,6 +9,11 @@ from src import neural_alignment, tools, video_ops
 import torch
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.systemops.devices import cuda_device_report
+import decord
+from decord import VideoReader
+from decord import cpu, gpu
+decord.bridge.set_bridge('torch')
+os.environ["HF_TOKEN"] = "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"
 from models.mallm.lavis.models import load_model_and_preprocess
 
 class VideoNeuralEncoding:
