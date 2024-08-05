@@ -9,6 +9,7 @@ from src import neural_alignment, tools, video_ops
 import torch
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.systemops.devices import cuda_device_report
+from models.mallm.lavis.models import load_model_and_preprocess
 
 class VideoNeuralEncoding:
     def __init__(self, args):
@@ -51,14 +52,21 @@ class VideoNeuralEncoding:
                 # benchmark.filter_stimulus(stimulus_set='train')
 
                 print(f'Loading model {self.model_name}...')
-                model = video_ops.get_model(self.model_name)
+                if self.model_name == 'mallm':
+                    model, vis_processors, _ = load_model_and_preprocess(
+                        name="blip2_vicuna_instruct_malmm", model_type="vicuna7b", is_eval=True, device=self.device,
+                        memory_bank_length=10, num_frames=8,
+                    )
+                    clip_duration = 3
+                else:
+                    model = video_ops.get_model(self.model_name)
+                    preprocess, clip_duration = video_ops.get_transform(self.model_name)
+                    print(f'{preprocess}')
+
                 if self.model_name == 'xclip-base-patch32':
                     batch_size = 1
                 else:
                     batch_size = 5
-
-                preprocess, clip_duration = video_ops.get_transform(self.model_name)
-                print(f'{preprocess}')
 
                 print(f"Loading dataloader...")
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
