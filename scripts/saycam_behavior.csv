@@ -1,0 +1,9 @@
+,test_score,layer,feature
+0,0.5811008,GELU-4-78,rating-agent_distance
+1,0.32192373,Dropout-4-36,rating-arousal
+2,0.42226472,Dropout-4-81,rating-communication
+3,0.7321442,Linear-4-86,rating-expanse
+4,0.526537,Mlp-3-53,rating-facingness
+5,0.3255025,Dropout-4-36,rating-joint_action
+6,0.44916645,Linear-4-75,rating-object
+7,0.36987475,Linear-4-53,rating-valence

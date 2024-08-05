@@ -31,7 +31,6 @@ def calculate_p_df(row):
 def divide_df(df, cols, n): 
     def divide_array(arr):
         return arr / n
-
     # Get the mean by averaging by the total number of models
     for col in cols:
         if isinstance(df[col][0], np.ndarray):

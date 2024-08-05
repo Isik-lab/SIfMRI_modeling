@@ -13,6 +13,7 @@ from deepjuice.model_zoo.options import get_deepjuice_model
 from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.systemops.devices import cuda_device_report
+from utils import load_model
 
 
 class VisionNeuralEncoding:
@@ -69,53 +70,50 @@ class VisionNeuralEncoding:
         return Benchmark(metadata_, stimulus_data_, response_data_)
     
     def run(self):
-        try:
-            if os.path.exists(self.out_file) and not self.overwrite:
-                # results = pd.read_csv(self.out_file)
-                print('Output file already exists. To run again pass --overwrite.')
-            else:
-                start_time = time.time()
-                tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
-                benchmark = self.load_fmri()
-                # Break the videos into frames for averaging
-                frame_data = ops.visual_events(benchmark.stimulus_data,
-                                                self.video_path, self.frame_path,
-                                                frame_idx=self.frames)
+        if os.path.exists(self.out_file) and not self.overwrite:
+            # results = pd.read_csv(self.out_file)
+            print('Output file already exists. To run again pass --overwrite.')
+        else:
+            start_time = time.time()
+            tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
+            benchmark = self.load_fmri()
+            # Break the videos into frames for averaging
+            frame_data = ops.visual_events(benchmark.stimulus_data,
+                                            self.video_path, self.frame_path,
+                                            frame_idx=self.frames)
 
-                # Get the model and dataloader
-                model, preprocess = get_deepjuice_model(self.model_name)
-                dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
-                                                batch_size=16, data_key='images', group_keys='video_name')
-                print(dataloader.batch_data.head(20))
+            # Get the model and dataloader
+            model = load_model(self.model_uid).to('cuda:0')
+            _, preprocess = get_deepjuice_model('timm_vit_base_patch16_224_dino')
+            print(preprocess)
+            dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
+                                            batch_size=16, data_key='images', group_keys='video_name')
+            print(dataloader.batch_data.head(20))
 
-                # Reorganize the benchmark to the dataloader
-                videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
-                benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
-                                                                        categories=videos, ordered=True)
-                benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
-                stim_idx = list(benchmark.stimulus_data.index.to_numpy().astype('str'))
-                benchmark.stimulus_data.reset_index(drop=True, inplace=True)
-                benchmark.response_data = benchmark.response_data[stim_idx]
+            # Reorganize the benchmark to the dataloader
+            videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
+            benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
+                                                                    categories=videos, ordered=True)
+            benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
+            stim_idx = list(benchmark.stimulus_data.index.to_numpy().astype('str'))
+            benchmark.stimulus_data.reset_index(drop=True, inplace=True)
+            benchmark.response_data = benchmark.response_data[stim_idx]
 
-                print('running regressions')
-                results = get_benchmarking_results(benchmark, model, dataloader,
-                                                    model_name=self.model_name,
-                                                    test_eval=self.test_eval,
-                                                    grouping_func=self.grouping_func,
-                                                    devices=['cuda:0'],
-                                                    memory_limit=self.memory_limit)
-                print('saving results')
-                results.to_parquet(self.out_file)
-                print('Finished!')
+            print('running regressions')
+            results = get_benchmarking_results(benchmark, model, dataloader,
+                                                model_name=self.model_name,
+                                                test_eval=self.test_eval,
+                                                grouping_func=self.grouping_func,
+                                                devices=['cuda:0'],
+                                                memory_limit=self.memory_limit)
+            print('saving results')
+            results.to_parquet(self.out_file)
+            print('Finished!')
 
-                end_time = time.time()
-                elapsed = end_time - start_time
-                elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
-                print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed}', channel=self.user)
-        except Exception as err:
-            print(f'Error: {self.process} {self.model_name}: Error Msg = {err}')
-            tools.send_slack(f'Error: {self.process} {self.model_name}: Error Msg = {err}', channel=self.user)
+            end_time = time.time()
+            elapsed = end_time - start_time
+            elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+            print(f'Finished in {elapsed}!')
 
 
 def main():
@@ -128,7 +126,7 @@ def main():
 
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--memory_limit', type=str, default='none')
-    parser.add_argument('--memory_limit_ratio', type=float, default=.6)
+    parser.add_argument('--memory_limit_ratio', type=float, default=.8)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--frame_handling', type=str, default='grouped_average')

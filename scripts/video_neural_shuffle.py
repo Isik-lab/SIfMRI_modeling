@@ -5,17 +5,14 @@ import pandas as pd
 import os
 import time
 from src.mri import Benchmark
-from src import neural_alignment
-from src import tools
+from src import neural_alignment, tools#, video_ops
 import torch
 from deepjuice.extraction import FeatureExtractor
-from src import video_ops
-from transformers import AutoModel, VideoMAEModel, TimesformerForVideoClassification, XCLIPVisionModel
 from deepjuice.systemops.devices import cuda_device_report
 
-class VideoNeuralEncoding:
+class VideoNeuralShuffle:
     def __init__(self, args):
-        self.process = 'VideoNeuralEncoding'
+        self.process = 'VideoNeuralShuffle'
         self.overwrite = args.overwrite
         self.model_name = args.model_name
         self.model_input = args.model_input
@@ -39,20 +36,6 @@ class VideoNeuralEncoding:
         response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
-
-    def get_model(self, model_name):
-        if model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
-            model = torch.hub.load("facebookresearch/pytorchvideo",
-                                   model=self.model_name, pretrained=True).to(self.device).eval()
-        elif model_name.lower() == 'xclip-base-patch32':
-            model = XCLIPVisionModel.from_pretrained("microsoft/xclip-base-patch32")
-        elif model_name.lower() == 'videomae_base_short':
-            model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
-        elif model_name.lower() == 'timesformer-base-finetuned-k400':
-            model = TimesformerForVideoClassification.from_pretrained("facebook/timesformer-base-finetuned-k400")
-        else:
-            raise Exception(f"{model_name} is not implemented!")
-        return model
     
     def run(self):
         try:
@@ -61,14 +44,14 @@ class VideoNeuralEncoding:
                 print('Output file already exists. To run again pass --overwrite.')
             else:
                 start_time = time.time()
-                tools.send_slack(f'Started: {self.process} {self.model_name} on Rockfish...', channel=self.user)
+                tools.send_slack(f'Started: :video_camera: {self.process} - {self.model_name}...', channel=self.user)
                 print('Loading data...')
                 benchmark = self.load_fmri()
                 benchmark.add_stimulus_path(self.data_dir + f'/raw/{self.model_input}/', extension=self.extension)
                 # benchmark.filter_stimulus(stimulus_set='train')
 
                 print(f'Loading model {self.model_name}...')
-                model = self.get_model(self.model_name)
+                model = video_ops.get_model(self.model_name)
                 if self.model_name == 'xclip-base-patch32':
                     batch_size = 1
                 else:
@@ -76,15 +59,22 @@ class VideoNeuralEncoding:
 
                 preprocess, clip_duration = video_ops.get_transform(self.model_name)
                 print(f'{preprocess}')
+
+                kwargs = {"variant": 'vision'}
+                # kwargs = {"variant": 'mm'}
                 print(f"Loading dataloader...")
                 dataloader = video_ops.get_video_loader(benchmark.stimulus_data['stimulus_path'],
-                                                        clip_duration, preprocess, batch_size=batch_size)
+                                                        clip_duration, preprocess, batch_size=batch_size, **kwargs)
 
                 def custom_forward(model, x):
                     return model(x)
 
-                def xclip_forward(model, x):
-                    return model(*x)
+                def xclip_mm_fwd(model, x):
+                    return model(**x)
+
+                def xclip_vision_fwd(model, inputs):
+                    inputs = inputs.squeeze(0)
+                    return model(inputs)
 
                 def transform_forward(model, x):
                     return model(**x)
@@ -110,16 +100,16 @@ class VideoNeuralEncoding:
                 results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, devices=['cuda:0'], model_name=self.model_name, test_eval=True)
 
                 print('Saving results')
-                results.to_pickle(self.out_file, compression='gzip')
+                results.to_parquet(self.out_file, compression='gzip')
 
                 end_time = time.time()
                 elapsed = end_time - start_time
                 elapsed = time.strftime("%H:%M:%S", time.gmtime(elapsed))
                 print(f'Finished in {elapsed}!')
-                tools.send_slack(f'Finished: {self.process} {self.model_name} in {elapsed} :baby-yoda:', channel=self.user)
+                tools.send_slack(f'Finished: :video_camera: {self.process} - {self.model_name} in {elapsed} :white_check_mark:', channel=self.user)
         except Exception as err:
             print(err)
-            tools.send_slack(f'Error: {self.process} {self.model_name} Error = {err}', channel=self.user)
+            tools.send_slack(f'Error: :video_camera: {self.process} - {self.model_name} :x: Error = {err}', channel=self.user)
             raise err
 
 
@@ -132,13 +122,13 @@ def main():
     user = args.user  # Get the user from the parsed known args
 
     parser.add_argument('--model_name', type=str, default='No_Model')
-    parser.add_argument('--model_input', type=str, default='videos')
+    parser.add_argument('--model_input', type=str, default='shuffled_videos')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')
 
     args = parser.parse_args(remaining_argv)
-    VideoNeuralEncoding(args).run()
+    VideoNeuralShuffle(args).run()
 
 
 if __name__ == '__main__':
