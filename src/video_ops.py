@@ -15,10 +15,13 @@ from pytorchvideo.transforms import (
 from torch.utils.data import DataLoader
 from transformers import AutoImageProcessor, AutoProcessor, VideoMAEModel, TimesformerForVideoClassification, AutoModel
 import transformers
+import torchvision.transforms as T
 import decord
 from decord import VideoReader
 from decord import cpu, gpu
+
 decord.bridge.set_bridge('torch')
+
 
 class VideoData(CustomData):
     def __init__(self, video_paths, clip_duration,
@@ -27,6 +30,7 @@ class VideoData(CustomData):
         self.clip_duration = clip_duration
         self.device = device
         self.transforms = transforms
+        self.mallm_transforms = T.Resize((224, 224))
         self.variant = kwargs.get('variant')
         if isinstance(transforms, transformers.models.x_clip.processing_x_clip.XCLIPProcessor):
             if self.variant == 'mm':
@@ -47,7 +51,7 @@ class VideoData(CustomData):
             # sample 8 frames
             container = av.open(self.videos[index])
             indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1,
-                                                      seg_len=container.streams.video[0].frames)
+                                                seg_len=container.streams.video[0].frames)
             video = self.read_video_pyav(container, indices)
             processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
             pixel_values = processor(videos=list(video), return_tensors="pt").pixel_values
@@ -59,7 +63,8 @@ class VideoData(CustomData):
 
         elif self.model_type == 'xclip_mm':
             container = av.open(self.videos[index])
-            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=5, seg_len=container.streams.video[0].frames)
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=5,
+                                                seg_len=container.streams.video[0].frames)
             video = self.read_video_pyav(container, indices)
             processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
             inputs = processor(
@@ -78,7 +83,10 @@ class VideoData(CustomData):
                 end_index = int(round(end_time * fps))
                 select_frame_index = np.rint(np.linspace(start_index, end_index - 1, num_frames)).astype(int).tolist()
                 frames = vr.get_batch(select_frame_index).permute(3, 0, 1, 2).to(torch.float32)
-                return frames
+                # Apply the resize transformation to each frame
+                resized_frames = torch.stack([self.resize_transform(frame) for frame in frames.permute(1, 0, 2, 3)])
+                return resized_frames
+
             vr = VideoReader(self.videos[index], ctx=cpu(0))
             inputs = load_video(vr, 0, 3, 30, num_frames=8)
             # Move to device
@@ -86,11 +94,12 @@ class VideoData(CustomData):
                 inputs = inputs.to(self.device)
             else:
                 inputs = [x.to(self.device) for x in inputs]
-            return inputs
+            return {"image": inputs, "text_input": self.texts[index]}
 
         elif self.model_type == 'transformer':
             container = av.open(self.videos[index])
-            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1,
+                                                seg_len=container.streams.video[0].frames)
             video_data = self.video_to_list_arrays(container, indices)
             inputs = self.transforms(video_data, return_tensors="pt")
             inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
@@ -178,7 +187,7 @@ class VideoData(CustomData):
         indices = np.linspace(start_idx, end_idx, num=clip_len)
         indices = np.clip(indices, start_idx, end_idx - 1).astype(np.int64)
         return indices
-    
+
 
 def get_video_loader(video_set, clip_duration, transforms, batch_size=64, **kwargs):
     if isinstance(video_set, pd.Series) or isinstance(video_set, list):
@@ -191,7 +200,8 @@ def get_transform(model_name):
         fps = 30
         num_frames = 32
         clip_duration = (num_frames * sampling_rate) / fps
-        return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames, side_size=256), clip_duration
+        return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames,
+                                  side_size=256), clip_duration
 
     elif 'x3d' in model_name:
         return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
@@ -209,35 +219,40 @@ def get_transform(model_name):
         sampling_rate = 8
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
-        return slow_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+        return slow_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
+                                  num_frames=num_frames), clip_duration
 
     elif model_name == 'c2d_r50':
         num_frames = 8
         sampling_rate = 8
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
-        return c2d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+        return c2d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
+                                 num_frames=num_frames), clip_duration
 
     elif model_name == 'i3d_r50':
         num_frames = 8
         sampling_rate = 8
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
-        return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+        return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
+                                 num_frames=num_frames), clip_duration
 
     elif model_name == 'csn_r101':
         num_frames = 32
         sampling_rate = 2
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
-        return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+        return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
+                                 num_frames=num_frames), clip_duration
 
     elif 'mvit' in model_name:
         num_frames = 16
         sampling_rate = 4
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
-        return mvit_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256, num_frames=num_frames), clip_duration
+        return mvit_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
+                              num_frames=num_frames), clip_duration
 
     elif 'videomae' in model_name:
         return videomae_transform(), 3
@@ -260,6 +275,7 @@ class PackPathway(torch.nn.Module):
     """
     Transform for converting video frames as a list of tensors.
     """
+
     def __init__(self):
         super().__init__()
 
@@ -283,13 +299,14 @@ def slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_f
         key="video",
         transform=Compose([
             UniformTemporalSubsample(num_frames),
-            Lambda(lambda x: x/255.0),
+            Lambda(lambda x: x / 255.0),
             NormalizeVideo(mean, std),
             ShortSideScale(size=side_size),
             PackPathway()
         ]
         )
     )
+
 
 ####################
 # X3D transform
@@ -332,6 +349,7 @@ def x3d_transform(model_name, mean, std, fps):
         )
     ), clip_duration
 
+
 ####################
 # slow_r50 transform
 ####################
@@ -347,6 +365,7 @@ def slow_r50_transform(mean, std, side_size, num_frames):
             ]
         )
     )
+
 
 ####################
 # c2d_r50 transform
@@ -364,6 +383,7 @@ def c2d_r50_transform(mean, std, side_size, num_frames):
         )
     )
 
+
 ####################
 # i3d_r50 transform
 ####################
@@ -379,6 +399,7 @@ def i3d_r50_transform(mean, std, side_size, num_frames):
             ]
         )
     )
+
 
 ####################
 # csn_r101 transform
@@ -397,6 +418,7 @@ def csn_r101_transform(mean, std, side_size, num_frames):
         )
     )
 
+
 ####################
 # mvit-b transform
 ####################
@@ -413,6 +435,7 @@ def mvit_transform(mean, std, side_size, num_frames):
             ]
         )
     )
+
 
 ####################
 # videomae transform
@@ -433,6 +456,8 @@ def sample_frame_indices(clip_len, frame_sample_rate, seg_len):
     indices = np.linspace(start_idx, end_idx, num=clip_len)
     indices = np.clip(indices, start_idx, end_idx - 1).astype(np.int64)
     return indices
+
+
 def videomae_transform():
     return AutoImageProcessor.from_pretrained("MCG-NJU/videomae-base")
 
@@ -443,11 +468,13 @@ def videomae_transform():
 def xclip_transform():
     return AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
 
+
 ####################
 # xclip transform
 ####################
 def timesformer_transform():
     return AutoImageProcessor.from_pretrained("facebook/timesformer-base-finetuned-k400")
+
 
 def get_model(model_name):
     if model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):

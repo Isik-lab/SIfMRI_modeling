@@ -5,7 +5,7 @@ import pandas as pd
 import os
 import time
 from src.mri import Benchmark
-from src import neural_alignment, tools#, video_ops
+from src import neural_alignment, tools, video_ops
 import torch
 from deepjuice.extraction import FeatureExtractor
 from deepjuice.systemops.devices import cuda_device_report
