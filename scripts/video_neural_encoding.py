@@ -53,7 +53,7 @@ class VideoNeuralEncoding:
 
                 print(f'Loading model {self.model_name}...')
                 if self.model_name == 'mallm':
-                    model, vis_processors, _ = load_model_and_preprocess(
+                    model, preprocess, _ = load_model_and_preprocess(
                         name="blip2_vicuna_instruct_malmm", model_type="vicuna7b", is_eval=True, device=self.device,
                         memory_bank_length=10, num_frames=8,
                     )
