@@ -11,21 +11,15 @@ import time
 import src.tools as tools
 from src import stats
 from src.stats import feature_scaler
-from deepjuice.alignment import TorchRidgeGCV, get_scoring_method, compute_rdm, compare_rdms
+from deepjuice.alignment import get_scoring_method
 from deepjuice.reduction import get_feature_map_srps
 from deepjuice.systemops.devices import cuda_device_report
-from deepjuice.procedural import pandas_query
-from deepjuice.model_zoo.options import get_deepjuice_model
-from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.extraction import FeatureExtractor
-from deepjuice.tensorops import apply_tensor_op, convert_to_tensor
+from deepjuice.tensorops import convert_to_tensor
 from deepjuice.model_zoo import get_model_options
-from deepjuice.procedural.cv_ops import CVIndexer
 from deepjuice.alignment import TorchRidgeGCV
 from deepjuice.tensorops import apply_tensor_op
 from deepjuice.alignment import compute_rdm, compare_rdms
-from deepjuice.reduction import compute_srp
-from deepjuice.alignment import compute_score
 
 
 def memory_stats(devices):
