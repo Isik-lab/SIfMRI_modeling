@@ -5,7 +5,7 @@ import pandas as pd
 from deepjuice.procedural.datasets import CustomData
 from torchvision.transforms import Compose, Lambda
 from torchvision.transforms._transforms_video import NormalizeVideo
-#from pytorchvideo.data.encoded_video import EncodedVideo
+from pytorchvideo.data.encoded_video import EncodedVideo
 from pytorchvideo.transforms import (
     ApplyTransformToKey,
     ShortSideScale,
