@@ -2,7 +2,7 @@ import torch
 import av
 import numpy as np
 import pandas as pd
-from deepjuice.procedural.datasets import CustomData
+from deepjuice.procedural.datasets import CustomDataset
 from torchvision.transforms import Compose, Lambda
 from torchvision.transforms._transforms_video import NormalizeVideo
 from pytorchvideo.data.encoded_video import EncodedVideo
@@ -23,7 +23,7 @@ from decord import cpu, gpu
 decord.bridge.set_bridge('torch')
 
 
-class VideoData(CustomData):
+class VideoData(CustomDataset):
     def __init__(self, video_paths, clip_duration,
                  transforms=None, device='cuda', **kwargs):
         self.videos = video_paths
