@@ -87,6 +87,12 @@ class VideoNeuralEncoding:
                     inputs = inputs.squeeze(0)
                     return model(inputs)
 
+                def no_transform(x):
+                    return x
+
+                if self.model_name == 'dorsalnet' or not preprocess:
+                    preprocess = no_transform
+
                 def transform_forward(model, x):
                     return model(**x)
 
