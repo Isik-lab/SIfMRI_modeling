@@ -111,7 +111,7 @@ class VideoNeuralEncoding:
 
                 print(f"Creating feature extractor with {memory_limit_string} batches...")
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
-                                                         flatten=True, progress=True, **kwargs)
+                                                         flatten=True, progress=True, exclude_oversize=True, **kwargs)
 
                 print('Running regressions...')
                 results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, devices=['cuda:0'], model_name=self.model_name, test_eval=True)
