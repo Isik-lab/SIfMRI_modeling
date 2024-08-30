@@ -2,7 +2,7 @@ import torch
 import av
 import numpy as np
 import pandas as pd
-from deepjuice.procedural.datasets import CustomData
+from deepjuice.procedural.datasets import CustomDataset
 from torchvision.transforms import Compose, Lambda
 from torchvision.transforms._transforms_video import NormalizeVideo
 from pytorchvideo.data.encoded_video import EncodedVideo
@@ -13,19 +13,23 @@ from pytorchvideo.transforms import (
     UniformCropVideo
 )
 from torch.utils.data import DataLoader
-from transformers import AutoImageProcessor, AutoProcessor
+from transformers import AutoImageProcessor, AutoProcessor, VideoMAEModel, TimesformerForVideoClassification, AutoModel
 import transformers
 
 
-class VideoData(CustomData):
+class VideoData(CustomDataset):
     def __init__(self, video_paths, clip_duration,
-                 transforms=None, device='cuda'):
+                 transforms=None, device='cuda', **kwargs):
         self.videos = video_paths
         self.clip_duration = clip_duration
         self.device = device
         self.transforms = transforms
+        self.variant = kwargs.get('variant')
         if isinstance(transforms, transformers.models.x_clip.processing_x_clip.XCLIPProcessor):
-            self.model_type = 'xclip'
+            if self.variant == 'mm':
+                self.model_type = 'xclip_mm'
+            elif self.variant == 'vision':
+                self.model_type = 'xclip_vision'
         elif isinstance(transforms, transformers.models.videomae.image_processing_videomae.VideoMAEImageProcessor):
             self.model_type = 'transformer'
         else:
@@ -33,15 +37,35 @@ class VideoData(CustomData):
         self.data = self.videos
 
     def __getitem__(self, index):
-        if self.model_type == 'xclip':
+        if self.model_type == 'xclip_vision':
+            # sample 8 frames
             container = av.open(self.videos[index])
-            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1,
+                                                      seg_len=container.streams.video[0].frames)
             video = self.read_video_pyav(container, indices)
-            pixel_values = self.transforms(videos=list(video), return_tensors="pt").pixel_values
+            processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
+            pixel_values = processor(videos=list(video), return_tensors="pt").pixel_values
             batch_size, num_frames, num_channels, height, width = pixel_values.shape
             inputs = pixel_values.reshape(-1, num_channels, height, width)
+            inputs = inputs.squeeze(0)
             inputs = inputs.to(self.device)
             return inputs
+
+        elif self.model_type == 'xclip_mm':
+            container = av.open(self.videos[index])
+            indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=5, seg_len=container.streams.video[0].frames)
+            video = self.read_video_pyav(container, indices)
+            processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
+            inputs = processor(
+                text=["talking together", "walking together", "eating together"],
+                videos=list(video),
+                return_tensors="pt",
+            )
+            inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
+            inputs['attention_mask'] = inputs['attention_mask'].squeeze(0)
+            inputs = inputs.to(self.device)
+            return inputs
+
         elif self.model_type == 'transformer':
             container = av.open(self.videos[index])
             indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1, seg_len=container.streams.video[0].frames)
@@ -394,3 +418,16 @@ def xclip_transform():
 ####################
 def timesformer_transform():
     return AutoImageProcessor.from_pretrained("facebook/timesformer-base-finetuned-k400")
+
+def get_model(model_name):
+    if model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
+        model = torch.hub.load("facebookresearch/pytorchvideo", model=model_name, pretrained=True).to("cuda").eval()
+    elif model_name.lower() == 'xclip-base-patch32':
+        model = AutoModel.from_pretrained("microsoft/xclip-base-patch32")
+    elif model_name.lower() == 'videomae_base_short':
+        model = VideoMAEModel.from_pretrained("MCG-NJU/videomae-base")
+    elif model_name.lower() == 'timesformer-base-finetuned-k400':
+        model = TimesformerForVideoClassification.from_pretrained("facebook/timesformer-base-finetuned-k400")
+    else:
+        raise Exception(f"{model_name} is not implemented!")
+    return model
