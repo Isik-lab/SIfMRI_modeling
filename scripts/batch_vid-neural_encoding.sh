@@ -1,7 +1,7 @@
 #!/bin/bash -l
 #SBATCH
-#SBATCH --time=2:00:00
-#SBATCH --partition=v100
+#SBATCH --time=48:00:00
+#SBATCH --partition=ica100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
 #SBATCH --mem-per-cpu=10G
@@ -21,6 +21,6 @@ export HF_DATASETS_CACHE="${project_folder}/.cache/huggingface/hub"
 export TORCH_HOME="${project_folder}/.cache/torch"
 
 ml anaconda
-conda activate ~/miniconda3/envs/deepjuice
+conda activate ~/anaconda3/envs/deepjuice
 
-~/miniconda3/envs/deepjuice/bin/python video_neural_encoding.py --model_name $model --model_input videos --overwrite --user $user
+~/anaconda3/envs/deepjuice/bin/python video_neural_encoding.py --model_name $model --model_input videos --overwrite --user $user
