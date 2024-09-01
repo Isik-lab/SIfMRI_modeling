@@ -1,7 +1,7 @@
 #!/bin/bash -l
 
 #SBATCH --time=4:00:00
-#SBATCH --partition=ica100
+#SBATCH --partition=ica100,a100
 #SBATCH --account=lisik3_gpu
 #SBATCH --nodes=1
 #SBATCH --mem-per-cpu=10G
@@ -11,7 +11,7 @@
 
 # Parameters
 file="../data/raw/model_list/language_models.csv"
-funcs_file="../data/raw/function_list/perturbations.csv"
+funcs_file="../data/raw/model_list/perturbations.csv"
 
 # Read function names from CSV, skipping the header
 mapfile -t funcs < <(tail -n +2 "$funcs_file")
@@ -27,6 +27,7 @@ model_index=$(( (SLURM_ARRAY_TASK_ID - 1) % num_models + 2 ))  # +2 to skip head
 func_index=$(( (SLURM_ARRAY_TASK_ID - 1) / num_models ))
 model=$(sed -n "${model_index}p" "$file" | cut -d',' -f1)
 func=${funcs[$func_index]}
+echo "model name = $model"
 echo "function = $func"
 
 # Execute the task

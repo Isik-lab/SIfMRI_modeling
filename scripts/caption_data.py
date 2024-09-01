@@ -95,6 +95,7 @@ class CaptionData:
             pairwise_dist[pairwise_dist == 0] = np.nan
             distance = np.nanmean(pairwise_dist, axis=0)
             dist_mean = distance.mean()
+            print(f'mean agreement before cleaning = {dist_mean:.4f}')
             dist_std = distance.std()
             dist_threshold = dist_mean + (2.5 * dist_std)
             ax[1].hist(distance)
@@ -159,11 +160,27 @@ class CaptionData:
             cur_df.rename(columns={0: 'nc'}, inplace=True)
             cur_df.to_csv(f'{self.out_path}/{stimulus_set}_rating_noise_ceiling.csv', index=False)
 
+    def determine_data_quality(self, filtered_data):
+        overall_consistency = []
+        for vid, vid_df in filtered_data.groupby('video_name'):
+            captions = vid_df.caption.to_list()
+            embeddings = llm.encode(captions, normalize_embeddings=False)
+
+            pairwise_dist = squareform(pdist(embeddings, metric='correlation'))
+            pairwise_dist[pairwise_dist == 0] = np.nan
+            distance = np.nanmean(pairwise_dist, axis=0)
+            overall_consistency.append({'video_name': vid,
+                                        'distance': distance.mean()})
+        reliability = pd.DataFrame(overall_consistency)
+        reliability.to_csv(f'{self.out_path}/caption_reliability.csv', index=False)
+        print(f'overall consistency = {reliability.distance.mean():.4f}')
+
     def run(self):
         all_data = self.load_all_data()
         annotations = self.load_video_info()
         data = self.get_complete_data(all_data)
         filtered_data = self.id_good_participants(data)
+        self.determine_data_quality(filtered_data)
         self.reorg_captions(filtered_data, annotations)
         self.load_ratings_nc(annotations)
 

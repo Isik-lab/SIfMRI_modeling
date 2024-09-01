@@ -2,7 +2,7 @@ import torch
 import av
 import numpy as np
 import pandas as pd
-from deepjuice.procedural.datasets import CustomData
+from deepjuice.procedural.datasets import CustomDataset
 from torchvision.transforms import Compose, Lambda
 from torchvision.transforms._transforms_video import NormalizeVideo
 from pytorchvideo.data.encoded_video import EncodedVideo
@@ -11,7 +11,6 @@ from pytorchvideo.transforms import (
     ShortSideScale,
     UniformTemporalSubsample,
     UniformCropVideo
-)
 from torch.utils.data import DataLoader
 from transformers import AutoImageProcessor, AutoProcessor, VideoMAEModel, TimesformerForVideoClassification, AutoModel
 import transformers
@@ -23,7 +22,7 @@ from decord import cpu, gpu
 decord.bridge.set_bridge('torch')
 
 
-class VideoData(CustomData):
+class VideoData(CustomDataset):
     def __init__(self, video_paths, clip_duration,
                  transforms=None, device='cuda', **kwargs):
         self.videos = video_paths
@@ -31,6 +30,7 @@ class VideoData(CustomData):
         self.device = device
         self.transforms = transforms
         self.mallm_transforms = T.Resize((224, 224))
+        self.variant = kwargs.get('variant')
         self.variant = kwargs.get('variant')
         if isinstance(transforms, transformers.models.x_clip.processing_x_clip.XCLIPProcessor):
             if self.variant == 'mm':
@@ -51,7 +51,7 @@ class VideoData(CustomData):
             # sample 8 frames
             container = av.open(self.videos[index])
             indices = self.sample_frame_indices(clip_len=8, frame_sample_rate=1,
-                                                seg_len=container.streams.video[0].frames)
+                                                      seg_len=container.streams.video[0].frames)
             video = self.read_video_pyav(container, indices)
             processor = AutoProcessor.from_pretrained("microsoft/xclip-base-patch32")
             pixel_values = processor(videos=list(video), return_tensors="pt").pixel_values
