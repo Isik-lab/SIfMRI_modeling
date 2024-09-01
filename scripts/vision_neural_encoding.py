@@ -59,7 +59,7 @@ class VisionNeuralEncoding:
         print(vars(self))
         self.model_name = self.model_uid.replace('/', '_')
         Path(f'{self.data_dir}/interim/{self.process}/{self.frame_handling}').mkdir(parents=True, exist_ok=True)
-        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.frame_handling}/model-{self.model_name}.pkl.gz'
+        self.out_file = f'{self.data_dir}/interim/{self.process}/{self.frame_handling}/model-{self.model_name}.parquet'
 
     def load_fmri(self):
         metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
@@ -153,21 +153,22 @@ class VisionNeuralEncoding:
 def main():
     parser = argparse.ArgumentParser()
     # Add arguments that are needed before setting the default for data_dir
-    parser.add_argument('--user', type=str, default='kgarci18')
+    parser.add_argument('--user', type=str, default='emcmaho7')
     # Parse known args first to get the user
     args, remaining_argv = parser.parse_known_args()
     user = args.user  # Get the user from the parsed known args
 
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--memory_limit', type=str, default='none')
-    parser.add_argument('--memory_limit_ratio', type=float, default=.8)
+    parser.add_argument('--memory_limit_ratio', type=float, default=.6)
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--test_eval', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--frame_handling', type=str, default='first_frame')
+    parser.add_argument('--frame_handling', type=str, default='grouped_average')
     parser.add_argument('--top_dir', '-top', type=str,
                          default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling')
     args = parser.parse_args()
     VisionNeuralEncoding(args).run()
+
 
 if __name__ == '__main__':
     main()
