@@ -205,13 +205,12 @@ def get_transform(model_name):
         num_frames = 32
         clip_duration = (num_frames * sampling_rate) / fps
         return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames,
-                                  side_size=256, crop_size=224), clip_duration
+                                  side_size=256, crop_size=256), clip_duration
 
     elif 'x3d' in model_name:
         return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
 
     elif 'dorsalnet' in model_name:
-        #### STILL NEEDS CENTER_CROPPING ####
         sampling_rate = 2
         fps = 30
         num_frames = 32
@@ -225,7 +224,7 @@ def get_transform(model_name):
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return slow_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                  num_frames=num_frames, crop_size=224), clip_duration
+                                  num_frames=num_frames, crop_size=256), clip_duration
 
     elif model_name == 'c2d_r50':
         num_frames = 8
@@ -233,7 +232,7 @@ def get_transform(model_name):
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return c2d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                 num_frames=num_frames, crop_size=224), clip_duration
+                                 num_frames=num_frames, crop_size=256), clip_duration
 
     elif model_name == 'i3d_r50':
         num_frames = 8
@@ -380,7 +379,7 @@ def slow_r50_transform(mean, std, side_size, num_frames, crop_size):
 ####################
 # c2d_r50 transform
 ####################
-def c2d_r50_transform(mean, std, side_size, num_frames):
+def c2d_r50_transform(mean, std, side_size, num_frames, crop_size):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -398,7 +397,7 @@ def c2d_r50_transform(mean, std, side_size, num_frames):
 ####################
 # i3d_r50 transform
 ####################
-def i3d_r50_transform(mean, std, side_size, num_frames):
+def i3d_r50_transform(mean, std, side_size, num_frames, crop_size):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -416,7 +415,7 @@ def i3d_r50_transform(mean, std, side_size, num_frames):
 ####################
 # csn_r101 transform
 ####################
-def csn_r101_transform(mean, std, side_size, num_frames):
+def csn_r101_transform(mean, std, side_size, num_frames, crop_size):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
