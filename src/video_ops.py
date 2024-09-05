@@ -4,13 +4,17 @@ import numpy as np
 import pandas as pd
 from deepjuice.procedural.datasets import CustomDataset
 from torchvision.transforms import Compose, Lambda
-from torchvision.transforms._transforms_video import NormalizeVideo
+from torchvision.transforms._transforms_video import (
+    NormalizeVideo,
+    CenterCropVideo,
+)
 from pytorchvideo.data.encoded_video import EncodedVideo
 from pytorchvideo.transforms import (
     ApplyTransformToKey,
     ShortSideScale,
     UniformTemporalSubsample,
-    UniformCropVideo
+    UniformCropVideo,
+)
 from torch.utils.data import DataLoader
 from transformers import AutoImageProcessor, AutoProcessor, VideoMAEModel, TimesformerForVideoClassification, AutoModel
 import transformers
@@ -201,7 +205,7 @@ def get_transform(model_name):
         num_frames = 32
         clip_duration = (num_frames * sampling_rate) / fps
         return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames,
-                                  side_size=256), clip_duration
+                                  side_size=256, crop_size=256), clip_duration
 
     elif 'x3d' in model_name:
         return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
@@ -294,7 +298,7 @@ class PackPathway(torch.nn.Module):
         return frame_list
 
 
-def slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=32, side_size=256):
+def slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=32, side_size=256, crop_size=256):
     return ApplyTransformToKey(
         key="video",
         transform=Compose([
@@ -302,6 +306,7 @@ def slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_f
             Lambda(lambda x: x / 255.0),
             NormalizeVideo(mean, std),
             ShortSideScale(size=side_size),
+            CenterCropVideo(crop_size),
             PackPathway()
         ]
         )
@@ -344,7 +349,10 @@ def x3d_transform(model_name, mean, std, fps):
                 UniformTemporalSubsample(transform_params["num_frames"]),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=transform_params["side_size"])
+                ShortSideScale(size=transform_params["side_size"]),
+                CenterCropVideo(
+                    crop_size=(transform_params["crop_size"], transform_params["crop_size"])
+            )
             ]
         )
     ), clip_duration
