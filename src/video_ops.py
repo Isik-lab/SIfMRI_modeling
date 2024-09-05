@@ -205,12 +205,13 @@ def get_transform(model_name):
         num_frames = 32
         clip_duration = (num_frames * sampling_rate) / fps
         return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames,
-                                  side_size=256, crop_size=256), clip_duration
+                                  side_size=256, crop_size=224), clip_duration
 
     elif 'x3d' in model_name:
         return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
 
     elif 'dorsalnet' in model_name:
+        #### STILL NEEDS CENTER_CROPPING ####
         sampling_rate = 2
         fps = 30
         num_frames = 32
@@ -224,7 +225,7 @@ def get_transform(model_name):
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return slow_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                  num_frames=num_frames), clip_duration
+                                  num_frames=num_frames, crop_size=224), clip_duration
 
     elif model_name == 'c2d_r50':
         num_frames = 8
@@ -232,9 +233,10 @@ def get_transform(model_name):
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return c2d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                 num_frames=num_frames), clip_duration
+                                 num_frames=num_frames, crop_size=224), clip_duration
 
     elif model_name == 'i3d_r50':
+        #### STILL NEEDS CENTER_CROPPING ####
         num_frames = 8
         sampling_rate = 8
         fps = 30
@@ -243,6 +245,7 @@ def get_transform(model_name):
                                  num_frames=num_frames), clip_duration
 
     elif model_name == 'csn_r101':
+        #### STILL NEEDS CENTER_CROPPING ####
         num_frames = 32
         sampling_rate = 2
         fps = 30
@@ -251,6 +254,7 @@ def get_transform(model_name):
                                  num_frames=num_frames), clip_duration
 
     elif 'mvit' in model_name:
+        #### STILL NEEDS CENTER_CROPPING ####
         num_frames = 16
         sampling_rate = 4
         fps = 30
@@ -259,12 +263,15 @@ def get_transform(model_name):
                               num_frames=num_frames), clip_duration
 
     elif 'videomae' in model_name:
+        #### STILL NEEDS CENTER_CROPPING ####
         return videomae_transform(), 3
 
     elif 'xclip' in model_name:
+        #### STILL NEEDS CENTER_CROPPING ####
         return xclip_transform(), 3
 
     elif model_name == 'timesformer-base-finetuned-k400':
+        #### STILL NEEDS CENTER_CROPPING ####
         return timesformer_transform(), 3
 
     else:
@@ -361,7 +368,7 @@ def x3d_transform(model_name, mean, std, fps):
 ####################
 # slow_r50 transform
 ####################
-def slow_r50_transform(mean, std, side_size, num_frames):
+def slow_r50_transform(mean, std, side_size, num_frames, crop_size):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -369,7 +376,8 @@ def slow_r50_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
@@ -386,7 +394,8 @@ def c2d_r50_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
