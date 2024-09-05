@@ -236,42 +236,36 @@ def get_transform(model_name):
                                  num_frames=num_frames, crop_size=224), clip_duration
 
     elif model_name == 'i3d_r50':
-        #### STILL NEEDS CENTER_CROPPING ####
         num_frames = 8
         sampling_rate = 8
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                 num_frames=num_frames), clip_duration
+                                 num_frames=num_frames, crop_size=224), clip_duration
 
     elif model_name == 'csn_r101':
-        #### STILL NEEDS CENTER_CROPPING ####
         num_frames = 32
         sampling_rate = 2
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
-        return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                 num_frames=num_frames), clip_duration
+        return csn_r101_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
+                                 num_frames=num_frames, crop_size=224), clip_duration
 
     elif 'mvit' in model_name:
-        #### STILL NEEDS CENTER_CROPPING ####
         num_frames = 16
         sampling_rate = 4
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return mvit_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                              num_frames=num_frames), clip_duration
+                              num_frames=num_frames, crop_size=224), clip_duration
 
     elif 'videomae' in model_name:
-        #### STILL NEEDS CENTER_CROPPING ####
         return videomae_transform(), 3
 
     elif 'xclip' in model_name:
-        #### STILL NEEDS CENTER_CROPPING ####
         return xclip_transform(), 3
 
     elif model_name == 'timesformer-base-finetuned-k400':
-        #### STILL NEEDS CENTER_CROPPING ####
         return timesformer_transform(), 3
 
     else:
@@ -412,7 +406,8 @@ def i3d_r50_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
@@ -429,8 +424,8 @@ def csn_r101_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
-
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
@@ -447,8 +442,8 @@ def mvit_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
-
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
