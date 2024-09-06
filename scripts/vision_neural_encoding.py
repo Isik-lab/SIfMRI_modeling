@@ -135,7 +135,7 @@ class VisionNeuralEncoding:
                 print('saving results')
                 save_timer = tools.TimeBlock()
                 save_timer.start()
-                results.to_pickle(self.out_file, compression='gzip')
+                results.to_parquet(self.out_file, compression='gzip')
                 save_elapsed = save_timer.elapse()
                 timers['benchmark_setup'] = benchmark_setup_elapsed
                 timers['save'] = save_elapsed

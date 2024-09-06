@@ -26,7 +26,7 @@ class VideoBehaviorEncoding:
         else:
             self.device = 'cpu'
         self.out_path = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}'
-        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.pkl.gz'
+        self.out_file = f'{self.data_dir}/interim/{self.process}/model-{self.model_name}.parquet'
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
 
     def load_data(self):
@@ -105,7 +105,7 @@ class VideoBehaviorEncoding:
                 results = behavior_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, target_features=target_features, model_name=self.model_name, devices=['cuda:0'])
                 print(results.head(20))
                 print('Saving results...')
-                results.to_pickle(self.out_file, compression='gzip')
+                results.to_parquet(self.out_file, compression='gzip')
 
                 end_time = time.time()
                 elapsed = end_time - start_time

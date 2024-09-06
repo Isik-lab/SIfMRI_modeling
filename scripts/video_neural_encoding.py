@@ -117,7 +117,7 @@ class VideoNeuralEncoding:
                 results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, devices=['cuda:0'], model_name=self.model_name, test_eval=True)
 
                 print('Saving results')
-                results.to_pickle(self.out_file, compression='gzip')
+                results.to_parquet(self.out_file, compression='gzip')
 
                 end_time = time.time()
                 elapsed = end_time - start_time
