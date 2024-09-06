@@ -2,7 +2,10 @@ import torch
 import av
 import numpy as np
 import pandas as pd
-from deepjuice.procedural.datasets import CustomDataset
+try:
+    import deepjuice.procedural.datasets.CustomDataset as CustomDataset
+except ImportError:
+    import deepjuice.procedural.datasets.CustomData as CustomDataset
 from torchvision.transforms import Compose, Lambda
 from torchvision.transforms._transforms_video import (
     NormalizeVideo,
