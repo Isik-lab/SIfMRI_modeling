@@ -14,7 +14,7 @@ from decord import VideoReader
 from decord import cpu, gpu
 decord.bridge.set_bridge('torch')
 os.environ["HF_TOKEN"] = "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"
-from models.mallm.lavis.models import load_model_and_preprocess
+# from models.mallm.lavis.models import load_model_and_preprocess
 
 class VideoNeuralEncoding:
     def __init__(self, args):
