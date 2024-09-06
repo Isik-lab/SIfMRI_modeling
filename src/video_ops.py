@@ -3,9 +3,9 @@ import av
 import numpy as np
 import pandas as pd
 try:
-    import deepjuice.procedural.datasets.CustomDataset as CustomDataset
-except ImportError:
-    import deepjuice.procedural.datasets.CustomData as CustomDataset
+    from deepjuice.procedural.datasets import CustomDataset as CustomDataset
+except ModuleNotFoundError:
+    from deepjuice.procedural.datasets import CustomData as CustomDataset
 from torchvision.transforms import Compose, Lambda
 from torchvision.transforms._transforms_video import (
     NormalizeVideo,
