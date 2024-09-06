@@ -10,6 +10,9 @@ import time
 import torch
 from slack_sdk.webhook import WebhookClient
 from slack_sdk import WebClient
+import sys
+import os
+import dotenv
 
 def moving_grouped_average(outputs, skip=5, input_dim=0):
     from math import ceil as roundup # for rounding upwards
@@ -38,17 +41,18 @@ def send_slack(msg='', channel=None, attachment=None):
      Returns:
          slack-sdk response
     """
+    env = Env()
     # Slack API functions
-    kathy_channel = 'https://hooks.slack.com/services/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'
-    emalie_channel = 'https://hooks.slack.com/services/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' # - Need to reconnect by Emalie if needed here - https://api.slack.com/apps/A06293X8D35/incoming-webhooks?
-    file_channel = 'https://hooks.slack.com/services/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'
+    kathy_hook = env.getFlag('kathy_channel')
+    emalie_hook = env.getFlag('file_channel')  # - Defaults to file_channel.
+    file_hook = env.getFlag('file_channel')
 
     if channel == 'kgarci18':
-        url = kathy_channel
+        url = kathy_hook
     elif channel == 'emcmaho7':
-        url = emalie_channel
+        url = emalie_hook
     else:
-        raise "Channel is not recognised!"
+        url = file_hook
 
     response = None
     if attachment:
@@ -59,6 +63,25 @@ def send_slack(msg='', channel=None, attachment=None):
         webhook = WebhookClient(url)
         response = webhook.send(text=msg)
     return response
+
+
+class Env:
+    def __init__(self):
+        self.dotenv_file = dotenv.find_dotenv()
+        self.dotenv = dotenv.load_dotenv(self.dotenv_file)
+        print('Loaded env file.')
+
+    def getFlag(self, name):
+        flag = os.environ[str(name)]
+        return flag
+
+    def setFlag(self, name, value):
+        name = str(name)
+        value = str(value)
+        os.environ[name] = value
+        dotenv.set_key(self.dotenv_file, name, os.environ[name])
+        return True
+
 
 class TimeBlock:
     def __init__(self):
