@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 try:
     from deepjuice.procedural.datasets import CustomDataset as CustomDataset
-except ModuleNotFoundError:
+except:
     from deepjuice.procedural.datasets import CustomData as CustomDataset
 from torchvision.transforms import Compose, Lambda
 from torchvision.transforms._transforms_video import (
