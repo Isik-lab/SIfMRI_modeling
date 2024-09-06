@@ -39,9 +39,9 @@ def send_slack(msg='', channel=None, attachment=None):
          slack-sdk response
     """
     # Slack API functions
-    kathy_channel = 'https://hooks.slack.com/services/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'
-    emalie_channel = 'https://hooks.slack.com/services/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' # - Need to reconnect by Emalie if needed here - https://api.slack.com/apps/A06293X8D35/incoming-webhooks?
-    file_channel = 'https://hooks.slack.com/services/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'
+    kathy_channel = 'https://hooks.slack.com/services/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'
+    emalie_channel = 'https://hooks.slack.com/services/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' # - Defaults to file_channel. Need to reconnect by Emalie if needed here - https://api.slack.com/apps/A06293X8D35/incoming-webhooks?
+    file_channel = 'https://hooks.slack.com/services/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'
 
     if channel == 'kgarci18':
         url = kathy_channel
