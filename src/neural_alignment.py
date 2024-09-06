@@ -370,21 +370,21 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
         print(f"Running batch: {batch+1}")
         feature_map_iterator = tqdm(feature_maps.items(), desc = 'Training Mapping (Layer)', leave=False)
         for feature_map_uid, feature_map in feature_map_iterator:
+            layer_index += 1 # one layer deeper in feature_maps
+
+            # reduce dimensionality of feature_maps by sparse random projection
+            feature_map = get_feature_map_srps(feature_map, device=devices[-1])
+
+            X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
+            X = {'train': X[indices['train']], 'test': X[indices['test']]}
+            del feature_map
+            torch.cuda.empty_cache()
+
+            # Memory saving
+            pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
+                                 device=devices[-1], scale_X=False)
+
             try:
-                layer_index += 1 # one layer deeper in feature_maps
-
-                # reduce dimensionality of feature_maps by sparse random projection
-                feature_map = get_feature_map_srps(feature_map, device=devices[-1])
-
-                X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
-                X = {'train': X[indices['train']], 'test': X[indices['test']]}
-                del feature_map
-                torch.cuda.empty_cache()
-
-                # Memory saving
-                pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
-                                     device=devices[-1], scale_X=False)
-
                 #### Fit CV in the train set ####
                 y_cv_pred, y_cv_true = [], []  # Initialize lists
                 for i, (cv_train_index, cv_test_index) in enumerate(cv.split(X['train'])):
@@ -435,39 +435,37 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
     results['train_score'] = scores_train_max
     results['model_uid'] = model_name
 
-
-
     if test_eval:
         print('Running evaluation in the test set')
         scores_test_max = np.zeros_like(scores_train_max)
         y_hat_max = torch.zeros_like(y_cv_hat)
         layer_index = 0
         for batch, feature_maps in enumerate(feature_extractor):
-            try:
-                print(f"Running batch: {batch + 1}")
-                feature_map_iterator = tqdm(feature_maps.items(), desc='Testing Mapping (Layer)', leave=False)
-                for feature_map_uid, feature_map in feature_map_iterator:
-                    layer_index += 1  # one layer deeper in feature_maps
+            print(f"Running batch: {batch + 1}")
+            feature_map_iterator = tqdm(feature_maps.items(), desc='Testing Mapping (Layer)', leave=False)
+            for feature_map_uid, feature_map in feature_map_iterator:
+                layer_index += 1  # one layer deeper in feature_maps
 
-                    if np.sum(model_layer_index_max == layer_index) > 0:
-                        # reduce dimensionality of feature_maps by sparse random projection
-                        feature_map = get_feature_map_srps(feature_map, device=devices[-1])
+                if np.sum(model_layer_index_max == layer_index) > 0:
+                    # reduce dimensionality of feature_maps by sparse random projection
+                    feature_map = get_feature_map_srps(feature_map, device=devices[-1])
 
-                        X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
-                        X = {'train': X[indices['train']], 'test': X[indices['test']]}
-                        del feature_map
-                        torch.cuda.empty_cache()
+                    X = feature_map.detach().clone().squeeze().to(torch.float32).to(devices[-1])
+                    X = {'train': X[indices['train']], 'test': X[indices['test']]}
+                    del feature_map
+                    torch.cuda.empty_cache()
 
-                        # Memory saving
-                        pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
-                                             device=devices[-1], scale_X=False)
+                    # Memory saving
+                    pipe = TorchRidgeGCV(alphas=alphas, alpha_per_target=True,
+                                         device=devices[-1], scale_X=False)
 
-                        X_train, X_test = feature_scaler(X['train'].detach().clone(), X['test'].detach().clone())
-                        if scale_y:
-                            y_train, y_test = feature_scaler(y['train'].detach().clone(), y['test'].detach().clone())
-                        else:
-                            y_train, y_test = y['train'].detach().clone(), y['test'].detach().clone()
+                    X_train, X_test = feature_scaler(X['train'].detach().clone(), X['test'].detach().clone())
+                    if scale_y:
+                        y_train, y_test = feature_scaler(y['train'].detach().clone(), y['test'].detach().clone())
+                    else:
+                        y_train, y_test = y['train'].detach().clone(), y['test'].detach().clone()
 
+                    try:
                         pipe.fit(X_train, y_train)
                         y_hat = pipe.predict(X_test)
                         scores_test = score_func(y_hat, y_test).cpu().detach().numpy()
@@ -482,11 +480,12 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
                         del X, X_train, X_test, y_train
                         gc.collect()
                         torch.cuda.empty_cache()
-                    else:
-                        print(f'{feature_map_uid} (layer {layer_index}) is not a max layer in train set')
-                        print('skipping test set regression')
-            except:
-                print(f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
+                    except:
+                        print(
+                            f'\nFitting failed to converge for {model_name} {feature_map_uid} ({layer_index + layer_index_offset})')
+                else:
+                    print(f'{feature_map_uid} (layer {layer_index}) is not a max layer in train set')
+                    print('skipping test set regression')
 
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max
