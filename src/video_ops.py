@@ -4,13 +4,17 @@ import numpy as np
 import pandas as pd
 from deepjuice.procedural.datasets import CustomDataset
 from torchvision.transforms import Compose, Lambda
-from torchvision.transforms._transforms_video import NormalizeVideo
+from torchvision.transforms._transforms_video import (
+    NormalizeVideo,
+    CenterCropVideo,
+)
 from pytorchvideo.data.encoded_video import EncodedVideo
 from pytorchvideo.transforms import (
     ApplyTransformToKey,
     ShortSideScale,
     UniformTemporalSubsample,
-    UniformCropVideo
+    UniformCropVideo,
+)
 from torch.utils.data import DataLoader
 from transformers import AutoImageProcessor, AutoProcessor, VideoMAEModel, TimesformerForVideoClassification, AutoModel
 import transformers
@@ -201,7 +205,7 @@ def get_transform(model_name):
         num_frames = 32
         clip_duration = (num_frames * sampling_rate) / fps
         return slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=num_frames,
-                                  side_size=256), clip_duration
+                                  side_size=256, crop_size=256), clip_duration
 
     elif 'x3d' in model_name:
         return x3d_transform(model_name, mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], fps=30)
@@ -220,7 +224,7 @@ def get_transform(model_name):
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return slow_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                  num_frames=num_frames), clip_duration
+                                  num_frames=num_frames, crop_size=256), clip_duration
 
     elif model_name == 'c2d_r50':
         num_frames = 8
@@ -228,7 +232,7 @@ def get_transform(model_name):
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return c2d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                 num_frames=num_frames), clip_duration
+                                 num_frames=num_frames, crop_size=256), clip_duration
 
     elif model_name == 'i3d_r50':
         num_frames = 8
@@ -236,15 +240,15 @@ def get_transform(model_name):
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                 num_frames=num_frames), clip_duration
+                                 num_frames=num_frames, crop_size=224), clip_duration
 
     elif model_name == 'csn_r101':
         num_frames = 32
         sampling_rate = 2
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
-        return i3d_r50_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                                 num_frames=num_frames), clip_duration
+        return csn_r101_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
+                                 num_frames=num_frames, crop_size=224), clip_duration
 
     elif 'mvit' in model_name:
         num_frames = 16
@@ -252,7 +256,7 @@ def get_transform(model_name):
         fps = 30
         clip_duration = (num_frames * sampling_rate) / fps
         return mvit_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], side_size=256,
-                              num_frames=num_frames), clip_duration
+                              num_frames=num_frames, crop_size=224), clip_duration
 
     elif 'videomae' in model_name:
         return videomae_transform(), 3
@@ -294,7 +298,7 @@ class PackPathway(torch.nn.Module):
         return frame_list
 
 
-def slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=32, side_size=256):
+def slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_frames=32, side_size=256, crop_size=256):
     return ApplyTransformToKey(
         key="video",
         transform=Compose([
@@ -302,6 +306,7 @@ def slowfast_transform(mean=[0.45, 0.45, 0.45], std=[0.225, 0.225, 0.225], num_f
             Lambda(lambda x: x / 255.0),
             NormalizeVideo(mean, std),
             ShortSideScale(size=side_size),
+            CenterCropVideo(crop_size),
             PackPathway()
         ]
         )
@@ -344,7 +349,10 @@ def x3d_transform(model_name, mean, std, fps):
                 UniformTemporalSubsample(transform_params["num_frames"]),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=transform_params["side_size"])
+                ShortSideScale(size=transform_params["side_size"]),
+                CenterCropVideo(
+                    crop_size=(transform_params["crop_size"], transform_params["crop_size"])
+            )
             ]
         )
     ), clip_duration
@@ -353,7 +361,7 @@ def x3d_transform(model_name, mean, std, fps):
 ####################
 # slow_r50 transform
 ####################
-def slow_r50_transform(mean, std, side_size, num_frames):
+def slow_r50_transform(mean, std, side_size, num_frames, crop_size):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -361,7 +369,8 @@ def slow_r50_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
@@ -370,7 +379,7 @@ def slow_r50_transform(mean, std, side_size, num_frames):
 ####################
 # c2d_r50 transform
 ####################
-def c2d_r50_transform(mean, std, side_size, num_frames):
+def c2d_r50_transform(mean, std, side_size, num_frames, crop_size):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -378,7 +387,8 @@ def c2d_r50_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
@@ -387,7 +397,7 @@ def c2d_r50_transform(mean, std, side_size, num_frames):
 ####################
 # i3d_r50 transform
 ####################
-def i3d_r50_transform(mean, std, side_size, num_frames):
+def i3d_r50_transform(mean, std, side_size, num_frames, crop_size):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -395,7 +405,8 @@ def i3d_r50_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
@@ -404,7 +415,7 @@ def i3d_r50_transform(mean, std, side_size, num_frames):
 ####################
 # csn_r101 transform
 ####################
-def csn_r101_transform(mean, std, side_size, num_frames):
+def csn_r101_transform(mean, std, side_size, num_frames, crop_size):
     return ApplyTransformToKey(
         key="video",
         transform=Compose(
@@ -412,8 +423,8 @@ def csn_r101_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
-
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
@@ -430,8 +441,8 @@ def mvit_transform(mean, std, side_size, num_frames):
                 UniformTemporalSubsample(num_frames),
                 Lambda(lambda x: x / 255.0),
                 NormalizeVideo(mean, std),
-                ShortSideScale(size=side_size)
-
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size))
             ]
         )
     )
