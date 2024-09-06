@@ -489,6 +489,8 @@ def get_video_benchmarking_results(benchmark, feature_extractor,
 
         # Add test set results to the dataframe
         results['test_score'] = scores_test_max
+        results['r_null_dist'] = pd.NA
+        results['r_var_dist'] = pd.NA
 
         # Run permutation testing and bootstapping
         # Do permutation testing on voxels in ROIs
