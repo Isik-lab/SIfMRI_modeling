@@ -19,6 +19,7 @@ class VideoBehaviorEncoding:
         self.model_input = args.model_input
         self.data_dir = args.data_dir
         self.user = args.user
+        self.memory_limit = args.memory_limit
         self.extension = 'mp4'
         print(vars(self))
         if torch.cuda.is_available():
@@ -62,7 +63,6 @@ class VideoBehaviorEncoding:
 
                 print(f'Loading model {self.model_name}...')
                 model = self.get_model(self.model_name)
-                model = self.get_model(self.model_name)
                 if self.model_name == 'xclip-base-patch32':
                     batch_size = 1
                 else:
@@ -90,11 +90,14 @@ class VideoBehaviorEncoding:
                 else:
                     kwargs = {"forward_fn": custom_forward}
 
-                # Calculate the memory limit and generate the feature_extractor
-                total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
-                total_memory = int(float(total_memory_string.split()[0]))
-                memory_limit = int(total_memory * 0.75)
-                memory_limit_string = f'{memory_limit}GB'
+                if self.memory_limit is not None:
+                    # Calculate the memory limit and generate the feature_extractor
+                    total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
+                    total_memory = int(float(total_memory_string.split()[0]))
+                    memory_limit = int(total_memory * 0.75)
+                    memory_limit_string = f'{memory_limit}GB'
+                else:
+                    memory_limit_string = self.memory_limit
 
                 print(f"Creating feature extractor with {memory_limit_string} batches...")
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
@@ -133,6 +136,7 @@ def main():
                         default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')
                         # default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
+    parser.add_argument('memory_limit', type=str, default=None)
     args = parser.parse_args(remaining_argv)
     VideoBehaviorEncoding(args).run()
 
