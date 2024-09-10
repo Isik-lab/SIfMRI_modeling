@@ -136,7 +136,7 @@ def main():
                         default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')
                         # default='/home/emcmaho7/scratch4-lisik3/emcmaho7/SIfMRI_modeling/data')
                         # default='/Users/emcmaho7/Dropbox/projects/SI_fmri/SIfMRI_modeling/data')
-    parser.add_argument('memory_limit', type=str, default=None)
+    parser.add_argument('--memory_limit', type=str, default=None)
     args = parser.parse_args(remaining_argv)
     VideoBehaviorEncoding(args).run()
 
