@@ -23,6 +23,7 @@ class VideoNeuralEncoding:
         self.model_name = args.model_name
         self.model_input = args.model_input
         self.data_dir = args.data_dir
+        self.memory_limit = args.memory_limit
         self.user = args.user
         if self.model_input == 'videos':
             self.extension = 'mp4'
@@ -104,10 +105,13 @@ class VideoNeuralEncoding:
                     kwargs = {"forward_fn": custom_forward}
 
                 # Calculate the memory limit and generate the feature_extractor
-                total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
-                total_memory = int(float(total_memory_string.split()[0]))
-                memory_limit = int(total_memory * 0.75)
-                memory_limit_string = f'{memory_limit}GB'
+                if self.memory_limit is None:
+                    total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
+                    total_memory = int(float(total_memory_string.split()[0]))
+                    memory_limit = int(total_memory * 0.75)
+                    memory_limit_string = f'{memory_limit}GB'
+                else:
+                    memory_limit_string = self.memory_limit
 
                 print(f"Creating feature extractor with {memory_limit_string} batches...")
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=memory_limit_string, initial_report=True,
@@ -143,6 +147,7 @@ def main():
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')
+    parser.add_argument('memory_limit', type=str, default=None)
 
     args = parser.parse_args(remaining_argv)
     VideoNeuralEncoding(args).run()
