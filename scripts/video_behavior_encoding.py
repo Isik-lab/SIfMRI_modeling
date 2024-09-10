@@ -90,7 +90,7 @@ class VideoBehaviorEncoding:
                 else:
                     kwargs = {"forward_fn": custom_forward}
 
-                if self.memory_limit is not None:
+                if self.memory_limit is None:
                     # Calculate the memory limit and generate the feature_extractor
                     total_memory_string = cuda_device_report(to_pandas=True)[0]['Total Memory']
                     total_memory = int(float(total_memory_string.split()[0]))
