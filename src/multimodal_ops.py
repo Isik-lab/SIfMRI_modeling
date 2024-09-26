@@ -25,10 +25,7 @@ class MultimodalData(CustomDataset):
 
         inputs = self.transforms(text=text, images=image, return_tensors="pt", padding=True)
         # Move to device
-        if isinstance(inputs, torch.Tensor):
-            inputs = inputs.to(self.device)
-        else:
-            inputs = [x.to(self.device) for x in inputs]
+        inputs = inputs.to(self.device)
         return inputs
 
     def __len__(self):
