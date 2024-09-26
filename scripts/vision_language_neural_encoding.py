@@ -73,6 +73,16 @@ class VisionLanguageNeuralEncoding:
         stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
 
+    def load_captions(self):
+        if not os.path.exists(self.input_file):
+            file = f'{self.data_dir}/interim/CaptionData/captions.csv'
+            df = parse_caption_data(file)
+            perturb_captions(df, func_name=self.perturb_func)
+            df.to_csv(self.input_file, index=False)
+            return df
+        else:
+            return pd.read_csv(self.input_file)
+
     def run(self):
         try:
             if os.path.exists(self.out_file) and not self.overwrite:
@@ -84,6 +94,7 @@ class VisionLanguageNeuralEncoding:
                 tools.send_slack(f'Started: {self.process} {self.model_name}...', channel=self.user)
 
                 benchmark = self.load_fmri()
+                captions = self.load_captions()
                 # Break the videos into frames for averaging
                 frame_data = frameops.visual_events(benchmark.stimulus_data,
                                                self.video_path, self.frame_path,
@@ -94,6 +105,7 @@ class VisionLanguageNeuralEncoding:
 
                 print('Running dataloader...')
                 dataloader = mmops.get_multimodal_loader(frame_data,
+                                                         captions,
                                                          preprocess,
                                                          batch_size=16,
                                                          group_keys='video_name',
@@ -103,15 +115,6 @@ class VisionLanguageNeuralEncoding:
 
 
                 print(dataloader.batch_data.head(20))
-
-                # Reorganize the benchmark to the dataloader
-                videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
-                benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
-                                                                       categories=videos, ordered=True)
-                benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
-                stim_idx = list(benchmark.stimulus_data.index.to_numpy().astype('str'))
-                benchmark.stimulus_data.reset_index(drop=True, inplace=True)
-                benchmark.response_data = benchmark.response_data[stim_idx]
 
                 benchmark_setup_elapsed = run_timer.elapse()
 
