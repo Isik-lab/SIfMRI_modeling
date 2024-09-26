@@ -5,9 +5,9 @@ try:
 except:
     from deepjuice.procedural.datasets import CustomData as CustomDataset
 import torch
-from torch.utils.data import DataLoader
 from PIL import Image
 from torch.utils.data import BatchSampler
+import numpy as np
 
 ######General###########
 
@@ -75,12 +75,12 @@ class SizeSampler(BatchSampler):
 
         return '\n  '.join(lines)
 
-def get_multimodal_loader(frame_data, transforms, batch_size=64, group_keys=None, image_key='images', caption_key='captions', device='cuda', **kwargs):
+def get_multimodal_loader(frame_data, transforms, batch_size=16, group_keys=None, image_key='images', caption_key='captions', device='cuda', **kwargs):
     if group_keys is not None:
         batch_data = batch_by_group(frame_data, group_keys, batch_size)
         images = batch_data[image_key]  # batched images after sort
         captions = batch_data[caption_key]  # batched captions after sort
-    return DataLoader(MultimodalData(images, captions, transforms, device), batch_size, **kwargs)
+    return MultimodalData(images, captions, transforms, device)
 
 def get_model(model_uid, modal='vision-language'):
     if model_uid == 'clip-vit-base-patch32':

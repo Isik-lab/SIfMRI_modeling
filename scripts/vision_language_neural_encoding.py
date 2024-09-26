@@ -93,8 +93,13 @@ class VisionLanguageNeuralEncoding:
                 model, preprocess = mmops.get_model(self.model_name, self.modality)
 
                 print('Running dataloader...')
-                dataloader = mmops.get_multimodal_loader(frame_data, preprocess,
-                                             batch_size=16, group_keys='video_name', image_key='images', caption_key='captions', device='cuda')
+                dataloader = mmops.get_multimodal_loader(frame_data,
+                                                         preprocess,
+                                                         batch_size=16,
+                                                         group_keys='video_name',
+                                                         image_key='images',
+                                                         caption_key='captions',
+                                                         device='cuda')
 
 
                 print(dataloader.batch_data.head(20))
