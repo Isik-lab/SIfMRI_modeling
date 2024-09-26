@@ -88,15 +88,13 @@ class VisionLanguageNeuralEncoding:
                 frame_data = frameops.visual_events(benchmark.stimulus_data,
                                                self.video_path, self.frame_path,
                                                frame_idx=self.frames)
-                images = frame_data['images']
                 frame_data['captions'] = frame_data['captions'].apply(ast.literal_eval)
-                captions = frame_data['captions']
 
                 model, preprocess = mmops.get_model(self.model_name, self.modality)
 
                 print('Running dataloader...')
-                dataloader = mmops.get_multimodal_loader(images, captions, preprocess,
-                                             batch_size=16, group_keys='video_name', device='cuda')
+                dataloader = mmops.get_multimodal_loader(frame_data, preprocess,
+                                             batch_size=16, group_keys='video_name', image_key='images', caption_key='captions', device='cuda')
 
 
                 print(dataloader.batch_data.head(20))
