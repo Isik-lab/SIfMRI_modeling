@@ -102,13 +102,13 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                      tensor_fn=grouped_stack,
                                      memory_limit=memory_limit,
                                      batch_strategy='stack', flatten=True,
-                                     **{'device': devices[0], 'output_device': devices[0], forward_fn: forward_fn})
+                                     **{'device': devices[0], 'output_device': devices[0], 'forward_fn': forward_fn})
     else:  # grouping_func == 'grouped_average':
         extractor = FeatureExtractor(model, dataloader,
                                      tensor_fn=grouped_average,
                                      memory_limit=memory_limit,
                                      batch_strategy='stack', flatten=True,
-                                     **{'device': devices[0], 'output_device': devices[0], forward_fn: forward_fn})
+                                     **{'device': devices[0], 'output_device': devices[0], 'forward_fn': forward_fn})
 
     if batch_compute:
         total_memory = extractor.total_memory
@@ -241,13 +241,13 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                         tensor_fn=grouped_stack,
                                         memory_limit=memory_limit,
                                         batch_strategy='stack', flatten=True,
-                                        **{'device': devices[0], 'output_device': devices[0], forward_fn: forward_fn})
+                                        **{'device': devices[0], 'output_device': devices[0], 'forward_fn': forward_fn})
         else:# grouping_func == 'grouped_average':
             extractor = FeatureExtractor(model, dataloader,
                                         tensor_fn=grouped_average,
                                         memory_limit=memory_limit,
                                         batch_strategy='stack', flatten=True,
-                                        **{'device': devices[0], 'output_device': devices[0], forward_fn: forward_fn})
+                                        **{'device': devices[0], 'output_device': devices[0], 'forward_fn': forward_fn})
 
         print('resetting y')
         y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1])
