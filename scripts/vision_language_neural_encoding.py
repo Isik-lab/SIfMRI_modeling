@@ -118,12 +118,17 @@ class VisionLanguageNeuralEncoding:
                 print('running regressions')
                 func_timer = tools.TimeBlock()
                 func_timer.start()
+
+                def forward_fn(model, inputs):
+                    return model(**inputs)
+
                 results, timers = get_benchmarking_results(benchmark, model, dataloader,
                                                            model_name=self.model_name,
                                                            test_eval=self.test_eval,
                                                            grouping_func=self.grouping_func,
                                                            devices=['cuda:0'],
-                                                           memory_limit=self.memory_limit)
+                                                           memory_limit=self.memory_limit,
+                                                           forward_fn=forward_fn)
                 func_elapsed = func_timer.elapse()
 
                 print('saving results')
