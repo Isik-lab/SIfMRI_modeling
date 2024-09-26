@@ -22,6 +22,7 @@ class MultimodalData(CustomDataset):
     def __getitem__(self, index):
         image = Image.open(self.images[index])
         text = self.texts[index]
+        text = text[:1]
 
         inputs = self.transforms(text=text, images=image, return_tensors="pt", padding=True)
         # Move to device
