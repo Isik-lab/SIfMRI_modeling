@@ -85,6 +85,11 @@ def get_multimodal_loader(frame_data, captions, transforms, batch_size=16, group
         dataloader = DataLoader(MultimodalData(images, captions, transforms, device), batch_size, **kwargs)
         setattr(dataloader, 'batch_data', batch_data)
         return dataloader
+    else:
+        images = frame_data[image_key]
+        captions = captions['captions']
+        return DataLoader(MultimodalData(images, captions, transforms, device), batch_size, **kwargs)
+
 
 def get_model(model_uid, modal='vision-language'):
     if model_uid == 'clip-vit-base-patch32':

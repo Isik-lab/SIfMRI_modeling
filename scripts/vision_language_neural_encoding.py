@@ -4,16 +4,15 @@ import argparse
 import pandas as pd
 import os
 from src.mri import Benchmark
-from src.neural_alignment import get_benchmarking_results
+from src import neural_alignment, tools, video_ops
 from src.language_ops import parse_caption_data, get_model
 import src.multimodal_ops as mmops
 from src.language_ablation import perturb_captions
 from src import frame_ops as frameops
 from src import tools
+from deepjuice.extraction import FeatureExtractor
 import torch
 import ast
-from deepjuice.model_zoo.options import get_deepjuice_model
-from deepjuice.procedural.datasets import get_data_loader
 from deepjuice.systemops.devices import cuda_device_report
 
 
@@ -108,7 +107,7 @@ class VisionLanguageNeuralEncoding:
                                                          captions,
                                                          preprocess,
                                                          batch_size=16,
-                                                         group_keys='video_name',
+                                                         group_keys=None,
                                                          image_key='images',
                                                          caption_key='captions',
                                                          device='cuda')
@@ -116,43 +115,28 @@ class VisionLanguageNeuralEncoding:
 
                 print(dataloader.batch_data.head(20))
 
-                # Reorganize the benchmark to the dataloader
-                videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
-                benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
-                                                                        categories=videos, ordered=True)
-                benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
-                stim_idx = list(benchmark.stimulus_data.index.to_numpy().astype('str'))
-                benchmark.stimulus_data.reset_index(drop=True, inplace=True)
-                benchmark.response_data = benchmark.response_data[stim_idx]
-
-                benchmark_setup_elapsed = run_timer.elapse()
-
-                print('running regressions')
-                func_timer = tools.TimeBlock()
-                func_timer.start()
-
                 def forward_fn(model, inputs):
                     return model(**inputs)
+                kwargs = {"forward_fn": forward_fn}
 
-                results, timers = get_benchmarking_results(benchmark, model, dataloader,
-                                                           model_name=self.model_name,
-                                                           test_eval=self.test_eval,
-                                                           grouping_func=self.grouping_func,
-                                                           devices=['cuda:0'],
-                                                           memory_limit=self.memory_limit,
-                                                           forward_fn=forward_fn)
-                func_elapsed = func_timer.elapse()
+                print(f"Creating feature extractor with {self.memory_limit} batches...")
+                feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=self.memory_limit, initial_report=True,
+                                                         flatten=True, progress=True, exclude_oversize=True, **kwargs)
+                benchmark_setup_elapsed = run_timer.elapse()
 
-                print('saving results')
+                print('Running regressions...')
+                results = neural_alignment.get_video_benchmarking_results(benchmark, feature_map_extractor, devices=['cuda:0'], model_name=self.model_name, test_eval=True)
+
+                print('Saving results')
                 save_timer = tools.TimeBlock()
                 save_timer.start()
                 results.to_parquet(self.out_file, compression='gzip')
                 save_elapsed = save_timer.elapse()
-                timers['benchmark_setup'] = benchmark_setup_elapsed
-                timers['save'] = save_elapsed
-                timers['func'] = func_elapsed
+
+                timers = {}
+                timers['Benchmark Setup Time'] = benchmark_setup_elapsed
+                timers['File Save Time'] = save_elapsed
                 elapsed = run_timer.elapse()
-                print(f'Finished in {elapsed}!')
 
                 tools.send_slack(
                     f'Finished: {self.process} {self.model_name} - Total time =  {elapsed} \nTimeBlock output:',
