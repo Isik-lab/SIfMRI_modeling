@@ -116,6 +116,15 @@ class VisionLanguageNeuralEncoding:
 
                 print(dataloader.batch_data.head(20))
 
+                # Reorganize the benchmark to the dataloader
+                videos = list(dataloader.batch_data.groupby(by='video_name').groups.keys())
+                benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
+                                                                        categories=videos, ordered=True)
+                benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
+                stim_idx = list(benchmark.stimulus_data.index.to_numpy().astype('str'))
+                benchmark.stimulus_data.reset_index(drop=True, inplace=True)
+                benchmark.response_data = benchmark.response_data[stim_idx]
+
                 benchmark_setup_elapsed = run_timer.elapse()
 
                 print('running regressions')

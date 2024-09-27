@@ -26,6 +26,8 @@ class MultimodalData(CustomDataset):
         text = text[:1]
 
         inputs = self.transforms(text=text, images=image, return_tensors="pt", padding=True)
+        inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
+        inputs['attention_mask'] = inputs['attention_mask'].squeeze(0)
         # Move to device
         inputs = inputs.to(self.device)
         return inputs
@@ -75,8 +77,14 @@ class SizeSampler(BatchSampler):
         return '\n  '.join(lines)
 
 def get_multimodal_loader(frame_data, captions, transforms, batch_size=16, group_keys=None, image_key='images', caption_key='captions', device='cuda',  **kwargs):
-    images = frame_data[image_key]
-    return DataLoader(MultimodalData(images, captions, transforms, device), batch_size, **kwargs)
+    frame_data[caption_key] = captions['caption']
+    if group_keys is not None:
+        batch_data = batch_by_group(frame_data, group_keys, batch_size)
+        images = batch_data[image_key]  # batched data after sort
+        captions = batch_data[caption_key]
+        dataloader = DataLoader(MultimodalData(images, captions, transforms, device), batch_size, **kwargs)
+        setattr(dataloader, 'batch_data', batch_data)
+        return dataloader
 
 def get_model(model_uid, modal='vision-language'):
     if model_uid == 'clip-vit-base-patch32':
