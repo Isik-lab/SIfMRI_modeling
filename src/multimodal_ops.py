@@ -23,11 +23,11 @@ class MultimodalData(CustomDataset):
     def __getitem__(self, index):
         image = Image.open(self.images[index])
         text = self.texts[index]
-        text = text[:1]
+        text = [text]
 
         inputs = self.transforms(text=text, images=image, return_tensors="pt", padding=True)
-        inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
-        inputs['attention_mask'] = inputs['attention_mask'].squeeze(0)
+        #inputs['pixel_values'] = inputs['pixel_values'].squeeze(0)
+        #inputs['attention_mask'] = inputs['attention_mask'].squeeze(0)
         # Move to device
         inputs = inputs.to(self.device)
         return inputs
@@ -76,6 +76,55 @@ class SizeSampler(BatchSampler):
 
         return '\n  '.join(lines)
 
+def pad_collate(batch):
+    # Safeguard: Ensure attention_mask and input_ids exist and have valid shape
+    for item in batch:
+        print(item['attention_mask'].shape)
+
+    valid_attention_masks = [item['attention_mask'] for item in batch if 'attention_mask' in item and item['attention_mask'] is not None]
+    valid_ids = [item['input_ids'] for item in batch if 'input_ids' in item and item['input_ids'] is not None]
+
+    if len(valid_attention_masks) == 0:
+        raise ValueError("No valid 'attention_mask' found in batch")
+    if len(valid_ids) == 0:
+        raise ValueError("No valid 'input_ids' found in batch")
+
+    # Find the maximum size among the attention masks
+    max_size_attention_mask = max([mask.shape[1] for mask in valid_attention_masks])
+    print(max_size_attention_mask)
+
+    # Pad each attention_mask to the max_size_attention_mask
+    for item in batch:
+        if 'attention_mask' in item and item['attention_mask'] is not None:
+            pad_size = max_size_attention_mask - item['attention_mask'].shape[1]
+            print(pad_size)
+            if pad_size > 0:
+                # Pad the attention_mask with zeros to match the max size
+                item['attention_mask'] = torch.nn.functional.pad(item['attention_mask'], (0, pad_size), "constant", 0)
+            # Ensure attention_mask is 2D by squeezing extra dimensions
+            item['attention_mask'] = item['attention_mask'].squeeze()
+
+    # Find the maximum size among the input_ids
+    max_size_input_ids = max([id.shape[1] for id in valid_ids])
+    print(max_size_input_ids)
+
+    # Pad each input_ids to the max_size_input_ids
+    for item in batch:
+        if 'input_ids' in item and item['input_ids'] is not None:
+            pad_size = max_size_input_ids - item['input_ids'].shape[1]
+            print(pad_size)
+            if pad_size > 0:
+                # Pad the input_ids with zeros to match the max size
+                item['input_ids'] = torch.nn.functional.pad(item['input_ids'], (0, pad_size), "constant", 0)
+            # Ensure input_ids is 2D by squeezing extra dimensions
+            item['input_ids'] = item['input_ids'].squeeze()
+
+    # Debugging output for tensor shapes
+    for item in batch:
+        print(f"input_ids shape: {item['input_ids'].shape}")
+        print(f"attention_mask shape: {item['attention_mask'].shape}")
+        print(f"pixel_values shape: {item['pixel_values'].shape}")
+
 def get_multimodal_loader(frame_data, captions, transforms, batch_size=16, group_keys=None, image_key='images', caption_key='captions', device='cuda',  **kwargs):
     frame_data[caption_key] = captions['caption']
     if group_keys is not None:
@@ -87,8 +136,8 @@ def get_multimodal_loader(frame_data, captions, transforms, batch_size=16, group
         return dataloader
     else:
         images = frame_data[image_key]
-        captions = captions['captions']
-        return DataLoader(MultimodalData(images, captions, transforms, device), batch_size, **kwargs)
+        captions = captions['caption']
+        return DataLoader(MultimodalData(images, captions, transforms, device), batch_size, collate_fn=pad_collate, **kwargs)
 
 
 def get_model(model_uid, modal='vision-language'):

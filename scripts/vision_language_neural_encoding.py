@@ -112,9 +112,6 @@ class VisionLanguageNeuralEncoding:
                                                          caption_key='captions',
                                                          device='cuda')
 
-
-                print(dataloader.batch_data.head(20))
-
                 def forward_fn(model, inputs):
                     return model(**inputs)
                 kwargs = {"forward_fn": forward_fn}
