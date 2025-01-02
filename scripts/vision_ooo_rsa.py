@@ -113,7 +113,7 @@ class VisionOOORSA:
                         model_rsms[feature_map_uid] = model_rsm
                         del feature_map
 
-                sim_judg_rsm = np.load(f'{self.data_dir}/raw/utils/train_judgements.npy')
+                sim_judg_rsm = pd.read_csv(f'{self.data_dir}/raw/utils/sim_judge_train_rsm.csv')
                 sim_judg_rsm_flat = sim_judg_rsm.values[np.triu_indices_from(sim_judg_rsm, k=1)]
 
                 model_rsa_results = {}
