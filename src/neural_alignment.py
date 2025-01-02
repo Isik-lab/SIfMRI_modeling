@@ -44,7 +44,8 @@ def get_benchmarking_results(benchmark, model, dataloader,
                              stream_statistics=False,
                              batch_compute=False,
                              grouping_func='grouped_average',
-                             alphas=[10.**power for power in np.arange(-5, 2)]):
+                             alphas=[10.**power for power in np.arange(-5, 2)],
+                             forward_fn=None):
 
     # Define a grouping function to average across the different captions
     def grouped_average(tensor, batch_iter=None, **kwargs):
@@ -101,13 +102,13 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                      tensor_fn=grouped_stack,
                                      memory_limit=memory_limit,
                                      batch_strategy='stack', flatten=True,
-                                     **{'device': devices[0], 'output_device': devices[0]})
+                                     **{'device': devices[0], 'output_device': devices[0], 'forward_fn': forward_fn})
     else:  # grouping_func == 'grouped_average':
         extractor = FeatureExtractor(model, dataloader,
                                      tensor_fn=grouped_average,
                                      memory_limit=memory_limit,
                                      batch_strategy='stack', flatten=True,
-                                     **{'device': devices[0], 'output_device': devices[0]})
+                                     **{'device': devices[0], 'output_device': devices[0], 'forward_fn': forward_fn})
 
     if batch_compute:
         total_memory = extractor.total_memory
@@ -240,13 +241,13 @@ def get_benchmarking_results(benchmark, model, dataloader,
                                         tensor_fn=grouped_stack,
                                         memory_limit=memory_limit,
                                         batch_strategy='stack', flatten=True,
-                                        **{'device': devices[0], 'output_device': devices[0]})
+                                        **{'device': devices[0], 'output_device': devices[0], 'forward_fn': forward_fn})
         else:# grouping_func == 'grouped_average':
             extractor = FeatureExtractor(model, dataloader,
                                         tensor_fn=grouped_average,
                                         memory_limit=memory_limit,
                                         batch_strategy='stack', flatten=True,
-                                        **{'device': devices[0], 'output_device': devices[0]})
+                                        **{'device': devices[0], 'output_device': devices[0], 'forward_fn': forward_fn})
 
         print('resetting y')
         y_train = torch.from_numpy(benchmark.response_data.to_numpy().T[indices['train']]).to(torch.float32).to(devices[-1])

@@ -289,6 +289,7 @@ dependencies:
     - pydantic==1.10.12
     - pyopenssl==23.2.0
     - pysocks==1.7.1
+    - python-dotenv==1.0.1
     - pyyaml==6.0.1
     - pyzmq==25.1.2
     - regex==2023.10.3
