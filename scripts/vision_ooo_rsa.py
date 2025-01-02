@@ -93,12 +93,8 @@ class VisionOOORSA:
 
                 dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
                                                 batch_size=16, data_key='images', group_keys='video_name')
-
-                # Reorganize the benchmark to the dataloader
-                videos = dataloader.batch_data.groupby(by='video_name').groups.keys()
-                benchmark.stimulus_data['video_name'] = pd.Categorical(benchmark.stimulus_data['video_name'],
-                                                                        categories=videos, ordered=True)
-                benchmark.stimulus_data = benchmark.stimulus_data.sort_values('video_name')
+                print('Loaded dataloader')
+                print('Running feature extractor...')
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=self.memory_limit, initial_report=True,
                                                          flatten=True, progress=True, exclude_oversize=True)
 
@@ -113,10 +109,12 @@ class VisionOOORSA:
                         model_rsms[feature_map_uid] = model_rsm
                         del feature_map
 
+                print('Finished creating model rsms')
                 sim_judg_rsm = pd.read_csv(f'{self.data_dir}/raw/utils/sim_judge_train_rsm.csv')
                 sim_judg_rsm_flat = sim_judg_rsm.values[np.triu_indices_from(sim_judg_rsm, k=1)]
 
                 model_rsa_results = {}
+                print('Starting correlations...')
                 for name, rsm in model_rsms.items():
                     model_rsm = pd.DataFrame(rsm).iloc[train_idx, train_idx].to_numpy()
                     model_rsm_flat = model_rsm[np.triu_indices_from(model_rsm, k=1)]
@@ -132,8 +130,8 @@ class VisionOOORSA:
 
                 # Save
                 print('saving results')
-                model_rsa_results_df.to_parquet(f"{self.data_dir}/interim/models/{self.model_uid}_human_rsa.parquet")
-                print(f'Saved file to {self.data_dir}/interim/models/{self.model_uid}_human_rsa.parquet')
+                model_rsa_results_df.to_parquet(f"{self.data_dir}/interim/{self.process}/{self.model_uid}_human_rsa.parquet")
+                print(f'Saved file to {self.data_dir}/interim/{self.process}/{self.model_uid}_human_rsa.parquet')
                 print('Finished!')
 
                 end_time = time.time()
