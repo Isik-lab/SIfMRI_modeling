@@ -21,7 +21,7 @@ from scipy.stats import spearmanr
 
 class VisionOOORSA:
     def __init__(self, args):
-        self.process = 'VisionBehaviorOOORSA'
+        self.process = 'VisionOOORSA'
         print('working')
         self.user = args.user
         self.overwrite = args.overwrite
@@ -94,39 +94,35 @@ class VisionOOORSA:
                 dataloader = get_data_loader(frame_data, preprocess, input_modality='image',
                                                 batch_size=16, data_key='images', group_keys='video_name')
                 print('Loaded dataloader')
-                print('Running feature extractor...')
+                print('Creating feature extractor...')
                 feature_map_extractor = FeatureExtractor(model, dataloader, memory_limit=self.memory_limit, initial_report=True,
                                                          flatten=True, progress=True, exclude_oversize=True)
 
-                # Create the model layer rsms
-                model_rsms = {}
+                sim_judg_rsm = pd.read_csv(f'{self.data_dir}/raw/utils/sim_judge_train_rsm.csv')
+                sim_judg_rsm_flat = sim_judg_rsm.values[np.triu_indices_from(sim_judg_rsm, k=1)]
+                model_rsa_results = {}
+
+                print('Starting feature extraction RSA...')
                 for feature_maps in tqdm(feature_map_extractor, desc='Extractor Batch'):
                     feature_map_iterator = tqdm(feature_maps.items(), desc='Model Layer', leave=False)
                     for feature_map_uid, feature_map in feature_map_iterator:
                         # reduce dimensionality of feature_maps by sparse random projection
                         feature_map = get_feature_map_srps(feature_map, device='cuda:0')
-                        model_rsm = 1 - pairwise_distances(feature_map.cpu().numpy(), metric='correlation')
-                        model_rsms[feature_map_uid] = model_rsm
+                        rsm = 1 - pairwise_distances(feature_map.cpu().numpy(), metric='correlation')
+                        # index the rsm to train set
+                        model_rsm = pd.DataFrame(rsm).iloc[train_idx, train_idx].to_numpy()
+                        # extract the lower triangle
+                        model_rsm_flat = model_rsm[np.triu_indices_from(model_rsm, k=1)]
+                        # calculate spearman correlation
+                        observed_correlation, p_val = spearmanr(sim_judg_rsm_flat, model_rsm_flat)
+                        # save to results
+                        model_rsa_results[feature_map_uid] = (observed_correlation, p_val)
                         del feature_map
 
-                print('Finished creating model rsms')
-                sim_judg_rsm = pd.read_csv(f'{self.data_dir}/raw/utils/sim_judge_train_rsm.csv')
-                sim_judg_rsm_flat = sim_judg_rsm.values[np.triu_indices_from(sim_judg_rsm, k=1)]
-
-                model_rsa_results = {}
-                print('Starting correlations...')
-                for name, rsm in model_rsms.items():
-                    model_rsm = pd.DataFrame(rsm).iloc[train_idx, train_idx].to_numpy()
-                    model_rsm_flat = model_rsm[np.triu_indices_from(model_rsm, k=1)]
-
-                    # Step 1: Calculate the observed Spearman correlation
-                    observed_correlation, p_val = spearmanr(sim_judg_rsm_flat, model_rsm_flat)
-                    model_rsa_results[name] = (observed_correlation, p_val)
-
-                    model_rsa_results_df = pd.DataFrame(model_rsa_results, index=["Spearman Correlation", "P-value"]).T
-                    model_rsa_results_df["is_significant"] = model_rsa_results_df[
-                                                                 "P-value"] <= 0.05  # Add significance column
-                    model_rsa_results_df['model_uid'] = self.model_uid
+                print('Finished for all model layers')
+                model_rsa_results_df = pd.DataFrame(model_rsa_results, index=["Spearman Correlation", "P-value"]).T
+                model_rsa_results_df["is_significant"] = model_rsa_results_df["P-value"] <= 0.05  # Add significance column
+                model_rsa_results_df['model_uid'] = self.model_uid
 
                 # Save
                 print('saving results')
@@ -154,7 +150,7 @@ def main():
 
     parser.add_argument('--model_uid', type=str, default='torchvision_alexnet_imagenet1k_v1')
     parser.add_argument('--memory_limit', type=str, default='none')
-    parser.add_argument('--memory_limit_ratio', type=float, default=.8)
+    parser.add_argument('--memory_limit_ratio', type=float, default=.7)
     parser.add_argument('--frame_handling', type=str, default='grouped_average')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--top_dir', '-data', type=str,
