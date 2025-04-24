@@ -62,7 +62,7 @@ class TripletDataset(Dataset):
         ])
 
     def get_vid_names(self, stim1, stim2, stim3, choice):
-        vid_map = pd.read_csv('/content/drive/MyDrive/Colab_Notebooks/code/similarity-judgements/raw/video_mapping.csv')
+        vid_map = pd.read_csv('/home/kgarci18/scratch4-lisik3/kgarci18/SIfMRI_modeling/data/interim/similarity/video_mapping.csv')
         stim1 = vid_map.loc[stim1, 'video_name'][:-4]
         stim2 = vid_map.loc[stim2, 'video_name'][:-4]
         stim3 = vid_map.loc[stim3, 'video_name'][:-4]
@@ -167,8 +167,8 @@ class VideoSimilarityFinetuning:
                 tools.send_slack(f'Started: {self.process} {self.model_name} on Rockfish...', channel=self.user)
                 # Load data and sort
                 sim_judg = pd.read_csv(f'{self.data_dir}/interim/similarity/train_triplets.csv')
-                sim_judge_train_rsm = pd.read_csv(f'{self.data_dir}/interim/similarity/sim_judge_train_rsm.csv')
-                train_idx = pd.read_csv(f'{self.data_dir}/interim/similarity/train_idx.csv')
+                sim_judge_train_rsm = pd.read_csv(f'{self.data_dir}/interim/similarity/sim_judge_train_rsm.csv', index_col=0)
+                train_idx = pd.read_csv(f'{self.data_dir}/interim/similarity/train_idx.csv')['idx'].to_list()
                 print('Loaded files!')
 
                 triplet_loss_fn = nn.TripletMarginLoss(margin=1.0, p=2)
@@ -201,28 +201,30 @@ class VideoSimilarityFinetuning:
 
                 # 🚀 Load Dataloader
                 print('Loading triplet loader...')
-                video_dir = '/content/drive/MyDrive/Colab_Notebooks/code/SIfMRI_modeling/data/raw/videos'
+                video_dir = '/home/kgarci18/scratch4-lisik3/kgarci18/SIfMRI_modeling/data/raw/videos'
                 triplet_dataset = TripletDataset(sim_judg, video_dir)
                 train_loader = DataLoader(triplet_dataset, batch_size=2, shuffle=True, collate_fn=self.collate_fn)
                 print('Loaded triplet loader!')
 
-                # 1. Split RSM indices
+                from sklearn.model_selection import train_test_split
                 all_indices = sim_judge_train_rsm.index.to_list()
                 train_ids, val_ids = train_test_split(all_indices, test_size=0.2, random_state=42)
+                sim_judge_train_rsm.index = sim_judge_train_rsm.index.astype(int)
+                sim_judge_train_rsm.columns = sim_judge_train_rsm.columns.astype(int)
 
-                # 2. Split triplets based on set membership
+                # Filter triplets using those IDs
                 def filter_triplets(df, id_set):
                     return df[
-                        df['stim1_name'].isin(id_set) &
-                        df['stim2_name'].isin(id_set) &
-                        df['stim3_name'].isin(id_set) &
-                        df['choice'].isin(id_set)
-                        ].copy()
+                            df['stim1_name'].isin(id_set) &
+                            df['stim2_name'].isin(id_set) &
+                            df['stim3_name'].isin(id_set) &
+                            df['choice'].isin(id_set)
+                            ].copy()
 
                 train_triplets = filter_triplets(sim_judg, train_ids)
                 val_triplets = filter_triplets(sim_judg, val_ids)
 
-                # 3. Create train and val RSMs
+                # Create train and val RSMs
                 train_rsm = sim_judge_train_rsm.loc[train_ids, train_ids]
                 val_rsm = sim_judge_train_rsm.loc[val_ids, val_ids]
 
@@ -230,7 +232,7 @@ class VideoSimilarityFinetuning:
                 def flatten_rsm(rsm):
                     tri = np.triu_indices_from(rsm, k=1)
                     flat = torch.tensor(rsm.values[tri], dtype=torch.float32)
-                    return flat.to(device)
+                    return flat.to(self.device)
 
                 sim_train_flat = flatten_rsm(train_rsm)
                 sim_val_flat = flatten_rsm(val_rsm)
@@ -238,8 +240,8 @@ class VideoSimilarityFinetuning:
                 # 5. Create DataLoaders
                 train_dataset = TripletDataset(train_triplets, video_dir)
                 val_dataset = TripletDataset(val_triplets, video_dir)
-                train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True, collate_fn=collate_fn)
-                val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, collate_fn=collate_fn)
+                train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True, collate_fn=self.collate_fn)
+                val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, collate_fn=self.collate_fn)
 
                 # ===========================
                 # 🚀 Training Loop
