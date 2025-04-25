@@ -260,11 +260,19 @@ class VideoSimilarityFinetuning:
 
 def main():
     parser = argparse.ArgumentParser()
+    # Add arguments that are needed before setting the default for data_dir
     parser.add_argument('--user', type=str, default='kgarci18')
-    parser.add_argument('--model_name', type=str, default='LoRA_X3D')
+    # Parse known args first to get the user
+    args, remaining_argv = parser.parse_known_args()
+    user = args.user  # Get the user from the parsed known args
+ 
+    parser.add_argument('--model_name', type=str, default='No_Model')
+    parser.add_argument('--model_input', type=str, default='videos')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument('--data_dir', type=str, required=True)
-    args = parser.parse_args()
+    parser.add_argument('--data_dir', '-data', type=str,
+                        default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')
+    parser.add_argument('--memory_limit', type=str, default=None)
+    args = parser.parse_args(remaining_argv)
     VideoSimilarityFinetuning(args).run()
 
 
