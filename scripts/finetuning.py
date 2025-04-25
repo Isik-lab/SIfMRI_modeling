@@ -56,14 +56,29 @@ class X3DTripletModel(nn.Module):
         return self.embedding_layer(flat)
 
     def _wrap_with_lora(self, r, alpha, dropout):
+        from peft import get_peft_model, LoraConfig, TaskType
+
         config = LoraConfig(
             r=r,
             lora_alpha=alpha,
             lora_dropout=dropout,
             bias="none",
-            task_type=TaskType.FEATURE_EXTRACTION,
-            target_modules=["conv", "proj", "fc", "linear"]
+            #task_type=TaskType.FEATURE_EXTRACTION,
+            target_modules=[]  # Will fill dynamically
         )
+
+        supported_classes = (nn.Conv3d, nn.Linear)
+        target_module_names = []
+
+        for name, module in self.backbone.named_modules():
+            if isinstance(module, supported_classes):
+                target_module_names.append(name)
+
+        print(f"✅ Applying LoRA to {len(target_module_names)} modules:")
+        for name in target_module_names:
+            print(f"  • {name}")
+
+        config.target_modules = target_module_names
         self.backbone = get_peft_model(self.backbone, config)
 
     def _log_param_counts(self):
@@ -73,7 +88,6 @@ class X3DTripletModel(nn.Module):
         print(f"🧠 Total parameters:     {total_params:,}")
         print(f"✅ Trainable parameters: {trainable_params:,}")
         print(f"❄️  Frozen parameters:   {frozen_params:,}")
-
 
 class TripletDataset(Dataset):
     def __init__(self, triplet_df, video_dir, num_frames=16, image_size=(224, 224)):
@@ -188,8 +202,8 @@ class VideoSimilarityFinetuning:
 
         train_dataset = TripletDataset(train_triplets, f'{self.data_dir}/raw/videos')
         val_dataset = TripletDataset(val_triplets, f'{self.data_dir}/raw/videos')
-        train_loader = DataLoader(train_dataset, batch_size=2, shuffle=True, collate_fn=self.collate_fn, pin_memory=True)
-        val_loader = DataLoader(val_dataset, batch_size=2, shuffle=False, collate_fn=self.collate_fn, pin_memory=True)
+        train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, collate_fn=self.collate_fn, pin_memory=True)
+        val_loader = DataLoader(val_dataset, batch_size=1, shuffle=False, collate_fn=self.collate_fn, pin_memory=True)
 
         model = X3DTripletModel().to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
