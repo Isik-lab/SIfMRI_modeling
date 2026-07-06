@@ -40,9 +40,9 @@ class VideoNeuralEncoding:
         Path(self.out_path).mkdir(parents=True, exist_ok=True)
     
     def load_fmri(self):
-        metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/metadata.csv')
-        response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/response_data.csv.gz')
-        stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganziefMRI/stimulus_data.csv')
+        metadata_ = pd.read_csv(f'{self.data_dir}/interim/ReorganizefMRI/metadata.csv')
+        response_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganizefMRI/response_data.csv.gz')
+        stimulus_data_ = pd.read_csv(f'{self.data_dir}/interim/ReorganizefMRI/stimulus_data.csv')
         return Benchmark(metadata_, stimulus_data_, response_data_)
     
     def run(self):
