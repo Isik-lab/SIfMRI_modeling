@@ -511,9 +511,14 @@ def timesformer_transform():
 def get_model(model_name, sdlp_ckpt=None):
     if 'sdlp' in model_name.lower():
         from sdlp.eval_features import load_sdlp_feature_model
-        if not sdlp_ckpt:
-            raise Exception("sdlp model requires --sdlp_ckpt <path to stage1.pt>")
-        return load_sdlp_feature_model(sdlp_ckpt, device='cuda').eval()
+        # 'sdlp-untrained' / 'sdlp-random' = baseline control (random predictor,
+        # no checkpoint); frozen V-JEPA layers score the same as the trained run.
+        untrained = ('untrained' in model_name.lower() or 'random' in model_name.lower())
+        if not untrained and not sdlp_ckpt:
+            raise Exception("sdlp model requires --sdlp_ckpt <path to stage1.pt> "
+                            "(or use --model_name sdlp-untrained for the baseline)")
+        return load_sdlp_feature_model(
+            None if untrained else sdlp_ckpt, device='cuda').eval()
     elif model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
         model = torch.hub.load("facebookresearch/pytorchvideo", model=model_name, pretrained=True).to("cuda").eval()
     elif model_name.lower() == 'xclip-base-patch32':
