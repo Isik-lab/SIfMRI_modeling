@@ -22,6 +22,7 @@ class VideoNeuralEncoding:
         self.overwrite = args.overwrite
         self.model_name = args.model_name
         self.model_input = args.model_input
+        self.sdlp_ckpt = args.sdlp_ckpt
         self.data_dir = args.data_dir
         self.memory_limit = args.memory_limit
         self.user = args.user
@@ -65,7 +66,7 @@ class VideoNeuralEncoding:
                     )
                     clip_duration = 3
                 else:
-                    model = video_ops.get_model(self.model_name)
+                    model = video_ops.get_model(self.model_name, sdlp_ckpt=self.sdlp_ckpt)
                     preprocess, clip_duration = video_ops.get_transform(self.model_name)
                     print(f'{preprocess}')
 
@@ -144,6 +145,8 @@ def main():
 
     parser.add_argument('--model_name', type=str, default='No_Model')
     parser.add_argument('--model_input', type=str, default='videos')
+    parser.add_argument('--sdlp_ckpt', type=str, default=None,
+                        help='path to SDLP stage1.pt (required when --model_name sdlp)')
     parser.add_argument('--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('--data_dir', '-data', type=str,
                         default=f'/home/{user}/scratch4-lisik3/{user}/SIfMRI_modeling/data')

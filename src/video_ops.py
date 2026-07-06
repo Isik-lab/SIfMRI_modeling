@@ -270,8 +270,26 @@ def get_transform(model_name):
     elif model_name == 'timesformer-base-finetuned-k400':
         return timesformer_transform(), 3
 
+    elif 'sdlp' in model_name:
+        # 16 frames @ 256, kept in [0,1] — SDLP applies V-JEPA's own normalization.
+        return sdlp_transform(num_frames=16, side_size=256, crop_size=256), 2.0
+
     else:
         print(f'{model_name} model not yet implemented!')
+
+
+def sdlp_transform(num_frames=16, side_size=256, crop_size=256):
+    return ApplyTransformToKey(
+        key="video",
+        transform=Compose(
+            [
+                UniformTemporalSubsample(num_frames),
+                Lambda(lambda x: x / 255.0),   # [0,1]; SDLP normalizes internally
+                ShortSideScale(size=side_size),
+                CenterCropVideo(crop_size=(crop_size, crop_size)),
+            ]
+        )
+    )
 
 
 ####################
@@ -490,8 +508,13 @@ def timesformer_transform():
     return AutoImageProcessor.from_pretrained("facebook/timesformer-base-finetuned-k400")
 
 
-def get_model(model_name):
-    if model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
+def get_model(model_name, sdlp_ckpt=None):
+    if 'sdlp' in model_name.lower():
+        from sdlp.eval_features import load_sdlp_feature_model
+        if not sdlp_ckpt:
+            raise Exception("sdlp model requires --sdlp_ckpt <path to stage1.pt>")
+        return load_sdlp_feature_model(sdlp_ckpt, device='cuda').eval()
+    elif model_name.lower() in torch.hub.list('facebookresearch/pytorchvideo', force_reload=True):
         model = torch.hub.load("facebookresearch/pytorchvideo", model=model_name, pretrained=True).to("cuda").eval()
     elif model_name.lower() == 'xclip-base-patch32':
         model = AutoModel.from_pretrained("microsoft/xclip-base-patch32")
